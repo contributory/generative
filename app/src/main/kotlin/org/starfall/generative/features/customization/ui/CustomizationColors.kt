@@ -26,7 +26,6 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.theme.ThemePresets
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.layout.LocalItemTransparency
 import org.starfall.generative.shared.ui.layout.appearanceContainerColor
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 
@@ -131,30 +130,6 @@ internal fun CustomizationColors(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text(stringResource(R.string.settings_item_transparency),
                     style = MaterialTheme.typography.titleMedium)
-                // Use the app's shared appearance policy for the preview, not a second alpha formula.
-                Box(
-                    Modifier.fillMaxWidth().height(82.dp).clip(RoundedCornerShape(12.dp))
-                        .background(Brush.horizontalGradient(listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.secondaryContainer
-                        ))).testTag("customization-opacity-preview")
-                ) {
-                    CompositionLocalProvider(LocalItemTransparency provides opacity) {
-                        Surface(
-                            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.85f),
-                            shape = RoundedCornerShape(10.dp),
-                            color = appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        ) {
-                            Row(Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                SharedIcon(Icons.Outlined.Image, null)
-                                Spacer(Modifier.width(12.dp))
-                                Text(stringResource(R.string.settings_palette_sample),
-                                    style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = {
                         opacity = 0.5f

@@ -9,10 +9,18 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/starfall-org/generative/releases">Download</a> ·
-  <a href="https://starfall-org.github.io/generative/">Website</a> ·
-  <a href="https://github.com/starfall-org/generative/issues">Report a problem</a> ·
-  <a href="https://discord.gg/fBwePdCxFP">Discord community</a> ·
+  <a href="https://starfall-org.github.io/generative/">
+    <img src="https://img.shields.io/badge/Official_Website-Explore-0D9488?style=for-the-badge&amp;logo=googlechrome&amp;logoColor=white" height="40" alt="Visit the official Generative website">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://discord.gg/fBwePdCxFP">
+    <img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=for-the-badge&amp;logo=discord&amp;logoColor=white" height="40" alt="Join the Generative Discord community">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/starfall-org/generative/releases">Download APK</a> ·
+  <a href="https://github.com/starfall-org/generative/issues">Report an issue</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
@@ -31,65 +39,48 @@
   <img src="docs/image3.png" width="30%" alt="Generative screenshot 3">
 </p>
 
-Generative is a native Android AI client built for people who want to choose their own models, connect their own tools, and keep their workflow in one place. Bring your own provider or account; Generative does not host models or include API credits.
+Generative is a native Android AI client for your own models, tools, and remote machines. Bring your own API key or supported account; no API credits are included.
 
-## Why Generative?
+## Highlights
 
-- **Choose your AI.** Use OpenAI-compatible APIs, OpenAI Responses, Anthropic, Google Gemini, Ollama, and supported account-based providers such as ChatGPT Codex, Claude Code, Antigravity, and GitHub Copilot.
-- **Make chat do more.** Connect remote MCP servers, select which tools are available, and use supported image or video generation tools.
-- **Work beyond the chat.** Connect to remote machines over SSH and use an interactive terminal from your phone.
-- **Shape your workflow.** Organize providers, tune model settings, and reuse prompt instructions and profiles.
-- **Keep your setup close.** Conversations and app configuration are stored on your device. OAuth credentials are protected with Android Keystore-backed encryption.
+- **Models on your terms:** Connect OpenAI-compatible APIs, OpenAI Responses, Anthropic, Gemini, Ollama, or supported account sign-ins (ChatGPT Codex, Claude Code, Antigravity, GitHub Copilot). Configure reasoning and model capabilities.
+- **Navigate long conversations:** Use the swipe-open chat minimap, follow streamed reasoning and tool activity, switch message versions, and read Markdown and LaTeX.
+- **MCP tools with control:** Connect remote MCP servers over Streamable HTTP or SSE, manage tool access, and choose an MCP server for web search.
+- **SSH workspace:** Open remote terminals, forward ports, browse files over SFTP, and connect through SSH jump hosts or WebSocket proxies.
+- **Custom media workflows:** Build reusable multi-step request profiles for image, video, and music generation, including custom endpoints and request templates.
+- **Reusable AI instructions:** Save prompt instructions, manage agent skills, and import skills from GitHub.
+- **Speech beyond system TTS:** Configure voices and preview speech with Android TTS, ElevenLabs, Fish Audio, Cartesia, or Speechify.
+- **Personalize the interface:** Use dynamic colors, AMOLED mode, custom palettes, backgrounds, and adjustable component transparency.
+- **Keep control of your data:** Store conversations locally, import/export ZIP backups, and protect OAuth credentials with Android Keystore-backed encryption.
 
-Provider features depend on the service, model, and configuration. You may need your own API key or account, and provider usage charges still apply.
+Availability of individual model, media, and speech capabilities depends on the connected service.
 
 ## Get started
 
-1. **Install** the latest available APK from [GitHub Releases](https://github.com/starfall-org/generative/releases) on an Android device running Android 8.0 or later.
-2. **Add a provider** from the Providers screen. Enter its endpoint and credentials, or use the provider's sign-in flow when available.
-3. **Choose a model** and start chatting. Add MCP servers, remote machines, speech services, or media tools when you need them.
+1. [Download the APK](https://github.com/starfall-org/generative/releases) for Android 8.0 or later.
+2. Add a provider using your API key or a supported sign-in.
+3. Select a model and start chatting.
 
-Need a walkthrough? Read the [user guide](https://starfall-org.github.io/generative/docs.html) or visit our [Discord community](https://discord.gg/fBwePdCxFP).
+[User guide](https://starfall-org.github.io/generative/docs.html)
 
-Only connect services and MCP servers you trust. Your chosen provider processes the messages you send according to its own policies. Keep API keys and sign-in links private, and prefer HTTPS for remote endpoints.
-
-## Supported integrations
-
-| Integration | What it adds |
-| --- | --- |
-| AI providers | OpenAI-compatible Chat Completions, OpenAI Responses, Anthropic, Google Gemini, Ollama, and supported account-based providers |
-| Tools | Remote MCP over Streamable HTTP or HTTP + SSE |
-| Remote access | SSH connections and an interactive terminal |
-| Media and speech | Configurable speech services, Android text-to-speech, and supported image/video generation |
-
-Generative is an Android-native app built with Kotlin and Jetpack Compose. It does not currently provide iOS, web, Windows, macOS, or Linux apps.
+Connect only to trusted providers and MCP servers. Provider usage fees may apply.
 
 <details>
-<summary>Advanced: add a provider with a link</summary>
+<summary>Add a provider via deep link</summary>
 
-Generative can receive a provider link from a browser or another app and open the provider editor with its details prefilled.
+Open the provider editor with prefilled details from a browser or another app:
 
 ```text
 generative://provider?name={name}&url={url}&key={key}&auth_type={auth_type}&provider_type={provider_type}&icon_url={icon_url}
 ```
 
-Example:
-
-```text
-generative://provider?name=My%20Gateway&url=https%3A%2F%2Fapi.example.com%2Fv1&key=YOUR_API_KEY&auth_type=platform&provider_type=chat-completions
-```
-
-- URL-encode parameter values, especially credentials and URLs.
-- `provider_type` defaults to `chat-completions`; supported values include `responses`, `anthropic`, `gemini`, `ollama`, `antigravity`, `github-copilot`, `openai-codex`, and `claude-code`.
-- `auth_type` defaults to `platform`; supported values include `none`, `bearer`, `query`, `custom-header`, and `oauth`.
-- `icon_url` is optional and must be an HTTP(S) image URL. The legacy `mg://` scheme and the older `type`/`auth` parameter names remain supported.
-- Opening a link creates a new provider; it does not overwrite an existing one. Links containing credentials are sensitive.
+URL-encode values. The link creates a new provider and may expose credentials; share it carefully. The legacy `mg://` scheme is also supported.
 
 </details>
 
 ## Build from source
 
-Requires JDK 17 and an Android SDK. Configure `sdk.dir` in `local.properties`, then run:
+Requires JDK 17 and Android SDK (`sdk.dir` in `local.properties`):
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -99,8 +90,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing guidance.
 
 ## License
 
-Generative uses the [Starfall Org Contributor Commercial Copyleft License v1.1](LICENSE). The app must remain non-commercial except where the license explicitly allows otherwise. Publishing or distributing it through an app store requires prior written permission from Starfall Org. Read the license for the complete terms.
-
-## AI Tools and Models
-
-This project was developed with the assistance of various AI tools and models.
+Licensed under the [Starfall Org Contributor Commercial Copyleft License v1.1](LICENSE). Non-commercial use is required unless permitted by the license; app-store distribution requires prior written permission from Starfall Org.

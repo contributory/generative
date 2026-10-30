@@ -1,6 +1,8 @@
 package org.starfall.generative.features.speech.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.features.speech.logic.brandHomepage
+import org.starfall.generative.features.speech.logic.requestSpeechEngineIcons
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -21,6 +23,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.media.supportsSpeechProvider
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
+import org.starfall.generative.shared.model.iconMatchName
 import org.starfall.generative.integrations.speech.adapter
 import org.starfall.generative.integrations.speech.SpeechSynthesisModel
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,6 +53,7 @@ fun SpeechEditor(
     fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null
 ) {
     val context = LocalContext.current
+    LaunchedEffect(context) { requestSpeechEngineIcons(context) }
     val ttsModelsByProvider = remember(providers) {
         providers.filter(::supportsSpeechProvider).associate { provider ->
             provider.id to provider.config.modelConfigs
@@ -149,7 +153,50 @@ fun SpeechEditor(
     if (showVoices && standalone) SpeechVoiceSheet(currentService(), onChoose = {
         voice = it.id; voiceName = it.name; showVoices = false
     }, onDismiss = { showVoices = false })
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onDismiss)
+    if (providerExpanded) SpeechEnginePickerSheet(
+        engine = engine,
+        providerId = providerId,
+        providers = providers,
+        modelsByProvider = ttsModelsByProvider,
+        onSelectSystem = {
+            updateDefaultName(systemServiceName)
+            providerId = "system"
+            engine = SpeechEngine.SYSTEM
+            providerExpanded = false
+        },
+        onSelectStandalone = { next ->
+            updateDefaultName(speechEngineLabel(next))
+            engine = next
+            providerId = ""
+            voice = ""
+            voiceName = ""
+            apiKey = ""
+            extraBodyText = "{}"
+            speed = 1f
+            // The model is chosen from the service catalog after entering an API key.
+            modelId = null
+            responseFormat = when (next) {
+                SpeechEngine.ELEVENLABS -> "mp3_44100_128"
+                SpeechEngine.CARTESIA -> "wav"
+                else -> "mp3"
+            }
+            providerExpanded = false
+        },
+        onSelectProvider = { provider ->
+            updateDefaultName(provider.name)
+            if (standalone) {
+                apiKey = ""
+                extraBodyText = "{}"
+                responseFormat = "mp3"
+            }
+            engine = SpeechEngine.PROVIDER
+            providerId = provider.id
+            voice = if (provider.type == ModelApiType.GOOGLE) "Kore" else "alloy"
+            providerExpanded = false
+        },
+        onDismiss = { providerExpanded = false }
+    )
+    BackHandler(enabled = LocalScreenTransitionActive.current && !providerExpanded, onBack = onDismiss)
     Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
         Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -196,63 +243,22 @@ fun SpeechEditor(
                     text = providerInitials(name),
                     fallback = Icons.Outlined.RecordVoiceOver,
                     onBusyChange = { iconImporting = it },
-                    matchName = name,
-                    faviconBaseUrl = providerBaseUrl,
-                    defaultImage = selectedProvider?.icon
+                    matchName = engine.iconMatchName ?: selectedProvider?.name ?: name,
+                    faviconBaseUrl = engine.brandHomepage() ?: providerBaseUrl,
+                    defaultImage = selectedProvider?.icon?.takeUnless { standalone }
                 )
 
-                Box {
-                    OutlinedButton(
-                        onClick = { providerExpanded = true },
-                        modifier = Modifier.fillMaxWidth().testTag("speech-engine-selector")
-                    ) {
-                        Text(
-                            if (system) {
-                                stringResource(R.string.speech_system_tts)
-                            } else {
-                                if (standalone) speechEngineLabel(engine) else providers.find { it.id == providerId }?.name ?: providerId
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                        SharedIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                    }
-                    DropdownMenu(
-                        expanded = providerExpanded,
-                        onDismissRequest = { providerExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.speech_system_tts)) },
-                            onClick = {
-                                updateDefaultName(systemServiceName)
-                                providerId = "system"
-                                engine = SpeechEngine.SYSTEM
-                                providerExpanded = false
-                            }
-                        )
-                        SpeechEngine.entries.filter { it.standalone }.forEach { next ->
-                            DropdownMenuItem(text = { Text(speechEngineLabel(next)) }, onClick = {
-                                updateDefaultName(speechEngineLabel(next))
-                                engine = next; providerId = ""; voice = ""; voiceName = ""; apiKey = ""; extraBodyText = "{}"; speed = 1f
-                                // The engine model is chosen from its fetched catalog after entering an API key.
-                                modelId = null
-                                responseFormat = when(next) { SpeechEngine.ELEVENLABS -> "mp3_44100_128"; SpeechEngine.CARTESIA -> "wav"; else -> "mp3" }
-                                providerExpanded = false
-                            })
-                        }
-                        providers.filter { it.id in ttsModelsByProvider }.forEach { provider ->
-                            DropdownMenuItem(
-                                text = { Text(provider.name) },
-                                onClick = {
-                                     updateDefaultName(provider.name)
-                                     if (standalone) { apiKey = ""; extraBodyText = "{}"; responseFormat = "mp3" }
-                                     engine = SpeechEngine.PROVIDER
-                                     providerId = provider.id
-                                    voice = if (provider.type == ModelApiType.GOOGLE) "Kore" else "alloy"
-                                    providerExpanded = false
-                                }
-                            )
-                        }
-                    }
+                OutlinedButton(
+                    onClick = { providerExpanded = true },
+                    modifier = Modifier.fillMaxWidth().testTag("speech-engine-selector")
+                ) {
+                    Text(
+                        if (system) systemServiceName
+                        else if (standalone) speechEngineLabel(engine)
+                        else selectedProvider?.name ?: providerId,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SharedIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                 }
 
                 if (standalone) {

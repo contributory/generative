@@ -12,13 +12,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -279,18 +273,9 @@ internal fun ChatMessageList(
             LazyColumn(
                 state = listState,
                 reverseLayout = false,
+                // Keep scrolling content intact; ChatAppBar alone paints the themed scrim.
                 modifier = Modifier.fillMaxSize().testTag("chat-message-list")
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        val fadeEnd = appBarHeight.toPx().coerceAtLeast(1f)
-                        drawRect(
-                            brush = Brush.verticalGradient(0f to Color.Transparent, 0.72f to Color.Transparent,
-                                1f to Color.Black, startY = 0f, endY = fadeEnd),
-                            size = androidx.compose.ui.geometry.Size(size.width, fadeEnd.coerceAtMost(size.height)),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }.nestedScroll(scrollConnection),
+                    .nestedScroll(scrollConnection),
                 contentPadding = PaddingValues(top = appBarHeight, bottom = bottomClearance + gap)
             ) {
                 itemsIndexed(turns, key = { _, turn -> turn.first().id }) { index, turn ->

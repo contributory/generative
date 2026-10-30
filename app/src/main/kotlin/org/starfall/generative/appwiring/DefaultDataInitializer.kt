@@ -77,7 +77,8 @@ class DefaultDataInitializer(
             }
         }
 
-        pruneUnusedIcons(prefs.featuresLogoImage)
+        // Runtime defaults hide the logo while customization is off; pruning needs the saved ID.
+        pruneUnusedIcons(if (prefs.customizationEnabled) prefs.featuresLogoImage else prefsRepo.storedFeaturesLogoImage())
     }
 
     private suspend fun preloadContentApiTools() {

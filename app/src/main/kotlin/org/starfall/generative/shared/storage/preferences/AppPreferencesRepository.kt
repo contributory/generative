@@ -104,14 +104,15 @@ data class AppPreferences(
     val chatRelations: ChatRelations = ChatRelations(),
     val selectedModel: SelectedModel = SelectedModel(),
     val selectedSpeechServiceId: String? = null,
+    val customizationEnabled: Boolean = true,
     val themeMode: String = "SYSTEM", // SYSTEM, LIGHT, DARK
     val useAmoled: Boolean = false,
     val useDynamicColor: Boolean = true,
     val colorSchemeName: String = "SLATE", // ORANGE, VIOLET, SLATE, CUSTOM
     val customPalette: CustomPalette = CustomPalette(),
     val itemTransparency: Float = 0.5f,
-    val inputAreaTransparency: Float = 0.08f,
-    val inputAreaBlur: Float = 0f,
+    val inputAreaTransparency: Float = 0.6f,
+    val inputAreaBlur: Float = 2f,
     val instructionLibrary: InstructionLibrary = InstructionLibrary(),
     val agentSkills: AgentSkills = AgentSkills(),
     val continueLastConversation: Boolean = false,
@@ -188,6 +189,7 @@ class AppPreferencesRepository(private val context: Context) {
         val CHAT_RELATIONS = stringPreferencesKey("chat_relations")
         val SELECTED_MODEL = stringPreferencesKey("selected_model")
         val SELECTED_SPEECH_SERVICE_ID = stringPreferencesKey("selected_speech_service_id")
+        val CUSTOMIZATION_ENABLED = booleanPreferencesKey("customization_enabled")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val USE_AMOLED = booleanPreferencesKey("use_amoled")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
@@ -259,77 +261,104 @@ class AppPreferencesRepository(private val context: Context) {
             migrateLegacyPreferenceSchema()
             migrateLegacyAgentSkills()
         }
-        .map { preferences ->
-            val storedThemeMode = preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM"
-            val legacyAmoled = storedThemeMode == "AMOLED"
-            AppPreferences(
-                chatRelations = decodeChatRelations(preferences),
-                selectedModel = decodeSelectedModel(preferences),
-                selectedSpeechServiceId = preferences[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID],
-                themeMode = if (legacyAmoled) "DARK" else storedThemeMode,
-                useAmoled = preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled,
-                useDynamicColor = preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true,
-                colorSchemeName = when (preferences[PreferenceKeys.COLOR_SCHEME_NAME]) {
-                    "ORANGE", "SUNSET" -> "ORANGE"
-                    "VIOLET" -> "VIOLET"
-                    "CUSTOM" -> "CUSTOM"
-                    else -> "SLATE" // Old blue/green/red/monochrome choices are retired.
-                },
-                customPalette = preferences[PreferenceKeys.CUSTOM_PALETTE]?.let { raw ->
-                    runCatching { Json.decodeFromString<CustomPalette>(raw) }.getOrNull()
-                } ?: CustomPalette(),
-                inputAreaTransparency = (preferences[PreferenceKeys.INPUT_AREA_TRANSPARENCY] ?: 0.08f).coerceIn(0f, 1f),
-                inputAreaBlur = (preferences[PreferenceKeys.INPUT_AREA_BLUR] ?: 0f).coerceIn(0f, 32f),
-                itemTransparency = (preferences[PreferenceKeys.ITEM_TRANSPARENCY] ?: 0.5f).coerceIn(0f, 1f),
-                instructionLibrary = decodeInstructionLibrary(preferences),
-                agentSkills = agentSkillsFromFiles(),
-                continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
-                persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
-                autoScroll = preferences[PreferenceKeys.AUTO_SCROLL] ?: false,
-                ttsReadCodeBlocks = preferences[PreferenceKeys.TTS_READ_CODE_BLOCKS] ?: false,
-                enableVibration = preferences[PreferenceKeys.ENABLE_VIBRATION] ?: false,
-                hideStatusBar = preferences[PreferenceKeys.HIDE_STATUS_BAR] ?: false,
-                hideNavigationBar = preferences[PreferenceKeys.HIDE_NAVIGATION_BAR] ?: false,
-                debugMode = preferences[PreferenceKeys.DEBUG_MODE] ?: false,
-                debugLogCategories = DebugLogCategory.fromStored(preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES]),
-                selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
-                useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
-                featuresLogoImage = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() },
-                userProfile = preferences[PreferenceKeys.USER_PROFILE]?.let { raw ->
-                    runCatching { Json.decodeFromString<UserProfile>(raw) }.getOrNull()
-                } ?: UserProfile(photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]),
-                showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
-                showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
-                showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
-                showSpeechAsGrid = preferences[PreferenceKeys.SHOW_SPEECH_AS_GRID] ?: false,
-                providersCollapsedSections = preferences[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS].orEmpty(),
-                modelPickerCollapsedGroups = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS].orEmpty(),
-                modelPickerCollapsedProviders = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS].orEmpty(),
-                latexMode = preferences[PreferenceKeys.LATEX_MODE]?.takeIf { it == "OFF" } ?: "AUTO", // legacy "ON" now means AUTO
-                wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
-                wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
-                codePreviewEnabled = preferences[PreferenceKeys.CODE_PREVIEW_ENABLED] ?: true,
-                codeBlockDisplayMode = CodeBlockDisplayMode.fromValue(preferences[PreferenceKeys.CODE_BLOCK_DISPLAY_MODE]),
-                codeBlockMaxLines = preferences[PreferenceKeys.CODE_BLOCK_MAX_LINES]?.coerceIn(1, 10_000)
-                    ?: DEFAULT_CODE_BLOCK_MAX_LINES,
-                codeBlockIncludeUndefined = preferences[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] ?: false,
-                messageFontSize = preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.coerceIn(12, 24) ?: DEFAULT_MESSAGE_FONT_SIZE,
-                // Users who already picked a non-default size keep it.
-                messageFontSizeCustom = preferences[PreferenceKeys.MESSAGE_FONT_SIZE_CUSTOM]
-                    ?: (preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.let { it != DEFAULT_MESSAGE_FONT_SIZE } ?: false),
-                messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
-                toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
-                toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
-                toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
-                toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
-                mcpAttachments = McpAttachmentSettings.decode(preferences[PreferenceKeys.MCP_ATTACHMENTS]),
-                screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE]),
-                autoSummaryEnabled = preferences[PreferenceKeys.AUTO_SUMMARY_ENABLED] ?: true,
-                summarySuggestionEnabled = preferences[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] ?: true,
-                autoSummaryPercent = preferences[PreferenceKeys.AUTO_SUMMARY_PERCENT]
-                    ?.coerceIn(MIN_AUTO_SUMMARY_PERCENT, MAX_AUTO_SUMMARY_PERCENT) ?: DEFAULT_AUTO_SUMMARY_PERCENT
-            )
-        }
+        .map { preferences -> decodePreferences(preferences) }
+
+    /** When customization is off, do not even decode stored appearance or image keys.
+     * Other settings still need this DataStore; the archived appearance remains untouched.
+     */
+    private fun decodePreferences(
+        preferences: Preferences,
+        includeCustomization: Boolean = preferences[PreferenceKeys.CUSTOMIZATION_ENABLED] ?: true
+    ): AppPreferences {
+        val defaults = AppPreferences()
+        val storedThemeMode = if (includeCustomization) preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM" else defaults.themeMode
+        val legacyAmoled = storedThemeMode == "AMOLED"
+        return AppPreferences(
+            chatRelations = decodeChatRelations(preferences),
+            selectedModel = decodeSelectedModel(preferences),
+            selectedSpeechServiceId = preferences[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID],
+            customizationEnabled = preferences[PreferenceKeys.CUSTOMIZATION_ENABLED] ?: true,
+            themeMode = if (legacyAmoled) "DARK" else storedThemeMode,
+            useAmoled = if (includeCustomization) preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled else defaults.useAmoled,
+            useDynamicColor = if (includeCustomization) preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true else defaults.useDynamicColor,
+            colorSchemeName = when (if (includeCustomization) preferences[PreferenceKeys.COLOR_SCHEME_NAME] else null) {
+                "ORANGE", "SUNSET" -> "ORANGE"
+                "VIOLET" -> "VIOLET"
+                "CUSTOM" -> "CUSTOM"
+                else -> "SLATE" // Old blue/green/red/monochrome choices are retired.
+            },
+            customPalette = (if (includeCustomization) preferences[PreferenceKeys.CUSTOM_PALETTE] else null)?.let { raw ->
+                runCatching { Json.decodeFromString<CustomPalette>(raw) }.getOrNull()
+            } ?: CustomPalette(),
+            inputAreaTransparency = ((if (includeCustomization) preferences[PreferenceKeys.INPUT_AREA_TRANSPARENCY] else null)
+                ?: defaults.inputAreaTransparency).coerceIn(0f, 1f),
+            inputAreaBlur = ((if (includeCustomization) preferences[PreferenceKeys.INPUT_AREA_BLUR] else null)
+                ?: defaults.inputAreaBlur).coerceIn(0f, 32f),
+            itemTransparency = ((if (includeCustomization) preferences[PreferenceKeys.ITEM_TRANSPARENCY] else null)
+                ?: defaults.itemTransparency).coerceIn(0f, 1f),
+            instructionLibrary = decodeInstructionLibrary(preferences),
+            agentSkills = agentSkillsFromFiles(),
+            continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
+            persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
+            autoScroll = preferences[PreferenceKeys.AUTO_SCROLL] ?: false,
+            ttsReadCodeBlocks = preferences[PreferenceKeys.TTS_READ_CODE_BLOCKS] ?: false,
+            enableVibration = preferences[PreferenceKeys.ENABLE_VIBRATION] ?: false,
+            hideStatusBar = preferences[PreferenceKeys.HIDE_STATUS_BAR] ?: false,
+            hideNavigationBar = preferences[PreferenceKeys.HIDE_NAVIGATION_BAR] ?: false,
+            debugMode = preferences[PreferenceKeys.DEBUG_MODE] ?: false,
+            debugLogCategories = DebugLogCategory.fromStored(preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES]),
+            selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
+            useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
+            featuresLogoImage = if (includeCustomization)
+                preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() } else null,
+            userProfile = if (includeCustomization) preferences[PreferenceKeys.USER_PROFILE]?.let { raw ->
+                runCatching { Json.decodeFromString<UserProfile>(raw) }.getOrNull()
+            } ?: UserProfile(photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]) else defaults.userProfile,
+            showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
+            showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
+            showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
+            showSpeechAsGrid = preferences[PreferenceKeys.SHOW_SPEECH_AS_GRID] ?: false,
+            providersCollapsedSections = preferences[PreferenceKeys.PROVIDERS_COLLAPSED_SECTIONS].orEmpty(),
+            modelPickerCollapsedGroups = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_GROUPS].orEmpty(),
+            modelPickerCollapsedProviders = preferences[PreferenceKeys.MODEL_PICKER_COLLAPSED_PROVIDERS].orEmpty(),
+            latexMode = preferences[PreferenceKeys.LATEX_MODE]?.takeIf { it == "OFF" } ?: "AUTO", // legacy "ON" now means AUTO
+            wordWrapMode = WordWrapMode.fromValue(preferences[PreferenceKeys.WORD_WRAP_MODE]),
+            wordWrapColumn = preferences[PreferenceKeys.WORD_WRAP_COLUMN]?.takeIf { it > 0 } ?: DEFAULT_WORD_WRAP_COLUMN,
+            codePreviewEnabled = preferences[PreferenceKeys.CODE_PREVIEW_ENABLED] ?: true,
+            codeBlockDisplayMode = CodeBlockDisplayMode.fromValue(preferences[PreferenceKeys.CODE_BLOCK_DISPLAY_MODE]),
+            codeBlockMaxLines = preferences[PreferenceKeys.CODE_BLOCK_MAX_LINES]?.coerceIn(1, 10_000)
+                ?: DEFAULT_CODE_BLOCK_MAX_LINES,
+            codeBlockIncludeUndefined = preferences[PreferenceKeys.CODE_BLOCK_INCLUDE_UNDEFINED] ?: false,
+            messageFontSize = preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.coerceIn(12, 24) ?: DEFAULT_MESSAGE_FONT_SIZE,
+            // Users who already picked a non-default size keep it.
+            messageFontSizeCustom = preferences[PreferenceKeys.MESSAGE_FONT_SIZE_CUSTOM]
+                ?: (preferences[PreferenceKeys.MESSAGE_FONT_SIZE]?.let { it != DEFAULT_MESSAGE_FONT_SIZE } ?: false),
+            messageFontFamily = MessageFontFamily.fromValue(preferences[PreferenceKeys.MESSAGE_FONT_FAMILY]),
+            toolRoundLimitEnabled = preferences[PreferenceKeys.TOOL_ROUND_LIMIT_ENABLED] ?: false,
+            toolRoundLimit = preferences[PreferenceKeys.TOOL_ROUND_LIMIT]?.coerceIn(1, MAX_TOOL_ROUND_LIMIT) ?: DEFAULT_TOOL_ROUND_LIMIT,
+            toolCallStrategy = ToolCallStrategy.fromValue(preferences[PreferenceKeys.TOOL_CALL_STRATEGY]),
+            toolCallConcurrentLimit = preferences[PreferenceKeys.TOOL_CALL_CONCURRENT_LIMIT]?.coerceIn(1, MAX_TOOL_CALL_CONCURRENT_LIMIT) ?: DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+            mcpAttachments = McpAttachmentSettings.decode(preferences[PreferenceKeys.MCP_ATTACHMENTS]),
+            screenWakelockMode = ScreenWakelockMode.fromValue(preferences[PreferenceKeys.SCREEN_WAKELOCK_MODE]),
+            autoSummaryEnabled = preferences[PreferenceKeys.AUTO_SUMMARY_ENABLED] ?: true,
+            summarySuggestionEnabled = preferences[PreferenceKeys.SUMMARY_SUGGESTION_ENABLED] ?: true,
+            autoSummaryPercent = preferences[PreferenceKeys.AUTO_SUMMARY_PERCENT]
+                ?.coerceIn(MIN_AUTO_SUMMARY_PERCENT, MAX_AUTO_SUMMARY_PERCENT) ?: DEFAULT_AUTO_SUMMARY_PERCENT
+        )
+    }
+
+    /** Full-fidelity export retains saved appearance even while rendering is disabled. */
+    suspend fun backupSnapshot(): AppPreferences =
+        decodePreferences(context.dataStore.data.first(), includeCustomization = true)
+
+    /** Startup cleanup must retain the user's stored logo even if the UI hides it. */
+    suspend fun storedFeaturesLogoImage(): String? {
+        val stored = context.dataStore.data.first()
+        return stored[PreferenceKeys.FEATURES_LOGO_IMAGE]
+            ?: stored[PreferenceKeys.USER_PROFILE]?.let { raw ->
+                runCatching { Json.decodeFromString<UserProfile>(raw).photo }.getOrNull()
+            }
+    }
 
     /** Collapses the previous flat DataStore keys into the current grouped schema once. */
     private suspend fun migrateLegacyPreferenceSchema() = schemaMigrationMutex.withLock {
@@ -538,6 +567,29 @@ class AppPreferencesRepository(private val context: Context) {
         val adjusted = value.coerceIn(0f, 32f)
         state.mutate({ it.copy(inputAreaBlur = adjusted) }) {
             context.dataStore.edit { it[PreferenceKeys.INPUT_AREA_BLUR] = adjusted }
+        }
+    }
+
+    suspend fun setCustomizationEnabled(enabled: Boolean) {
+        state.mutate({ current ->
+            if (enabled) current.copy(customizationEnabled = true)
+            else AppPreferences().let { defaults ->
+                current.copy(
+                    customizationEnabled = false,
+                    themeMode = defaults.themeMode,
+                    useAmoled = defaults.useAmoled,
+                    useDynamicColor = defaults.useDynamicColor,
+                    colorSchemeName = defaults.colorSchemeName,
+                    customPalette = defaults.customPalette,
+                    itemTransparency = defaults.itemTransparency,
+                    inputAreaTransparency = defaults.inputAreaTransparency,
+                    inputAreaBlur = defaults.inputAreaBlur,
+                    featuresLogoImage = defaults.featuresLogoImage,
+                    userProfile = defaults.userProfile
+                )
+            }
+        }) {
+            context.dataStore.edit { it[PreferenceKeys.CUSTOMIZATION_ENABLED] = enabled }
         }
     }
 
@@ -932,6 +984,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(preferences.chatRelations)
                 stored[PreferenceKeys.SELECTED_MODEL] = Json.encodeToString(preferences.selectedModel)
                 preferences.selectedSpeechServiceId?.let { stored[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID] = it }
+                stored[PreferenceKeys.CUSTOMIZATION_ENABLED] = preferences.customizationEnabled
                 stored[PreferenceKeys.THEME_MODE] = preferences.themeMode
                 stored[PreferenceKeys.USE_AMOLED] = preferences.useAmoled
                 stored[PreferenceKeys.USE_DYNAMIC_COLOR] = preferences.useDynamicColor

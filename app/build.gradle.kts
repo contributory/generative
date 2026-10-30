@@ -150,7 +150,6 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.4")
 
     // Library-owned drag gestures, placement and edge autoscroll.
-    implementation("com.mohamedrejeb.dnd:compose-dnd:1.0.0-alpha02")
 
     // Shared image decoding, request cancellation and caching.
     val coilVersion = "3.0.4"

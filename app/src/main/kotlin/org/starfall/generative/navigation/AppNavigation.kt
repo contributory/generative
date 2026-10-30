@@ -1007,7 +1007,13 @@ fun AppNavigation(
                             }
                         }
                     }
-                    composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
+                    composable(AppDestination.STORAGE.route) {
+                        StorageScreen(
+                            store = toolFiles,
+                            onBack = { navController.popBackStack() },
+                            onBrowseFiles = { ExplorerActivity.open(context) }
+                        )
+                    }
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings page on re-entry.
                         DisposableEffect(Unit) {
@@ -1053,7 +1059,8 @@ fun AppNavigation(
                                     onOpenSettings = { remoteMachinePage = RemoteMachineSettingsPage.SETTINGS },
                                     onOpenTerminal = { machine ->
                                         openTerminal(machine)
-                                    }
+                                    },
+                                    onOpenFiles = { machine -> ExplorerActivity.open(context, machineId = machine.id) }
                                 )
                             }
                         }
@@ -1062,6 +1069,8 @@ fun AppNavigation(
                         CustomizationScreen(
                             profile = appPrefs.userProfile,
                             appearance = appPrefs,
+                            customizationEnabled = appPrefs.customizationEnabled,
+                            onCustomizationEnabledChange = settingsViewModel::setCustomizationEnabled,
                             onChange = settingsViewModel::updateUserProfile,
                             onDynamicColorChange = settingsViewModel::setUseDynamicColor,
                             onColorSchemeChange = settingsViewModel::setColorSchemeName,

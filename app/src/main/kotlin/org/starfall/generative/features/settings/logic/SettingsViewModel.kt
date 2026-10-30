@@ -29,6 +29,10 @@ class SettingsViewModel(
         viewModelScope.launch(LocalWriteErrors.handler) { repository.updateSidebar(transform) }
     }
 
+    fun setCustomizationEnabled(enabled: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setCustomizationEnabled(enabled) }
+    }
+
     fun setThemeMode(value: String) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setThemeMode(value) }
     }

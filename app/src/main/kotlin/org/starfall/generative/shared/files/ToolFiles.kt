@@ -46,7 +46,7 @@ class ToolFiles(val directory: File) {
     companion object {
         /**
          * The single directory holding every file the app generates (tool and media output).
-         * [AppDocumentsProvider] registers this same directory with Android's DocumentsUI,
+         * The single DocumentsProvider exposes this directory as MediaStorage in Android's DocumentsUI,
          * so files saved here are also browsable from the system Files app.
          */
         fun appStorageDirectory(context: Context): File = File(context.filesDir, "tool_media").apply { mkdirs() }

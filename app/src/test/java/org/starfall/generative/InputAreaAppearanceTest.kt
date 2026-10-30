@@ -19,11 +19,12 @@ import org.starfall.generative.shared.ui.layout.InputAreaAppearance
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
 class InputAreaAppearanceTest {
-    @Test fun legacyPreferencesKeepTheExistingComposerAppearance() {
-        val legacy = Json.decodeFromString<AppPreferences>("{}")
-        val appearance = InputAreaAppearance(legacy.inputAreaTransparency, legacy.inputAreaBlur)
-        assertEquals(0.92f, appearance.alpha, 0.0001f)
-        assertEquals(0f, appearance.blurRadius, 0f)
+    @Test fun defaultPreferencesUseSixtyPercentTransparencyAndTwoDpBlur() {
+        val defaults = Json.decodeFromString<AppPreferences>("{}")
+        val appearance = InputAreaAppearance(defaults.inputAreaTransparency, defaults.inputAreaBlur)
+        assertEquals(0.4f, appearance.alpha, 0.0001f)
+        assertEquals(2f, appearance.blurRadius, 0f)
+        assertEquals(appearance, InputAreaAppearance())
         assertEquals(1f, InputAreaAppearance(-1f).surfaceColor(Color.Red).alpha, 0f)
         assertEquals(0f, InputAreaAppearance(2f).surfaceColor(Color.Blue).alpha, 0f)
         assertEquals(32f, InputAreaAppearance(blur = 100f).blurRadius, 0f)

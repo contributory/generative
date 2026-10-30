@@ -14,11 +14,28 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.database.entities.SpeechServiceEntity
 import org.starfall.generative.shared.model.SpeechService
+import org.starfall.generative.shared.model.SpeechEngine
+import org.starfall.generative.shared.model.iconMatchName
 import org.starfall.generative.database.SpeechRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class SpeechServiceStorageTest {
+    @Test fun dedicatedSpeechLogosMatchEngineRegardlessOfCustomServiceName() {
+        val brands = mapOf(
+            SpeechEngine.ELEVENLABS to "ElevenLabs",
+            SpeechEngine.FISH_AUDIO to "Fish Audio",
+            SpeechEngine.CARTESIA to "Cartesia",
+            SpeechEngine.SPEECHIFY to "Speechify"
+        )
+        brands.forEach { (engine, name) ->
+            assertEquals(name, SpeechService("a", "My custom narrator", engine = engine).engine.iconMatchName)
+            assertEquals(name, SpeechService("b", "Completely different name", engine = engine).engine.iconMatchName)
+        }
+        assertNull(SpeechEngine.SYSTEM.iconMatchName)
+        assertNull(SpeechEngine.PROVIDER.iconMatchName)
+    }
+
     @Test fun speechOptionsSurviveRepositoryReloadAndReordering() = runBlocking {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()

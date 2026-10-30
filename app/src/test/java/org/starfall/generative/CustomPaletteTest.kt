@@ -16,6 +16,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.storage.preferences.UserProfile
 import org.starfall.generative.shared.theme.CustomPalette
 import org.starfall.generative.shared.theme.ThemePresets
 import org.starfall.generative.shared.theme.customColorScheme
@@ -52,6 +53,63 @@ class CustomPaletteTest {
             }
             assertNotEquals(colors.primary, colors.secondary)
             assertNotEquals(colors.secondary, colors.tertiary)
+        }
+    }
+
+    @Test fun disablingCustomizationIgnoresStoredAppearanceAndRestoresItWhenReenabled() = runBlocking {
+        val repository = AppPreferencesRepository(ApplicationProvider.getApplicationContext())
+        val palette = CustomPalette(primary = "#ED6622", secondary = "#228B7E",
+            tertiary = "#D9A020", neutral = "#445566")
+        val profile = UserProfile(photo = "profile-image", chatBackground = "chat-image",
+            sheetBackground = "sheet-image", dialogBackground = "dialog-image")
+        val customized = AppPreferences(
+            themeMode = "DARK", useAmoled = true, useDynamicColor = false,
+            colorSchemeName = "CUSTOM", customPalette = palette,
+            itemTransparency = 0.8f, inputAreaTransparency = 0.6f,
+            inputAreaBlur = 12f, userProfile = profile, featuresLogoImage = profile.photo,
+            continueLastConversation = true
+        )
+        try {
+            assertTrue(AppPreferences().customizationEnabled)
+            repository.replace(customized)
+            repository.setCustomizationEnabled(false)
+            val inactive = AppPreferencesRepository(ApplicationProvider.getApplicationContext())
+                .appPreferencesFlow.first()
+            val defaults = AppPreferences()
+            assertFalse(inactive.customizationEnabled)
+            assertTrue(inactive.continueLastConversation) // Non-appearance settings stay available.
+            assertEquals(defaults.themeMode, inactive.themeMode)
+            assertEquals(defaults.useAmoled, inactive.useAmoled)
+            assertTrue(inactive.useDynamicColor)
+            assertEquals(defaults.colorSchemeName, inactive.colorSchemeName)
+            assertEquals(defaults.customPalette, inactive.customPalette)
+            assertEquals(defaults.itemTransparency, inactive.itemTransparency)
+            assertEquals(defaults.inputAreaTransparency, inactive.inputAreaTransparency)
+            assertEquals(defaults.inputAreaBlur, inactive.inputAreaBlur)
+            assertEquals(defaults.userProfile, inactive.userProfile)
+            assertNull(inactive.featuresLogoImage)
+
+            // Backup must retain saved appearance while it is not used for rendering.
+            val backup = repository.backupSnapshot()
+            assertFalse(backup.customizationEnabled)
+            assertEquals(profile, backup.userProfile)
+            assertEquals(palette, backup.customPalette)
+            assertEquals("DARK", backup.themeMode)
+            assertEquals(profile.photo, repository.storedFeaturesLogoImage())
+            repository.setCustomizationEnabled(true)
+            val restored = AppPreferencesRepository(ApplicationProvider.getApplicationContext())
+                .appPreferencesFlow.first()
+            assertTrue(restored.customizationEnabled)
+            assertEquals(customized.themeMode, restored.themeMode)
+            assertEquals(customized.useAmoled, restored.useAmoled)
+            assertEquals(customized.useDynamicColor, restored.useDynamicColor)
+            assertEquals(customized.customPalette, restored.customPalette)
+            assertEquals(customized.itemTransparency, restored.itemTransparency)
+            assertEquals(customized.inputAreaTransparency, restored.inputAreaTransparency)
+            assertEquals(customized.inputAreaBlur, restored.inputAreaBlur)
+            assertEquals(profile, restored.userProfile)
+        } finally {
+            repository.replace(AppPreferences())
         }
     }
 

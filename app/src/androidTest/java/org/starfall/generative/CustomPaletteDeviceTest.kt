@@ -40,11 +40,36 @@ class CustomPaletteDeviceTest {
         compose.onNodeWithTag("palette-preset-ORANGE").assertExists().performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals("ORANGE", preferences.colorSchemeName) }
         compose.onNodeWithTag("customization-opacity-slider").performScrollTo()
-        compose.onNodeWithTag("customization-opacity-preview").assertIsDisplayed()
+        compose.onNodeWithTag("customization-opacity-preview").assertDoesNotExist()
+        compose.onNodeWithTag("customization-opacity-slider").assertIsDisplayed()
         compose.onNodeWithTag("customization-opacity-slider").performTouchInput {
             swipe(Offset(width * 0.15f, center.y), Offset(width * 0.85f, center.y), 350)
         }
         compose.runOnIdle { org.junit.Assert.assertTrue(preferences.itemTransparency > 0.75f) }
+    }
+
+    @Test fun customizationSwitchDisablesEditingWithoutChangingSavedSettings() {
+        var enabled by mutableStateOf(true)
+        var commits = 0
+        compose.setContent { MaterialTheme {
+            CustomizationScreen(
+                profile = UserProfile(chatBackground = "stored-chat-image"),
+                onChange = { commits++ }, onBack = {},
+                customizationEnabled = enabled,
+                onCustomizationEnabledChange = { enabled = it }
+            )
+        } }
+        compose.onNodeWithTag("customization-enabled-switch").assertIsOn().performClick()
+        compose.onNodeWithTag("customization-enabled-switch").assertIsOff()
+        compose.onNodeWithTag("customization-disabled-overlay").assertExists()
+        compose.runOnIdle {
+            assertEquals(0, commits)
+            assertTrue(!enabled)
+        }
+        compose.onNodeWithTag("customization-enabled-switch").performClick()
+        compose.onNodeWithTag("customization-enabled-switch").assertIsOn()
+        compose.onNodeWithTag("customization-disabled-overlay").assertDoesNotExist()
+        compose.onNodeWithTag("customization-list").assertExists()
     }
 
     @Test fun paletteMixerOpensFromCustomizationAndDraggingChangesSavedAccent() {

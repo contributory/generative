@@ -2,16 +2,15 @@ package org.starfall.generative.features.storage.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
-import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
@@ -22,17 +21,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.openAppStorageInDocumentsUi
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
@@ -42,6 +46,8 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
+import org.starfall.generative.features.storage.logic.listMediaStorageFiles
+import org.starfall.generative.features.storage.logic.deleteMediaStorageFiles
 
 private fun File.mime() = mediaMimeType(name)
 
@@ -49,14 +55,14 @@ private data class ToolFilesSnapshot(val files: List<File>, val totalBytes: Long
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
+fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Unit) {
     val revision by ToolFiles.revision.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
     var isGrid by rememberSaveable { mutableStateOf(false) }
     var snapshot by remember { mutableStateOf(ToolFilesSnapshot(emptyList(), 0L)) }
     val files = snapshot.files
-    var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selected by remember { mutableStateOf<Set<File>>(emptySet()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var inSelectMode by remember { mutableStateOf(false) }
     var viewingFile by remember { mutableStateOf<File?>(null) }
@@ -65,10 +71,10 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
 
     LaunchedEffect(revision) {
         snapshot = withContext(Dispatchers.IO) {
-            val current = store.list()
+            val current = listMediaStorageFiles(store)
             ToolFilesSnapshot(current, current.sumOf { it.length() })
         }
-        selected = selected.intersect(snapshot.files.mapTo(mutableSetOf()) { it.name })
+        selected = selected.intersect(snapshot.files.toSet())
         if (snapshot.files.isEmpty()) {
             inSelectMode = false
             selected = emptySet()
@@ -84,7 +90,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     BackHandler(enabled = viewingFile == null && !inSelectMode, onBack = onBack)
 
     Scaffold(
-
+        snackbarHost = { SnackbarHost(snackbar) },
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             if (inSelectMode) {
@@ -118,7 +124,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                         IconButton(
                             onClick = {
                                 selected = if (allSelected) emptySet()
-                                else files.mapTo(mutableSetOf()) { it.name }
+                                else files.toSet()
                             },
                             enabled = files.isNotEmpty()
                         ) {
@@ -163,11 +169,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                     },
                     actions = {
                         ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
-                        IconButton(onClick = {
-                            if (!openAppStorageInDocumentsUi(context)) {
-                                Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
-                            }
-                        }) {
+                        IconButton(onClick = onBrowseFiles) {
                             SharedIcon(
                                 Icons.Outlined.OpenInBrowser,
                                 contentDescription = stringResource(R.string.storage_open_in_files)
@@ -195,24 +197,25 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                        modifier = Modifier.testTag("storage-preview-list"),
                         contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(files, key = { it.name }) { file ->
-                            val isSelected = file.name in selected
-                            StorageFileRow(
+                        items(files, key = { it.absolutePath }) { file ->
+                            val isSelected = file in selected
+                            StoragePreviewTile(
                                 file = file,
                                 isGrid = gridMode,
                                 inSelectMode = inSelectMode,
                                 selected = isSelected,
                                 onToggleSelect = { checked ->
-                                    selected = if (checked) selected + file.name else selected - file.name
+                                    selected = if (checked) selected + file else selected - file
                                 },
                                 onEnterSelectMode = {
                                     if (!inSelectMode) {
                                         inSelectMode = true
-                                        selected = setOf(file.name)
+                                        selected = setOf(file)
                                     }
                                 },
                                 onOpenViewer = { viewingFile = file }
@@ -231,12 +234,18 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
             text = { Text(stringResource(R.string.storage_delete_message, selected.size)) },
             confirmButton = {
                 TextButton(onClick = {
-                    val names = selected
-                    scope.launch { withContext(Dispatchers.IO) { store.delete(names) } }
-                    selected = emptySet()
+                    val filesToDelete = selected
                     confirmDelete = false
-                    if (files.size == names.size) {
-                        inSelectMode = false
+                    scope.launch {
+                        try {
+                            deleteMediaStorageFiles(store, filesToDelete)
+                            selected = emptySet()
+                            if (files.size == filesToDelete.size) inSelectMode = false
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            snackbar.showSnackbar(error.message ?: "Could not delete files")
+                        }
                     }
                 }) { Text(stringResource(R.string.common_delete)) }
             },
@@ -245,12 +254,17 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit) {
     }
 
     viewingFile?.let { file ->
-        MediaViewer(store, file) { viewingFile = null }
+        MediaViewer(
+            store = store, file = file,
+            onDelete = { deleteMediaStorageFiles(store, listOf(file)) },
+            onDismiss = { viewingFile = null }
+        )
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun StorageFileRow(
+private fun StoragePreviewTile(
     file: File,
     isGrid: Boolean,
     inSelectMode: Boolean,
@@ -261,53 +275,49 @@ private fun StorageFileRow(
 ) {
     val context = LocalContext.current
     val mime = remember(file.name) { file.mime() }
-    var thumbnail by remember(file.path) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-    LaunchedEffect(file.path, file.lastModified()) {
-        thumbnail = mediaThumbnail(context, file.path, mime, 112)
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val previewSize = with(LocalDensity.current) {
+        (if (isGrid) screenWidth / 2 else screenWidth).roundToPx()
     }
-    ItemCard(
-        isGrid = isGrid,
-        onClick = { if (inSelectMode) onToggleSelect(!selected) else onOpenViewer() },
-        onLongClick = { if (!inSelectMode) onEnterSelectMode() },
-        icon = {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = nestedContainerColor(),
-                border = nestedContainerBorder()
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    thumbnail?.let {
-                        Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } ?: SharedIcon(
-                        when {
-                            mime.startsWith("audio/") -> Icons.Outlined.Audiotrack
-                            mime.startsWith("video/") -> Icons.Outlined.Videocam
-                            mime.startsWith("image/") -> Icons.Outlined.BrokenImage
-                            else -> Icons.Outlined.InsertDriveFile
-                        },
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        },
-        actions = {
-            if (inSelectMode) Checkbox(checked = selected, onCheckedChange = onToggleSelect)
-        },
-        content = {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(file.name, style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    android.text.format.Formatter.formatFileSize(context, file.length()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+    val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        null, file.absolutePath, file.lastModified(), previewSize
+    ) {
+        value = mediaThumbnail(context, file.path, mime, previewSize)
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().aspectRatio(if (isGrid) 1f else 2.15f)
+            .combinedClickable(
+                onClick = { if (inSelectMode) onToggleSelect(!selected) else onOpenViewer() },
+                onLongClick = { if (!inSelectMode) onEnterSelectMode() }
+            )
+            .semantics { contentDescription = file.name }
+            .testTag("storage-preview:${file.absolutePath}"),
+        shape = RoundedCornerShape(12.dp),
+        color = nestedContainerColor(),
+        border = nestedContainerBorder()
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            thumbnail?.let {
+                Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop)
+            } ?: SharedIcon(
+                when {
+                    mime.startsWith("audio/") -> Icons.Outlined.Audiotrack
+                    mime.startsWith("video/") -> Icons.Outlined.Videocam
+                    mime.startsWith("image/") -> Icons.Outlined.BrokenImage
+                    else -> Icons.Outlined.InsertDriveFile
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(36.dp)
+            )
+            if (inSelectMode) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = onToggleSelect,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                 )
             }
         }
-    )
+    }
 }

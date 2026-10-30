@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -69,7 +70,6 @@ import org.starfall.generative.shared.model.provider.oauthAccountsWithCurrent
 import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.provider.recordOAuthAccount
 import org.starfall.generative.shared.model.provider.removeOAuthAccount
-import org.starfall.generative.shared.model.provider.withModelApiType
 import org.starfall.generative.shared.networking.providerBase
 import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -82,6 +82,23 @@ import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
+
+// Chat Completions remains endpoint-agnostic in the shared API model and provider links.
+// Only the editor offers OpenAI starter values, as it already does for Responses.
+private val ModelApiType.editorDefaultName: String
+    get() = if (this == ModelApiType.OPENAI) "OpenAI" else defaultName
+
+private val ModelApiType.editorDefaultBaseUrl: String
+    get() = if (this == ModelApiType.OPENAI) ModelApiType.OPENAI_RESPONSES.defaultBaseUrl else defaultBaseUrl
+
+/** Replace only the previous type's defaults; preserve user-entered names and endpoints. */
+private fun ModelProvider.withEditorApiType(newType: ModelApiType): ModelProvider = copy(
+    type = newType,
+    name = if (name == type.defaultName || name == type.editorDefaultName) newType.editorDefaultName else name,
+    baseUrl = if (baseUrl.trimEnd('/') == type.defaultBaseUrl ||
+        baseUrl.trimEnd('/') == type.editorDefaultBaseUrl
+    ) newType.editorDefaultBaseUrl else baseUrl
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -99,13 +116,19 @@ fun ProviderEditor(
     customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap()
 ) {
     val scope = rememberCoroutineScope()
-    var name by remember { mutableStateOf(initialProvider.name) }
+    var name by remember {
+        mutableStateOf(if (isNew && initialProvider.type == ModelApiType.OPENAI && initialProvider.name.isBlank())
+            ModelApiType.OPENAI.editorDefaultName else initialProvider.name)
+    }
     var providerIcon by remember { mutableStateOf(initialProvider.icon) }
     var iconImporting by remember { mutableStateOf(false) }
     // Lives with the screen, not the pager page, so a logo fetch survives tab switches and stops when the screen closes.
     val faviconFetch = org.starfall.generative.shared.ui.dialogs.rememberFaviconFetchState()
     var type by remember { mutableStateOf(initialProvider.type) }
-    var baseUrl by remember { mutableStateOf(initialProvider.baseUrl) }
+    var baseUrl by remember {
+        mutableStateOf(if (isNew && initialProvider.type == ModelApiType.OPENAI && initialProvider.baseUrl.isBlank())
+            ModelApiType.OPENAI.editorDefaultBaseUrl else initialProvider.baseUrl)
+    }
     var authMethod by remember { mutableStateOf(if (initialProvider.type.isAccountProvider) AuthMethod.OAUTH else initialProvider.auth.editMethod()) }
     var authName by remember { mutableStateOf(initialProvider.auth.key.orEmpty().takeIf {
         initialProvider.auth.method in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.CUSTOM_HEADER, AuthMethod.QUERY_PARAM)
@@ -322,11 +345,11 @@ fun ProviderEditor(
                             )
                             ExposedDropdownMenuBox(typeExpanded, { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth())
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth().testTag("provider-type-selector"))
                                 ExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
                                     ModelApiType.entries.forEach { next -> DropdownMenuItem(text = { Text(next.displayName) }, onClick = {
                                         if (next != type) {
-                                            val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withModelApiType(next)
+                                            val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withEditorApiType(next)
                                             name = updated.name; baseUrl = updated.baseUrl; type = updated.type
                                             val auth = next.defaultAuthorization()
                                             // Keep the entered API key; only drop the "Bearer " prefix the bearer field adds,

@@ -2,6 +2,9 @@
 
 package org.starfall.generative.features.home.chat.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +41,11 @@ internal fun GenerationLoadingIndicator(
     val indicatorSize = LoadingIndicatorDefaults.IndicatorSize
     val indicatorColor = MaterialTheme.colorScheme.primary
     var showLogo by remember { mutableStateOf(false) }
+    val logoOpacity = animateFloatAsState(
+        targetValue = if (showLogo) 1f else 0f,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "generation-model-logo-opacity"
+    )
     LaunchedEffect(Unit) {
         while (true) {
             delay(3_000)
@@ -53,20 +61,18 @@ internal fun GenerationLoadingIndicator(
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
             contentAlignment = Alignment.Center
         ) {
-            // Keep the loading shape visible while the logo is hidden.
-            if (!showLogo) {
-                Box(
-                    Modifier.size(indicatorSize)
-                        .background(indicatorColor)
-                        .testTag("generation-logo-fallback")
-                )
-            }
+            // This solid base remains visible while the logo fades in and out.
+            Box(
+                Modifier.size(indicatorSize)
+                    .background(indicatorColor)
+                    .testTag("generation-logo-fallback")
+            )
             // Keep the logo composed so its image remains loaded between visibility cycles.
             EntityIcon(
                 image = modelIcon,
                 modifier = Modifier.size(indicatorSize)
                     .testTag("generation-model-logo")
-                    .graphicsLayer { alpha = if (showLogo) 1f else 0f },
+                    .graphicsLayer { alpha = logoOpacity.value },
                 text = modelName,
                 matchName = modelName,
                 fallbackMatchName = modelId,

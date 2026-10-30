@@ -10,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,11 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import com.mohamedrejeb.compose.dnd.DragAndDropState
-import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
-import com.mohamedrejeb.compose.dnd.reorder.reorderableItem
-import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
-import com.mohamedrejeb.compose.dnd.drag.DropStrategy
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,10 +32,14 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -132,8 +133,33 @@ internal fun folderExpansionRect(source: Rect?, width: Float, height: Float, pro
     )
 }
 
+/**
+ * Gesture-only folder dismissal: inward swipes from either screen edge and
+ * horizontal or downward swipes starting in the header. Never treat vertical
+ * scrolling in the item grid as a dismissal.
+ */
+internal fun folderDismissSwipe(
+    start: Offset,
+    end: Offset,
+    viewport: Rect,
+    header: Rect,
+    edgeWidth: Float,
+    minDistance: Float
+): Boolean {
+    if (viewport.width <= 0f) return false
+    val dx = end.x - start.x
+    val dy = end.y - start.y
+    val horizontal = kotlin.math.abs(dx) >= minDistance &&
+        kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.25f
+    return (horizontal && (
+        (start.x <= viewport.left + edgeWidth && dx > 0f) ||
+        (start.x >= viewport.right - edgeWidth && dx < 0f)
+    )) || (header.contains(start) && (
+        horizontal || (dy >= minDistance && dy > kotlin.math.abs(dx) * 1.25f)
+    ))
+}
+
 /** Full-screen folder page. Its header belongs to the folder, never to ProvidersScreen's app bar. */
-@OptIn(ExperimentalDndApi::class)
 @Composable
 internal fun ProviderFolderOverlay(
     group: ProviderGroup,
@@ -142,11 +168,11 @@ internal fun ProviderFolderOverlay(
     originBounds: Rect?,
     hostOrigin: Offset,
     animateExitImmediately: Boolean,
-    dndState: DragAndDropState<ProviderRootOrderItem>,
+    dndState: Launcher.State<ProviderRootOrderItem>,
     onBeginDrag: (String) -> Unit,
-    onEndDrag: (String) -> Unit,
+    onEndDrag: (String, Launcher.Outcome) -> Unit,
     onReorderMember: (String, String) -> Unit,
-    onDropMember: () -> Unit,
+    onDropMember: () -> Boolean,
     showExitHint: Boolean,
     visible: Boolean,
     animateEnter: Boolean = true,
@@ -159,7 +185,7 @@ internal fun ProviderFolderOverlay(
     onEditProvider: (ModelProvider) -> Unit,
     onMoveProvider: (ModelProvider) -> Unit,
     onDeleteProvider: (String) -> Unit
-) {
+) = with(Launcher) {
     val gridState = rememberLazyGridState()
     // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
     // The scaled starting rect stays centred on the tapped card, even after root scrolling.
@@ -186,8 +212,47 @@ internal fun ProviderFolderOverlay(
     // A stationary translucent background fades in/out instead of growing from the tapped card.
     val endColor = MaterialTheme.colorScheme.background.copy(alpha = FolderPageOpacity)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
+    var viewportBounds by remember { mutableStateOf(Rect.Zero) }
+    var headerBounds by remember { mutableStateOf(Rect.Zero) }
+    val latestViewport by rememberUpdatedState(viewportBounds)
+    val latestHeader by rememberUpdatedState(headerBounds)
+    val edgeWidth = with(LocalDensity.current) { 56.dp.toPx() }
+    val swipeDistance = with(LocalDensity.current) { 56.dp.toPx() }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        Modifier.fillMaxSize()
+            .onGloballyPositioned { viewportBounds = it.boundsInWindow() }
+            .pointerInput(visible, dndState, edgeWidth, swipeDistance) {
+                if (!visible) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false, pass = PointerEventPass.Initial
+                    )
+                    val bounds = latestViewport
+                    val start = bounds.topLeft + down.position
+                    val candidate = start.x <= bounds.left + edgeWidth ||
+                        start.x >= bounds.right - edgeWidth || latestHeader.contains(start)
+                    if (!candidate) return@awaitEachGesture
+
+                    // Observe on Initial without intercepting taps or vertical grid scroll.
+                    // A long-press drag belongs exclusively to the Launcher host.
+                    while (dndState.session == null) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.changes.any { it.id != down.id && it.pressed }) break
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        if (folderDismissSwipe(
+                                start, latestViewport.topLeft + change.position,
+                                latestViewport, latestHeader, edgeWidth, swipeDistance
+                            )) {
+                            change.consume()
+                            currentOnDismiss()
+                            break
+                        }
+                    }
+                }
+            }
+    ) {
         val fullWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
         val fullHeightPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
         val currentBounds = folderExpansionRect(start, fullWidthPx, fullHeightPx, fraction)
@@ -238,7 +303,10 @@ internal fun ProviderFolderOverlay(
                 ) {
                     // Header actions remain below the status bar; the grid below may
                     // scroll into the transparent navigation-bar region.
-                    Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+                    Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                        .onGloballyPositioned { headerBounds = it.boundsInWindow() }
+                        .testTag("provider_folder_header_gesture_${group.id}")
+                    ) {
                         ProviderFolderHeader(
                             group = group,
                             providers = providers,
@@ -274,7 +342,9 @@ internal fun ProviderFolderOverlay(
                             state = gridState,
                             columns = GridCells.Fixed(if (isGrid) 2 else 1),
                             modifier = Modifier.weight(1f).fillMaxWidth()
-                                .dragAutoScroll(state = dndState, lazyGridState = gridState)
+                                .autoScroll(dndState, gridState)
+                                .dropTarget(dndState, "folder-grid:${group.id}", priority = -10,
+                                    enabled = visible, onDrop = { false })
                                 .testTag("provider_folder_grid_${group.id}"),
                             contentPadding = PaddingValues(
                                 start = 16.dp, top = 8.dp, end = 16.dp,
@@ -291,29 +361,31 @@ internal fun ProviderFolderOverlay(
                                     onMoveToGroup = { onMoveProvider(provider) },
                                     onDelete = { onDeleteProvider(provider.id) },
                                     modifier = Modifier.animateItem()
-                                        .graphicsLayer {
-                                            alpha = if (dndState.isDragging("provider_${provider.id}")) 0f else 1f
-                                        }
-                                        .reorderableItem(
+                                        .dragSource(
+                                            state = dndState,
                                             key = "provider_${provider.id}",
                                             data = ProviderRootOrderItem(provider.id, false),
-                                            state = dndState, dropStrategy = DropStrategy.CenterDistance,
-                                            enabled = visible && fraction >= 0.999f, canDrop = visible && fraction >= 0.999f,
+                                            priority = 30,
+                                            enabled = visible && fraction >= 0.999f,
                                             onDragStart = { onBeginDrag("provider_${provider.id}") },
-                                            onDragEnd = { onEndDrag("provider_${provider.id}") },
-                                            onDragEnter = { dragged ->
-                                                if (!dragged.data.isGroup && dragged.data.id != provider.id)
-                                                    onReorderMember(dragged.data.id, provider.id)
+                                            onDragEnd = { outcome -> onEndDrag("provider_${provider.id}", outcome) }
+                                        )
+                                        .dropTarget(
+                                            state = dndState,
+                                            key = "folder-source:${provider.id}",
+                                            priority = 31, enabled = visible && fraction >= 0.999f,
+                                            accepts = { it.key == "provider_${provider.id}" },
+                                            onDrop = { onDropMember() }
+                                        )
+                                        .dropTarget(
+                                            state = dndState,
+                                            key = "folder-slot:${provider.id}",
+                                            priority = 30, enabled = visible && fraction >= 0.999f,
+                                            accepts = { !it.data.isGroup && it.data.id != provider.id },
+                                            onDragEnter = { drag ->
+                                                onReorderMember(drag.item.data.id, provider.id)
                                             },
-                                            onDrop = { onDropMember() },
-                                            dropAnimationEnabled = false,
-                                            draggableContent = {
-                                                ProviderFolderProviderTile(
-                                                    provider = provider, isGrid = isGrid,
-                                                    onEdit = {}, onMoveToGroup = {}, onDelete = {},
-                                                    testTag = false, modifier = Modifier.testTag("dragged_provider")
-                                                )
-                                            }
+                                            onDrop = { onDropMember(); true }
                                         )
                                 )
                             }

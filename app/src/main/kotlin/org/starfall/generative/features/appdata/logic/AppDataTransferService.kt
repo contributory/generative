@@ -94,7 +94,7 @@ class AppDataTransferService(
             conversations = conversationRepository.conversationList.first().mapNotNull { conversationRepository.loadById(it.id) },
             storedFileNames = storedFiles.keys.sorted(),
             profiles = profileRepository.allProfiles.first(),
-            appPreferences = preferencesRepository.appPreferencesFlow.first(),
+            appPreferences = preferencesRepository.backupSnapshot(),
             toolSettings = toolSettingsStore.snapshot(),
             remoteMachines = remoteMachineService.state.value,
             remoteTerminalPreferences = exportRemoteTerminalPreferences(),

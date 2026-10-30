@@ -419,6 +419,7 @@ fun ChatOptionsScreen(
                                 item {
                                     TtsProviderSettings(
                                         speechServices = speechServices,
+                                        providers = providers,
                                         selectedSpeechServiceId = selectedSpeechServiceId,
                                         onProviderChange = onSetTtsProvider
                                     )

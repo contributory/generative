@@ -27,6 +27,9 @@ class MediaStorageSheetTest {
         temporary.newFile("clip.mp4")
         temporary.newFile("song.mp3")
         temporary.newFile("notes.txt")
+        val nested = temporary.newFolder("subfolder")
+        java.io.File(nested, "nested-photo.png").writeText("image")
+        java.io.File(nested, "nested-audio.mp3").writeText("audio")
 
         compose.setContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
@@ -42,6 +45,9 @@ class MediaStorageSheetTest {
         compose.onNodeWithTag("media-storage-file_portrait.png").assertExists()
         compose.onNodeWithTag("media-storage-file_song.mp3").assertExists()
         compose.onNodeWithTag("media-storage-file_notes.txt").assertDoesNotExist()
+        compose.onNodeWithTag("media-storage-file_nested-photo.png").assertExists()
+        compose.onNodeWithTag("media-storage-file_nested-audio.mp3").assertExists()
+        compose.onNodeWithText("subfolder").assertDoesNotExist()
 
         compose.onNodeWithTag("media-storage-search").assertDoesNotExist()
         compose.onNodeWithText("Media").assertDoesNotExist()

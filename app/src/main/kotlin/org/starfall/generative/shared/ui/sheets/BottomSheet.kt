@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -85,25 +86,30 @@ fun BottomSheet(
         shape = shape,
         containerColor = modalContainerColor(containerColor),
         scrimColor = modalScrimColor(BottomSheetDefaults.ScrimColor),
-        dragHandle = {
-            Box(
-                Modifier.fillMaxWidth().height(48.dp).testTag("bottom-sheet-drag-handle"),
-                contentAlignment = Alignment.Center
-            ) { BottomSheetDefaults.DragHandle() }
-        },
+        dragHandle = null,
         contentWindowInsets = {
             WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
         }
     ) {
         ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
         Box(
-            Modifier.fillMaxWidth()
-                .then(if (fixedHeightFraction != null)
-                    Modifier.fillMaxHeight(fixedHeightFraction.coerceIn(0f, 1f))
-                else Modifier)
-                .testTag("bottom-sheet-window")
+            Modifier.fillMaxSize().testTag("bottom-sheet-window")
         ) {
-            ProfileBackground(sheetImage, Modifier.matchParentSize(), sheetTransparency)
+            // Material translates a full-height surface between anchors. Size the photo to
+            // the visible part so Crop scales it continuously as the sheet expands.
+            ProfileBackground(
+                sheetImage,
+                Modifier.matchParentSize().layout { measurable, constraints ->
+                    val offset = try { sheetState.requireOffset() } catch (_: IllegalStateException) { 0f }
+                    val visibleHeight = (constraints.maxHeight - offset.toInt())
+                        .coerceIn(0, constraints.maxHeight)
+                    val photo = measurable.measure(
+                        constraints.copy(minHeight = visibleHeight, maxHeight = visibleHeight)
+                    )
+                    layout(constraints.maxWidth, constraints.maxHeight) { photo.placeRelative(0, 0) }
+                },
+                sheetTransparency
+            )
             Box(Modifier.matchParentSize().onGloballyPositioned {
                 containerOriginOnScreen = it.localToScreen(Offset.Zero)
             }.drawBehind {
@@ -142,14 +148,23 @@ fun BottomSheet(
                 }
             })
             Column(
-                Modifier.fillMaxWidth().then(
+                Modifier.fillMaxWidth()
+                    .then(if (fixedHeightFraction != null)
+                        Modifier.fillMaxHeight(fixedHeightFraction.coerceIn(0f, 1f))
+                    else Modifier)
+                    .then(
                     if (contentBehindNavigationBar) Modifier
                     else Modifier.windowInsetsPadding(
                         WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
                     )
-                ),
-                content = content
-            )
+                )
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(48.dp).testTag("bottom-sheet-drag-handle"),
+                    contentAlignment = Alignment.Center
+                ) { BottomSheetDefaults.DragHandle() }
+                content()
+            }
         }
     }
 }

@@ -17,6 +17,8 @@ import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
+import org.starfall.generative.shared.model.McpInfo
+import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.InstructionControls
@@ -152,6 +154,76 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("Send File").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertDoesNotExist()
         compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
+    }
+
+    @Test
+    fun ttsServiceSheetShowsFullCardsAndSelectsService() {
+        var selectedId: String? = null
+        compose.setContent {
+            TestTheme {
+                ChatOptionsScreen(
+                    providers = emptyList(),
+                    settings = ToolSettings(),
+                    speechServices = listOf(
+                        SpeechService("system", "System Voice"),
+                        SpeechService(
+                            id = "cloud", name = "Studio Voice",
+                            engine = SpeechEngine.ELEVENLABS,
+                            modelId = "eleven-v3", voice = "Rachel"
+                        )
+                    ),
+                    selectedSpeechServiceId = "system",
+                    onSetTtsProvider = { selectedId = it },
+                    onSave = { _, _ -> },
+                    onBack = {}
+                )
+            }
+        }
+
+        compose.onNodeWithText("System Voice").performClick()
+        compose.onNodeWithTag("tts-service-option-cloud").assertIsDisplayed()
+        compose.onNodeWithText("ElevenLabs").assertIsDisplayed()
+        compose.onNodeWithText("Model: eleven-v3 · Voice: Rachel").assertIsDisplayed()
+        compose.onNodeWithTag("tts-service-option-cloud").performClick()
+        compose.runOnIdle { assertEquals("cloud", selectedId) }
+        compose.onNodeWithTag("tts-service-option-cloud").assertDoesNotExist()
+    }
+
+    @Test
+    fun webSearchSheetShowsMcpCardsAndPreservesNoneOption() {
+        var selectedId: String? = "first"
+        var callbacks = 0
+        compose.setContent {
+            TestTheme {
+                ChatOptionsScreen(
+                    providers = emptyList(),
+                    settings = ToolSettings(webSearchProviderId = "first", webSearchEnabled = true),
+                    mcpServers = listOf(
+                        McpInfo("first", "Search API", url = "https://first.example/mcp", cachedTools = emptyList()),
+                        McpInfo("second", "Alternative Search", url = "https://second.example/mcp")
+                    ),
+                    onSetWebSearchProvider = { selectedId = it; callbacks++ },
+                    onSave = { _, _ -> },
+                    onBack = {}
+                )
+            }
+        }
+
+        compose.onNodeWithText("Search API").performClick()
+        compose.onNodeWithTag("web-search-provider-option-second").assertIsDisplayed()
+        compose.onNodeWithText("https://second.example/mcp").assertIsDisplayed()
+        compose.onNodeWithText("0 cached tools").assertIsDisplayed()
+        compose.onNodeWithTag("web-search-provider-option-second").performClick()
+        compose.runOnIdle {
+            assertEquals("second", selectedId)
+            assertEquals(1, callbacks)
+        }
+        compose.onNodeWithText("Search API").performClick()
+        compose.onNodeWithTag("web-search-provider-option-none").performClick()
+        compose.runOnIdle {
+            assertEquals(null, selectedId)
+            assertEquals(2, callbacks)
+        }
     }
 
     @Test

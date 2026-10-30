@@ -15,14 +15,12 @@ import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import com.mohamedrejeb.compose.dnd.DragAndDropContainer
-import com.mohamedrejeb.compose.dnd.rememberDragAndDropState
-import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
-import com.mohamedrejeb.compose.dnd.reorder.ReorderableItem
-import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +42,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalDndApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListScreen(
     mcpServers: List<McpInfo>, isGridView: Boolean = false, onToggleGridView: ((Boolean) -> Unit)? = null,
@@ -53,7 +51,7 @@ fun ServerListScreen(
     onSetMcpEnabled: (String, Boolean) -> Unit,
     onDeleteMcpServer: (String) -> Unit, onReorderMcpServers: (List<String>) -> Unit,
     onOpenEditor: (McpInfo, Boolean) -> Unit, onBack: () -> Unit
-) {
+) = with(Launcher) {
     var deletingServerId by remember { mutableStateOf<String?>(null) }
     var selectedToolError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
@@ -86,28 +84,51 @@ fun ServerListScreen(
                     }
                 } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
                     val gridState = rememberLazyGridState()
-                    val dndState = rememberDragAndDropState<String>(dragAfterLongPress = true)
-                    DragAndDropContainer(state = dndState, modifier = Modifier.fillMaxSize()) {
+                    val dndState = Launcher.rememberState<String>()
+                    var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
+                    Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
+                        orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
+                            McpUnifiedCard(server = server, isGrid = gridMode,
+                                modifier = Modifier.testTag("dragged_mcp"),
+                                toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size,
+                                toolError = toolErrors[server.id], loading = server.id in toolsLoading,
+                                isEnabled = mcpServerEnabled(toolSettings, server.id),
+                                onToggleEnabled = {}, managedSettings = toolSettings,
+                                onToolErrorClick = {}, onEdit = {}, onDelete = {})
+                        }
+                    }) {
                     LazyVerticalGrid(state = gridState, columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
-                        modifier = Modifier.fillMaxSize().dragAutoScroll(state = dndState, lazyGridState = gridState)) {
+                        modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)) {
                         itemsIndexed(orderedServers, key = { _, item -> item.id }) { _, server ->
-                            ReorderableItem(modifier = Modifier.animateItem(), state = dndState, key = server.id, data = server.id,
-                                onDragEnter = { dragged ->
-                                    val from = orderedServers.indexOfFirst { it.id == dragged.data }
-                                    val to = orderedServers.indexOfFirst { it.id == server.id }
-                                    if (from >= 0 && to >= 0 && from != to) orderedServers = orderedServers.moved(from, to)
-                                }, onDragEnd = { onReorderMcpServers(orderedServers.map { it.id }) }) {
-                                McpUnifiedCard(server = server, isGrid = gridMode,
-                                    modifier = Modifier,
+                            McpUnifiedCard(server = server, isGrid = gridMode,
+                                    modifier = Modifier.animateItem()
+                                        .dragSource(dndState, server.id, server.id,
+                                            onDragStart = { dragSnapshot = orderedServers },
+                                            onDragEnd = { outcome ->
+                                                if (outcome.accepted) onReorderMcpServers(orderedServers.map { it.id })
+                                                else dragSnapshot?.let { orderedServers = it }
+                                                dragSnapshot = null
+                                            })
+                                        .dropTarget(dndState, "slot:${server.id}",
+                                            accepts = { it.key != server.id },
+                                            onDragEnter = { dragged ->
+                                                val from = orderedServers.indexOfFirst { it.id == dragged.item.data }
+                                                val to = orderedServers.indexOfFirst { it.id == server.id }
+                                                if (from >= 0 && to >= 0 && from != to)
+                                                    orderedServers = orderedServers.moved(from, to)
+                                            }, onDrop = { true })
+                                        .dropTarget(dndState, "self:${server.id}",
+                                            priority = 5,
+                                            accepts = { it.key == server.id },
+                                            onDrop = { dragSnapshot != orderedServers }),
                                     toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id], loading = server.id in toolsLoading,
                                     isEnabled = mcpServerEnabled(toolSettings, server.id),
                                     onToggleEnabled = { onSetMcpEnabled(server.id, !mcpServerEnabled(toolSettings, server.id)) },
                                     managedSettings = toolSettings,
                                     onToolErrorClick = { selectedToolError = server.name to it },
                                     onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id })
-                            }
                         }
                     }
                     }

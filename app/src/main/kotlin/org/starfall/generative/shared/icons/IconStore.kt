@@ -19,6 +19,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Try each model family first, then progressively restore hyphen suffixes, before the vendor. */
 internal fun iconMatchNames(name: String, model: Boolean): List<String> {
@@ -381,6 +383,42 @@ class IconStore(private val context: Context) {
         saveRules(listOf(rule) + existing.filterNot { it.id == rule.id })
     }
 
+    /**
+     * Fetch a public brand favicon only when no usable named icon is already stored.
+     * Store it as a shared icon and match it by brand; explicit entity icons still win.
+     * Failed requests are throttled to avoid repeated network work on each screen visit.
+     */
+    suspend fun ensureNamedFavicon(name: String, homepage: String) = withContext(Dispatchers.IO) {
+        fun alreadyAvailable(): Boolean =
+            find(name)?.let { imageData(it) } != null ||
+                iconMatchNames(name, false).any { candidate ->
+                    automatic.getString(candidate.lowercase(java.util.Locale.ROOT), null)
+                        ?.let { imageData(it) } != null
+                }
+        if (alreadyAvailable()) return@withContext
+        val key = "favicon:${name.lowercase(java.util.Locale.ROOT)}"
+        if ((failedDownloads[key] ?: 0L) > System.currentTimeMillis()) return@withContext
+        try {
+            val result = FaviconService(context).get("", homepage)
+            try {
+                synchronized(mutationLock) {
+                    if (!alreadyAvailable()) {
+                        val id = importBitmap(result.bitmap, name, shared = true)
+                        cache(name, id)
+                    }
+                }
+            } finally {
+                result.bitmap.recycle()
+            }
+            failedDownloads.remove(key)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Offline devices keep the existing placeholder and can retry later.
+            failedDownloads[key] = System.currentTimeMillis() + 5 * 60_000L
+        }
+    }
+
     /** File name the person picked or fetched for [image], if known. */
     fun fileName(image: String?): String? =
         image?.let { names.getString(it, null) ?: assets.getString(it, null) }?.takeIf { it.isNotBlank() }
@@ -428,11 +466,11 @@ class IconStore(private val context: Context) {
     }
 
     /** Save a confirmed favicon preview as an app-owned icon. Called on IO. */
-    internal fun importBitmap(bitmap: Bitmap, fileName: String? = null): String {
+    internal fun importBitmap(bitmap: Bitmap, fileName: String? = null, shared: Boolean = false): String {
         val staging = File.createTempFile("favicon-", ".png", context.cacheDir)
         try {
             staging.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-            return importImage(Uri.fromFile(staging), shared = false, displayName = fileName)
+            return importImage(Uri.fromFile(staging), shared = shared, displayName = fileName)
         } finally { staging.delete() }
     }
 

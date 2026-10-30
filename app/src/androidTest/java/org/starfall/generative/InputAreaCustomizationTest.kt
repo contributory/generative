@@ -48,7 +48,7 @@ class InputAreaCustomizationTest {
         }
         compose.runOnIdle {
             assertTrue(preferences.inputAreaTransparency > 0.7f)
-            assertEquals(0f, preferences.inputAreaBlur, 0f)
+            assertEquals(2f, preferences.inputAreaBlur, 0f)
         }
         compose.onNodeWithTag("input-area-blur-slider").performScrollTo().performTouchInput {
             swipe(Offset(width * 0.1f, center.y), Offset(width * 0.8f, center.y), 350)
@@ -59,8 +59,8 @@ class InputAreaCustomizationTest {
         }
         compose.onNodeWithTag("input-area-appearance-reset").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(0.08f, preferences.inputAreaTransparency, 0f)
-            assertEquals(0f, preferences.inputAreaBlur, 0f)
+            assertEquals(0.6f, preferences.inputAreaTransparency, 0f)
+            assertEquals(2f, preferences.inputAreaBlur, 0f)
             assertEquals(0.4f, preferences.itemTransparency, 0f)
         }
     }

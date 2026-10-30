@@ -1,6 +1,5 @@
 package org.starfall.generative.features.machines.shared.logic
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,7 +9,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import org.starfall.generative.integrations.remote.RemoteMachineService
-import org.starfall.generative.integrations.remote.RemoteSftpDocumentsProvider
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
@@ -44,9 +42,6 @@ class RemoteMachinesViewModel(
             })
         }
     }
-
-    fun openFiles(context: Context, machineId: String): Boolean =
-        RemoteSftpDocumentsProvider.open(context, machineId)
 
     fun saveMachine(machine: RemoteMachine) {
         viewModelScope.launch(LocalWriteErrors.handler) { service.saveMachine(machine) }

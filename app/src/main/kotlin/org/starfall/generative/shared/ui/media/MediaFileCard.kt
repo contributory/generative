@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,7 +44,7 @@ private val textFileExtensions = setOf(
     "rs", "go", "swift", "rb", "php", "sh", "bash", "zsh", "sql", "lua", "r", "yaml", "yml", "toml", "ini",
     "conf", "cfg", "properties", "gradle", "env", "tex", "rst", "diff", "patch"
 )
-private fun File.isTextFile(): Boolean {
+internal fun File.isTextFile(): Boolean {
     val mime = mime()
     return extension.lowercase() in textFileExtensions || name.equals("Dockerfile", ignoreCase = true) ||
         mime.startsWith("text/") || mime == "application/json" || mime == "application/xml" ||
@@ -94,7 +95,11 @@ fun MediaFileCard(
 }
 
 @Composable
-internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
+internal fun MediaViewer(
+    store: ToolFiles, file: File,
+    onDelete: suspend () -> Unit = { withContext(Dispatchers.IO) { store.delete(listOf(file.name)) } },
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     val attachmentSelection = LocalChatAttachmentSelection.current
     val scope = rememberCoroutineScope()
@@ -218,9 +223,18 @@ internal fun MediaViewer(store: ToolFiles, file: File, onDismiss: () -> Unit) {
         text = { Text(stringResource(R.string.media_delete_file_message)) },
         confirmButton = {
             TextButton(onClick = {
-                onDismiss()
-                scope.launch { withContext(Dispatchers.IO) { store.delete(listOf(file.name)) } }
                 confirmDelete = false
+                scope.launch {
+                    try {
+                        onDelete()
+                        onDismiss()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        Toast.makeText(context, error.message ?: context.getString(R.string.file_deleted),
+                            Toast.LENGTH_SHORT).show()
+                    }
+                }
             }) { Text(stringResource(R.string.common_delete)) }
         },
         dismissButton = {

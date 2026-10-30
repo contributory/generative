@@ -14,26 +14,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import java.util.UUID
-import com.mohamedrejeb.compose.dnd.DragAndDropContainer
-import com.mohamedrejeb.compose.dnd.rememberDragAndDropState
-import com.mohamedrejeb.compose.dnd.annotation.ExperimentalDndApi
-import com.mohamedrejeb.compose.dnd.reorder.reorderableItem
-import com.mohamedrejeb.compose.dnd.drop.dropTarget
-import com.mohamedrejeb.compose.dnd.scroll.dragAutoScroll
-import com.mohamedrejeb.compose.dnd.drag.DropStrategy
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.list.logic.*
@@ -50,7 +46,6 @@ import org.starfall.generative.shared.ui.lists.moved
 
 internal fun newProviderId(): String = "custom_${UUID.randomUUID()}"
 
-@OptIn(ExperimentalDndApi::class)
 @Composable
 fun ProvidersScreen(
     providers: List<ModelProvider>,
@@ -69,7 +64,7 @@ fun ProvidersScreen(
     onReorderProviders: (List<String>) -> Unit,
     onReorderRootItems: (List<ProviderRootOrderItem>) -> Unit = {},
     onBack: () -> Unit
-) {
+) = with(Launcher) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val dialogs = rememberProviderListDialogs()
@@ -108,14 +103,14 @@ fun ProvidersScreen(
     var dragProviderSnapshot by remember { mutableStateOf<List<ModelProvider>?>(null) }
     var dragCollapsedSnapshot by remember { mutableStateOf<Set<String>?>(null) }
     var liveOrderChanged by remember { mutableStateOf(false) }
-    // A single DND state owns the gesture and shadow across root/folder composition changes.
-    val dndState = rememberDragAndDropState<ProviderRootOrderItem>(dragAfterLongPress = true)
-    var acceptedDrop by remember { mutableStateOf(false) }
-    var cancelledDrag by remember { mutableStateOf(false) }
+    // One stable gesture host owns the root and every opened folder.
+    val dndState = Launcher.rememberState<ProviderRootOrderItem>()
     // Track the actual visible folder card, including root grid scrolling and grid/list changes.
     val folderCardBounds = remember { mutableStateMapOf<String, Rect>() }
     var openedCardBounds by remember { mutableStateOf<Rect?>(null) }
     var containerOrigin by remember { mutableStateOf(Offset.Zero) }
+    var containerWindowBounds by remember { mutableStateOf(Rect.Zero) }
+    val folderEscapeEdgePx = with(LocalDensity.current) { 72.dp.toPx() }
 
     val sortedGroups = remember(providerGroups) {
         providerGroups.sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.name.lowercase() })
@@ -168,8 +163,6 @@ fun ProvidersScreen(
         dragProviderSnapshot = orderedProviders
         dragCollapsedSnapshot = collapsedSections
         liveOrderChanged = false
-        acceptedDrop = false
-        cancelledDrag = false
         if (key.startsWith("provider_")) draggedProviderId = key.removePrefix("provider_")
         else draggedGroupId = key.removePrefix("group_")
     }
@@ -270,21 +263,17 @@ fun ProvidersScreen(
         val layout = currentLayout()
         val next = ejectProviderFromFolder(layout, providerId, folderId)
         if (next != layout) applyLayout(next)
-        // Only the page closes; DragAndDropContainer and its shadow remain mounted.
+        // The stable Launcher host keeps tracking the pointer as the folder page leaves.
         openGroupId = null
         // The hover is only a preview. An actual drop target must confirm the release.
     }
 
-    fun finishDnd(key: String) {
-        finishDrag(key, cancelled = cancelledDrag || !acceptedDrop)
-        acceptedDrop = false
-        cancelledDrag = false
+    fun finishDnd(key: String, outcome: Launcher.Outcome) {
+        finishDrag(key, cancelled = !outcome.accepted)
     }
 
-    // Allow Back to cancel a drag without persisting its preview.
-    BackHandler(enabled = LocalScreenTransitionActive.current && dndState.draggedItem != null) {
-        cancelledDrag = true
-        dndState.cancelDrag()
+    BackHandler(enabled = LocalScreenTransitionActive.current && dndState.session != null) {
+        dndState.cancel()
     }
 
     LaunchedEffect(providers, providerGroups, draggedProviderId, draggedGroupId) {
@@ -352,12 +341,56 @@ fun ProvidersScreen(
         if (cleaned != collapsedSections) setCollapsedSections(cleaned)
     }
 
-    DragAndDropContainer(
+    Launcher.Host(
         state = dndState,
         modifier = Modifier.fillMaxSize()
-            .onGloballyPositioned { containerOrigin = it.positionInRoot() },
-        enabled = !searching
+            .onGloballyPositioned {
+                containerOrigin = it.positionInRoot()
+                containerWindowBounds = it.boundsInWindow()
+            },
+        preview = { drag ->
+            val data = drag.item.data
+            val item = if (data.isGroup) sortedGroups.firstOrNull { it.id == data.id }
+                ?.let { ProviderRootItem.GroupItem(it) }
+                else orderedProviders.firstOrNull { it.id == data.id }
+                    ?.let { ProviderRootItem.ProviderItem(it) }
+            if (item != null) {
+                Box(Modifier.fillMaxWidth().height(if (isGridView) 152.dp else 88.dp)
+                    .testTag(if (data.isGroup) "dragged_group" else "dragged_provider")) {
+                    ProviderRootCard(
+                        item = item,
+                        members = (item as? ProviderRootItem.GroupItem)
+                            ?.let { group -> orderedProviders.filter { it.groupId == group.id } }.orEmpty(),
+                        isGrid = isGridView, isDropTarget = false, testTag = false,
+                        onEditProvider = {}, onMoveProvider = {}, onDeleteProvider = {},
+                        onOpenGroup = {}
+                    )
+                }
+            }
+        }
     ) {
+        openGroupId?.let { groupId ->
+            Launcher.FolderExit(
+                state = dndState,
+                folderTargetKey = "folder-grid:$groupId",
+                open = openGroup != null,
+                fromFolder = { drag ->
+                    !drag.data.isGroup && dragProviderSnapshot
+                        ?.firstOrNull { it.id == drag.data.id }?.groupId == groupId
+                },
+                onExit = {
+                    dndState.session?.item?.data?.takeUnless { it.isGroup }
+                        ?.let { exitOpenFolder(it.id) }
+                },
+                delayMillis = 180L,
+                extraExitRegion = { drag ->
+                    val bounds = containerWindowBounds
+                    bounds.width > 0f &&
+                        (drag.pointer.x <= bounds.left + folderEscapeEdgePx ||
+                         drag.pointer.x >= bounds.right - folderEscapeEdgePx)
+                }
+            )
+        }
         Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             // Root controls are covered by the folder page, and must also be hidden from accessibility.
@@ -367,13 +400,12 @@ fun ProvidersScreen(
                 // This target remains composed while the full-screen folder is visible.
                 // Crossing it closes the folder without ending the active DND session.
                 Box(Modifier.dropTarget(
-                    // The header is an exit/drop fallback, never higher priority than a root tile.
-                    key = "root-header", state = dndState, canDrop = true, zIndex = -0.5f,
-                    dropAnimationEnabled = false,
-                    onDragEnter = { dragged ->
-                        if (openGroupId != null && !dragged.data.isGroup) exitOpenFolder(dragged.data.id)
-                    },
-                    onDrop = { acceptedDrop = true }
+                    state = dndState, key = "root-header", priority = -10,
+                    enabled = !searching,
+                    onDragEnter = { drag ->
+                        if (openGroupId != null && !drag.item.data.isGroup)
+                            exitOpenFolder(drag.item.data.id)
+                    }, onDrop = { true }
                 )) {
                 ProviderScreenTopBar(
                     isGridView = isGridView,
@@ -413,17 +445,22 @@ fun ProvidersScreen(
                             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
                             modifier = Modifier.fillMaxSize()
                                 .dropTarget(
-                                    key = "root-end", state = dndState, zIndex = -1f,
-                                    canDrop = openGroupId == null,
-                                    onDragEnter = { dragged ->
-                                        val key = if (dragged.data.isGroup) "group_${dragged.data.id}"
-                                            else "provider_${dragged.data.id}"
-                                        rootItems.lastOrNull()?.cellKey()?.let { moveRootItem(key, it) }
-                                    },
-                                    onDrop = { acceptedDrop = true },
-                                    dropAnimationEnabled = false
+                                    state = dndState, key = "root-end", priority = -10,
+                                    enabled = !searching && openGroupId == null,
+                                    onDrop = { drag ->
+                                        val dragged = drag.item.data
+                                        val key = if (dragged.isGroup) "group_${dragged.id}"
+                                            else "provider_${dragged.id}"
+                                        if (rootItems.any { it.cellKey() == key }) {
+                                            rootItems.lastOrNull()?.cellKey()
+                                                ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                                        } else if (!dragged.isGroup) {
+                                            applyProviderPreview(dragged.id, null)
+                                        }
+                                        true
+                                    }
                                 )
-                                .dragAutoScroll(state = dndState, lazyGridState = gridState)
+                                .autoScroll(dndState, gridState)
                                 .testTag("provider_list")
                         ) {
                             items(visibleRootItems, key = { it.cellKey() }) { item ->
@@ -433,59 +470,61 @@ fun ProvidersScreen(
                                         .animateItem()
                                         .fillMaxWidth()
                                         .height(cellHeight)
-                                        .graphicsLayer { alpha = if (dndState.isDragging(key)) 0f else 1f }
                                         .padding(6.dp)
-                                        // Folder membership is a drop target, not a reorderable slot.
-                                        .then(if (item is ProviderRootItem.GroupItem) Modifier.dropTarget(
-                                            key = "folder-drop_${item.id}", state = dndState,
-                                            zIndex = 1f,
-                                            canDrop = openGroupId == null && dndState.draggedItem?.data?.isGroup == false,
-                                            dropAnimationEnabled = false,
-                                            onDrop = { dragged ->
-                                                val layout = currentLayout()
-                                                val next = moveProviderDrag(layout, dragged.data.id, item.toOrderItem())
-                                                if (next != layout) applyLayout(next)
-                                                acceptedDrop = true
-                                            }
-                                        ) else Modifier)
-                                        .reorderableItem(
-                                            key = key,
-                                            data = item.toOrderItem(),
-                                            state = dndState,
+                                        .dragSource(
+                                            state = dndState, key = key, data = item.toOrderItem(),
                                             enabled = !searching && openGroupId == null,
-                                            canDrop = openGroupId == null,
-                                            dropStrategy = DropStrategy.Surface,
                                             onDragStart = { beginDrag(key) },
-                                            onDragEnd = { finishDnd(key) },
-                                            onDragEnter = { dragged ->
-                                                val from = if (dragged.data.isGroup) "group_${dragged.data.id}"
-                                                    else "provider_${dragged.data.id}"
-                                                if (from != key && rootItems.any { it.cellKey() == from } &&
-                                                    (item is ProviderRootItem.ProviderItem || dragged.data.isGroup)) {
-                                                    moveRootItem(from, key)
-                                                }
+                                            onDragEnd = { outcome -> finishDnd(key, outcome) }
+                                        )
+                                        .itemDropTarget(
+                                            state = dndState, key = key, priority = 10,
+                                            enabled = !searching && openGroupId == null,
+                                            policy = Launcher.DropPolicy(
+                                                joinHitTest = if (item is ProviderRootItem.GroupItem)
+                                                    Launcher.Collision.Pointer else null
+                                            ),
+                                            acceptsReorder = { dragged ->
+                                                item is ProviderRootItem.ProviderItem && dragged.key != key
                                             },
-                                            onDrop = { dragged ->
-                                                if (item is ProviderRootItem.GroupItem && !dragged.data.isGroup) {
-                                                    val layout = currentLayout()
-                                                    val next = moveProviderDrag(layout, dragged.data.id, item.toOrderItem())
-                                                    if (next != layout) applyLayout(next)
-                                                }
-                                                acceptedDrop = true
-                                            },
-                                            dropAnimationEnabled = false,
-                                            draggableContent = {
-                                                Box(Modifier.fillMaxWidth().height(cellHeight - 12.dp)
-                                                    .testTag(if (item is ProviderRootItem.ProviderItem) "dragged_provider" else "dragged_group")) {
-                                                ProviderRootCard(
-                                                    item = item, members = (item as? ProviderRootItem.GroupItem)
-                                                        ?.let { g -> orderedProviders.filter { it.groupId == g.id } }.orEmpty(),
-                                                    isGrid = gridMode, isDropTarget = false, testTag = false,
-                                                    onEditProvider = {}, onMoveProvider = {},
-                                                    onDeleteProvider = {}, onOpenGroup = {}
-                                                )
-                                                }
+                                            acceptsJoin = { dragged -> !dragged.data.isGroup },
+                                            joinKey = "folder-drop_${item.id}",
+                                            joinLandingBounds = { folderCardBounds[item.id] },
+                                            onJoinDrop = if (item is ProviderRootItem.GroupItem) ({ drag ->
+                                                val layout = currentLayout()
+                                                val next = moveProviderDrag(layout, drag.item.data.id, item.toOrderItem())
+                                                if (next != layout) applyLayout(next)
+                                                true
+                                            }) else null,
+                                            onReorderDrop = { true }
+                                        )
+                                        // The source's own slot must win over the grid-wide
+                                        // fallback, otherwise a long-press near the first
+                                        // visible row reorders it before any real movement.
+                                        .dropTarget(
+                                            state = dndState, key = "source-slot:$key",
+                                            priority = 12,
+                                            enabled = !searching && openGroupId == null,
+                                            accepts = { it.key == key },
+                                            onDrop = {
+                                                dragRootSnapshot != rootItems || liveOrderChanged
                                             }
+                                        )
+                                        .dropTarget(
+                                            state = dndState, key = "root-slot:$key",
+                                            enabled = !searching && openGroupId == null &&
+                                                item is ProviderRootItem.ProviderItem,
+                                            priority = 11, accepts = { it.key != key },
+                                            onDragEnter = { drag ->
+                                                val dragged = drag.item.data
+                                                val from = if (dragged.isGroup) "group_${dragged.id}"
+                                                    else "provider_${dragged.id}"
+                                                if (dragged.isGroup) moveRootItem(from, key)
+                                                else if (rootItems.any { it.cellKey() == from })
+                                                    moveRootItem(from, key)
+                                                else applyProviderPreview(dragged.id, item.toOrderItem())
+                                            },
+                                            onDrop = { true }
                                         )
                                         .onGloballyPositioned { coordinates ->
                                             if (item is ProviderRootItem.GroupItem && gridMode == isGridView) {
@@ -499,9 +538,9 @@ fun ProvidersScreen(
                                             ?.let { g -> orderedProviders.filter { it.groupId == g.id } }.orEmpty(),
                                         isGrid = gridMode,
                                         isDropTarget = item is ProviderRootItem.GroupItem &&
-                                            (dndState.isDropTargetHovered(key) ||
-                                                dndState.isDropTargetHovered("folder-drop_${item.id}")) &&
-                                            dndState.draggedItem?.data?.isGroup == false,
+                                            (dndState.hoveredTargetKey == key ||
+                                                dndState.hoveredTargetKey == "folder-drop_${item.id}") &&
+                                            dndState.session?.item?.data?.isGroup == false,
                                         onEditProvider = { onOpenProviderEditor(it, false) },
                                         onMoveProvider = { dialogs.movingProvider = it },
                                         onDeleteProvider = { dialogs.deletingProviderId = it },
@@ -530,7 +569,7 @@ fun ProvidersScreen(
                     isGrid = isGridView,
                     originBounds = folderCardBounds[group.id] ?: openedCardBounds,
                     hostOrigin = containerOrigin,
-                    animateExitImmediately = dndState.draggedItem != null,
+                    animateExitImmediately = dndState.session != null,
                     dndState = dndState,
                     onBeginDrag = ::beginDrag,
                     onEndDrag = ::finishDnd,
@@ -541,8 +580,8 @@ fun ProvidersScreen(
                             if (next != layout) applyLayout(next)
                         }
                     },
-                    onDropMember = { acceptedDrop = true },
-                    showExitHint = dndState.draggedItem?.data?.let { !it.isGroup } == true && openGroupId == group.id,
+                    onDropMember = { liveOrderChanged },
+                    showExitHint = dndState.session?.item?.data?.let { !it.isGroup } == true && openGroupId == group.id,
                     visible = openGroupId == group.id && openGroup != null,
                     animateEnter = !skipNextFolderEnterAnimation,
                     onExitFinished = {

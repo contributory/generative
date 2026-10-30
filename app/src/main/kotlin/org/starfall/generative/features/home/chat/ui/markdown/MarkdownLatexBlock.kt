@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -29,7 +28,6 @@ import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 @Composable
 internal fun RenderLatexBlock(source: String, formula: String) {
     val context = LocalContext.current
-    val labelColor = MaterialTheme.colorScheme.onSurface
     var widthMode by rememberSaveable(source) { mutableStateOf(LatexDisplayMode.Overflow) }
     val nextMode = widthMode.next()
     val modeLabel = widthMode.label()
@@ -41,10 +39,7 @@ internal fun RenderLatexBlock(source: String, formula: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("∑", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = labelColor))
-                }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                         onClick = { widthMode = nextMode },

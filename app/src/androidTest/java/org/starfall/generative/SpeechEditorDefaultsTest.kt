@@ -21,21 +21,51 @@ class SpeechEditorDefaultsTest {
             SpeechEditor(SpeechService("new", "Custom TTS"), true, emptyList(), false,
                 onTest = { _, _ -> }, onDismiss = {}, onSave = {})
         } }
-        listOf("ElevenLabs", "Fish Audio", "Cartesia", "Speechify").forEach { engine ->
+        listOf("ELEVENLABS" to "ElevenLabs", "FISH_AUDIO" to "Fish Audio",
+            "CARTESIA" to "Cartesia", "SPEECHIFY" to "Speechify").forEachIndexed { index, (id, label) ->
             compose.onNodeWithTag("speech-engine-selector").performScrollTo().performClick()
-            compose.onNodeWithText(engine).performClick()
-            compose.onNodeWithTag("speech-service-name").assertTextContains(engine)
+            compose.onNodeWithTag("app-bottom-sheet").assertExists()
+            compose.onNodeWithTag("speech-platform-list").performScrollToIndex(index + 1)
+            compose.onNodeWithTag("speech-engine-option-$id").performClick()
+            compose.onNodeWithTag("speech-service-name").assertTextContains(label)
             compose.onNodeWithTag("speech-model-id").performScrollTo().assertTextEquals("")
             compose.onNodeWithContentDescription("Show API key").performScrollTo().performClick()
             compose.onNodeWithContentDescription("Hide API key").assertExists()
         }
         compose.onNodeWithTag("speech-service-name").performScrollTo().performTextReplacement("My narrator")
         compose.onNodeWithTag("speech-engine-selector").performScrollTo().performClick()
-        compose.onNodeWithText("ElevenLabs").performClick()
+        compose.onNodeWithTag("speech-engine-option-ELEVENLABS").performScrollTo().performClick()
         compose.onNodeWithTag("speech-service-name").assertTextContains("My narrator")
         compose.onNodeWithTag("speech-engine-selector").performScrollTo().performClick()
-        compose.onNodeWithText("Android System TTS").performClick()
+        compose.onNodeWithTag("speech-engine-option-SYSTEM").performScrollTo().performClick()
         compose.onNodeWithTag("speech-service-name").assertTextContains("My narrator")
+    }
+
+    @Test fun platformSheetShowsFullCardsAndProviderModels() {
+        val provider = org.starfall.generative.shared.model.provider.ModelProvider(
+            "tts-provider", "My provider",
+            org.starfall.generative.shared.model.api.ModelApiType.OPENAI,
+            baseUrl = "https://example.test/v1",
+            config = org.starfall.generative.shared.model.provider.ProviderConfiguration(
+                modelConfigs = mapOf("voice-model" to
+                    org.starfall.generative.shared.model.language.ModelConfiguration(
+                        modelType = org.starfall.generative.shared.model.language.ModelType.TEXT_TO_SPEECH))
+            )
+        )
+        compose.setContent { MaterialTheme {
+            SpeechEditor(SpeechService("new", "Custom TTS"), true, listOf(provider), false,
+                onTest = { _, _ -> }, onDismiss = {}, onSave = {})
+        } }
+        compose.onNodeWithTag("speech-engine-selector").performScrollTo().performClick()
+        listOf("SYSTEM", "ELEVENLABS", "FISH_AUDIO", "CARTESIA", "SPEECHIFY")
+            .forEachIndexed { index, id ->
+                compose.onNodeWithTag("speech-platform-list").performScrollToIndex(index)
+                compose.onNodeWithTag("speech-engine-option-$id").assertExists()
+            }
+        compose.onNodeWithTag("speech-platform-list").performScrollToIndex(5)
+        compose.onNodeWithTag("speech-provider-option-tts-provider").performClick()
+        compose.onNodeWithTag("app-bottom-sheet").assertDoesNotExist()
+        compose.onNodeWithTag("speech-service-name").assertTextContains("My provider")
     }
 
     @Test fun everyStandaloneSpeechEngineSavesPlaybackSpeed() {

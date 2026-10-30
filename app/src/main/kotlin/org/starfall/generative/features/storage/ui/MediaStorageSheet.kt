@@ -36,6 +36,8 @@ import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
 import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.features.storage.logic.listMediaStorageFiles
+import org.starfall.generative.features.storage.logic.deleteMediaStorageFiles
 
 /** Quick media browsing from the drawer, with the same three-column layout as profile photos. */
 @Composable
@@ -45,7 +47,7 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
     var viewingFile by remember { mutableStateOf<File?>(null) }
     LaunchedEffect(store, revision) {
         media = withContext(Dispatchers.IO) {
-            store.list().mapNotNull { file ->
+            listMediaStorageFiles(store).mapNotNull { file ->
                 val mime = mediaMimeType(file.name)
                 if (isPreviewableMedia(mime)) StoredMedia(file, mime) else null
             }
@@ -80,7 +82,13 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
             }
         }
         // Attach the viewer to the sheet's window so it opens above the modal surface.
-        viewingFile?.let { file -> MediaViewer(store, file) { viewingFile = null } }
+        viewingFile?.let { file ->
+            MediaViewer(
+                store = store, file = file,
+                onDelete = { deleteMediaStorageFiles(store, listOf(file)) },
+                onDismiss = { viewingFile = null }
+            )
+        }
     }
 }
 

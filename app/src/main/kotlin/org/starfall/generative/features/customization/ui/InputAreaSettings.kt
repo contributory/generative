@@ -49,8 +49,9 @@ internal fun InputAreaSettings(
             Text(stringResource(R.string.customization_input_blur_description),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = {
-                transparency = 0.08f
-                blur = 0f
+                val defaults = AppPreferences()
+                transparency = defaults.inputAreaTransparency
+                blur = defaults.inputAreaBlur
                 onTransparencyChange(transparency)
                 onBlurChange(blur)
             }, modifier = Modifier.testTag("input-area-appearance-reset")) {

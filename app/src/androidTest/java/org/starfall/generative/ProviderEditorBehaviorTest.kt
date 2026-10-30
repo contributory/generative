@@ -118,6 +118,55 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithContentDescription("Tools").assertDoesNotExist()
     }
 
+    @Test fun newChatCompletionsProviderStartsWithNameAndBaseUrl() {
+        var saved: ModelProvider? = null
+        compose.setContent { MaterialTheme {
+            ProviderEditor(provider.copy(name = "", baseUrl = ""), true,
+                onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+                onDismiss = {}, onSave = { saved = it })
+        } }
+
+        compose.onNode(hasSetTextAction() and hasText("OpenAI")).assertExists()
+        compose.onNode(hasSetTextAction() and hasText("Base URL"))
+            .assertTextContains("https://api.openai.com/v1")
+        compose.onNodeWithText("Save").performClick()
+        compose.runOnIdle {
+            assertEquals("OpenAI", saved?.name)
+            assertEquals("https://api.openai.com/v1", saved?.baseUrl)
+        }
+    }
+
+    @Test fun choosingChatCompletionsPrefillsDefaultsWithoutOverwritingCustomValues() {
+        val responses = provider.copy(type = ModelApiType.OPENAI_RESPONSES,
+            name = ModelApiType.OPENAI_RESPONSES.defaultName,
+            baseUrl = ModelApiType.OPENAI_RESPONSES.defaultBaseUrl)
+        compose.setContent { MaterialTheme {
+            ProviderEditor(responses, false,
+                onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+                onDismiss = {}, onSave = {})
+        } }
+
+        compose.onNodeWithTag("provider-type-selector").performClick()
+        compose.onNodeWithText("Chat Completions").performClick()
+        compose.onNode(hasSetTextAction() and hasText("OpenAI")).assertExists()
+        compose.onNode(hasSetTextAction() and hasText("Base URL"))
+            .assertTextContains("https://api.openai.com/v1")
+
+        compose.onNodeWithTag("provider-type-selector").performClick()
+        compose.onNodeWithText("OpenAI Responses").performClick()
+        compose.onNode(hasSetTextAction() and hasText("OpenAI Responses")).assertExists()
+
+        compose.onNode(hasSetTextAction() and hasText("OpenAI Responses"))
+            .performTextReplacement("Custom gateway")
+        compose.onNode(hasSetTextAction() and hasText("Base URL"))
+            .performTextReplacement("https://example.test/v1")
+        compose.onNodeWithTag("provider-type-selector").performClick()
+        compose.onNodeWithText("Chat Completions").performClick()
+        compose.onNode(hasSetTextAction() and hasText("Custom gateway")).assertExists()
+        compose.onNode(hasSetTextAction() and hasText("Base URL"))
+            .assertTextContains("https://example.test/v1")
+    }
+
     @Test fun connectionFieldsRestoreUrlSelectAuthAndToggleKeyVisibility() {
         var saved: ModelProvider? = null
         compose.setContent { MaterialTheme {

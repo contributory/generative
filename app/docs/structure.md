@@ -86,11 +86,13 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   │       └── 📄 RemoteMachinesScreen.kt
 │   │   └── 📁 shared/
 │   │       ├── 📁 logic/
+│   │       │   ├── 📄 RemoteMachineExplorerRepository.kt (SFTP adapter owned by Machines)
 │   │       │   └── 📄 RemoteMachinesViewModel.kt
 │   │       ├── 📁 model/
 │   │       │   └── 📄 BinaryTestNotice.kt
 │   │       └── 📁 ui/
-│   │           └── 📄 RemoteMachineComponents.kt
+│   │           ├── 📄 RemoteMachineComponents.kt
+│   │           └── 📄 RemoteMachineFilesScreen.kt (Machines-owned SFTP browser)
 │   ├── 📁 menu/
 │   │   └── 📁 ui/
 │   │       └── 📄 AppMenuScreen.kt
@@ -160,12 +162,22 @@ This document is the detailed package map and architecture reference. The mandat
 │   │       ├── 📄 McpAttachmentsPreferences.kt
 │   │       └── 📄 SettingsComponents.kt
 │   ├── 📁 speech/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 SpeechEngineIcons.kt
 │   │   └── 📁 ui/
+│   │       ├── 📄 SpeechEditor.kt
+│   │       ├── 📄 SpeechEnginePickerSheet.kt
+│   │       ├── 📄 SpeechModelField.kt
 │   │       ├── 📄 SpeechServiceDialogs.kt
-│   │       └── 📄 SpeechServicesScreen.kt
+│   │       ├── 📄 SpeechServicesScreen.kt
+│   │       └── 📄 SpeechVoiceSheet.kt
 │   ├── 📁 storage/
+│   │   ├── 📁 logic/
+│   │   │   ├── 📄 MediaStorageExplorerRepository.kt (MediaStorage adapter)
+│   │   │   └── 📄 MediaStorageFiles.kt (recursive flat listing and exact-path deletion)
 │   │   └── 📁 ui/
 │   │       ├── 📄 MediaStorageSheet.kt
+│   │       ├── 📄 StorageExplorerScreen.kt (Storage-owned local browser)
 │   │       └── 📄 StorageScreen.kt
 │   ├── 📁 customization/
 │   │   └── 📁 ui/
@@ -367,8 +379,9 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📄 RemoteMachineServiceOwner.kt
 │       ├── 📄 RemoteMachineStore.kt
 │       ├── 📄 RemoteSftpDocumentCallbacks.kt
+│       ├── 📄 RemoteSftpExplorer.kt (SFTP filesystem operations)
 │       ├── 📄 RemoteSftpDocumentFormatting.kt
-│       ├── 📄 RemoteSftpDocumentsProvider.kt
+│       ├── 📄 AppDocumentsProvider.kt
 │       ├── 📄 RemoteSftpSessionPool.kt
 │       ├── 📄 RemoteSocksForwarder.kt
 │       ├── 📄 RemoteTerminal.kt
@@ -376,7 +389,27 @@ This document is the detailed package map and architecture reference. The mandat
 │       ├── 📄 SshConnectionSupport.kt
 │       ├── 📄 SshKeySupport.kt
 │       └── 📄 SshOptions.kt
+├── 📁 extensions/ (independent, highest-reuse framework components)
+│   ├── 📁 explorer/
+│   │   ├── 📁 logic/
+│   │   │   └── 📄 ExplorerRepository.kt (models + host-supplied interface)
+│   │   └── 📁 ui/
+│   │       └── 📄 ExplorerScreen.kt (Compose presentation only)
+│   └── 📁 launcher/
+│       ├── 📄 Launcher.kt (single-import public facade)
+│       ├── 📄 LauncherDragDropHost.kt
+│       ├── 📄 LauncherDragDropState.kt
+│       ├── 📄 LauncherDragGesture.kt
+│       ├── 📄 LauncherDragPolicy.kt
+│       ├── 📄 LauncherDragShadow.kt
+│       ├── 📄 LauncherFolderAndScroll.kt
+│       ├── 📄 LauncherHoverEffect.kt
+│       ├── 📄 LauncherItemDropPolicy.kt
+│       ├── 📄 LauncherReorderLayout.kt
+│       ├── 📄 LauncherReorderPolicy.kt
+│       └── 📄 README.md
 ├── 📁 navigation/
+│   ├── 📄 ExplorerActivity.kt
 │   ├── 📄 AppNavigation.kt
 │   ├── 📄 RetainedNavHost.kt
 │   └── 📄 TargetedEditorContent.kt
@@ -393,7 +426,7 @@ This document is the detailed package map and architecture reference. The mandat
 │   │   └── 📄 CodeSyntaxHighlighting.kt
 │   ├── 📁 files/
 │   │   ├── 📄 AgentSkillsStore.kt
-│   │   ├── 📄 AppDocumentsProvider.kt
+│   │   ├── 📄 MediaStorageDocuments.kt
 │   │   ├── 📄 AttachmentResolver.kt
 │   │   ├── 📄 ConversationUploads.kt
 │   │   ├── 📄 CrashReports.kt
@@ -631,7 +664,8 @@ The following sections give the package map's supporting conventions and feature
 
 ### Layer placement and boundaries
 
-- Dependency direction: `shared` ← `integrations` ← `database` ← `features` ← `navigation` ← `appwiring`. A layer may depend only on layers to its left.
+- `extensions/` and `shared/` are independent foundations. Application layers follow `integrations` ← `database` ← `features` ← `navigation` ← `appwiring`; extensions are the highest-reuse components and must not depend on any other application directory.
+- Validate extension imports and forbidden backend dependencies with `python3 scripts/check_extensions.py`. Extensions own their data models and use host-injected contracts for persistence, filesystem operations and networking.
 - `database/` owns Room databases, DAOs, entities, migrations, database-backed repositories, and their storage mappers/auth payloads. Keep preferences and the reusable state primitive in `shared/storage/`. Repositories may coordinate integration services, but `shared/` and `integrations/` must not import `database/`.
 - The Android Keystore adapter lives in `integrations/security/SecretCipher.kt`; both database credentials and MCP OAuth token storage use it.
 - Room schema history lives in `app/schemas/org.starfall.generative.database.AppDatabase/`. Package-only moves must preserve every schema snapshot and the existing database filename, version, migration SQL, and credential key alias.
@@ -746,3 +780,82 @@ The project uses `ui/`, `logic/`, and `model/` instead of a canonical `presentat
 - `chat/ui/ThinkingPlainText.kt` displays raw reasoning with the configured message font and a subdued text color. It does not parse Markdown or own scroll physics. `LiveThinkingBlock` smooths only the drawn auto-follow position with a short graphics-layer animation; native `ScrollState`, manual drag and the inactivity pause remain authoritative. The Actions timeline starts folded; running steps are shown outside the fold and shrink into history on completion. Manually expanded Thinking and Actions states are retained through the transition.
 
 - `InputAreaSettings.kt` owns composer transparency and blur controls in Customization. `shared/ui/layout/InputAreaAppearance.kt` owns the independent surface alpha policy and Android 12+ backdrop capture/blur; only chat content is captured, keeping composer text and controls sharp. The default is 8% transparency and no blur.
+
+### Launcher drag extensions
+
+`extensions/launcher/` provides a unified `Launcher.kt` facade
+(`import org.starfall.generative.extensions.launcher.Launcher`). Hosts call
+`Launcher.rememberState`, `Launcher.Host`, and the Modifier extensions inside
+`with(Launcher)`. It delegates to the existing controller, preserves the older
+top-level API and does not add state. See its `README.md` for the full contract.
+
+The underlying independent Compose drag controller consists of:
+`LauncherDragDropState.kt` (session, registrations, transactional completion),
+`LauncherDragDropHost.kt` (pointer ownership and source/target modifiers),
+`LauncherDragShadow.kt` (pickup and bounded landing),
+`LauncherDragPolicy.kt` (activation, collision shapes and visual options),
+`LauncherItemDropPolicy.kt` (independent opt-in join/reorder targets),
+`LauncherReorderPolicy.kt` (on-entry, center-crossing and custom insertion),
+`LauncherDragGesture.kt` (click-safe long press and handle slop), `LauncherReorderLayout.kt`
+(ordered container previews and geometry), `LauncherHoverEffect.kt` (stable hover),
+and `LauncherFolderAndScroll.kt` (folder exit and viewport auto-scroll).
+`features/settings/ui/LauncherDragTestScreen.kt` is its in-memory integration sandbox.
+
+The launcher sandbox uses `LauncherDragTestCollection.kt` for measured list/grid slots
+and `LauncherDragTestControls.kt` for session-only layout and interaction controls.
+
+### System file provider
+
+`integrations/remote/AppDocumentsProvider.kt` is the only registered Android
+`DocumentsProvider` (`${applicationId}.documents`). It exposes one app root
+(`app_files`) with the virtual `MediaStorage` directory backed by `ToolFiles`
+and one `SFTP_<machine name>` directory per configured remote machine. The
+SFTP entries use stable machine-ID document IDs and open SSH sessions lazily.
+`shared/files/MediaStorageDocuments.kt` handles local file operations and owns
+the common root/authority constants used by media storage shortcuts. The
+previous `${applicationId}.sftp` authority is no longer registered; existing
+SFTP document grants from older installs must be reselected.
+
+### Independent extensions
+
+`extensions/` is the highest-reuse foundation. Its subdirectories own their own
+models, logic, and optional UI (for example, `extensions/explorer/{logic,ui}`).
+They must **never import from any other application directory**. They do not
+persist data, access databases, issue HTTP/SSH/API requests, or directly operate
+on MediaStorage or the filesystem. Instead, each extension declares small
+interfaces and callbacks that outer layers implement. Its host is responsible
+for storage, permissions, launching system activities, localization, appearance,
+and network activity. External libraries and framework primitives such as
+Compose and coroutines are allowed inside extensions.
+
+For the explorer, `extensions/explorer/logic/ExplorerRepository.kt` defines
+**source-agnostic** locations (`sourceId` is an opaque host-provided key), items,
+and an injected storage interface. `extensions/explorer/ui/ExplorerScreen.kt`
+renders one host-supplied source, navigates and performs generic operations,
+and calls the host's `onOpenFile` port. There are no `MediaStorage`, `SFTP`,
+`RemoteMachine`, viewer, Android Intent, application theme, or database
+references anywhere under `extensions/explorer/`.
+
+**Feature-first ownership:** `features/storage/logic/MediaStorageExplorerRepository.kt`
+implements local operations and `features/storage/ui/StorageExplorerScreen.kt`
+owns local browsing, previews and deletion coordination. Independently,
+`features/machines/shared/logic/RemoteMachineExplorerRepository.kt` binds
+`integrations/remote/RemoteSftpExplorer.kt` to the generic extension contract;
+`features/machines/shared/ui/RemoteMachineFilesScreen.kt` owns its previews.
+Neither feature imports the other. `navigation/ExplorerActivity.kt` only routes
+to the appropriate feature and supplies a callback for opening unsupported file
+formats in external Android applications. Removing either feature does not
+require rewriting the other feature or the extension.
+
+The single system `AppDocumentsProvider` is a separate Android OS integration
+that exposes MediaStorage and SFTP roots to external Files applications; it is
+not used by the in-app explorer to navigate directories. The shared viewer
+supports an injected delete callback so nested local files are deleted by their
+owning Storage feature rather than by a root-level filename lookup. `StorageScreen` and
+`MediaStorageSheet` use the Storage-owned `MediaStorageFiles` recursive scanner,
+which flattens nested files without displaying directories or folder paths.
+`StorageScreen` displays preview-only square grid tiles or wide, cropped-preview
+list tiles; its selection and deletion use each file's full identity rather
+than its basename. `MediaStorageSheet` filters this flattened list to previewable
+image/video/audio, retaining its compact thumbnail grid. The root-only
+`ToolFiles.list()` contract remains unchanged for other consumers.

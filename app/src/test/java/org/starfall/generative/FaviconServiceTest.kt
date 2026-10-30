@@ -85,6 +85,33 @@ class FaviconServiceTest {
         } finally { server.shutdown() }
     }
 
+    @Test fun missingBrandFaviconIsPersistedAndMatchedWithoutRefetching() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setBody("<head><link rel=icon href='/brand.png'></head>"))
+            server.enqueue(image())
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val store = IconStore(context)
+            val brand = "Test Speech Brand"
+            store.ensureNamedFavicon(brand, server.url("/").toString())
+            val id = store.find(brand)
+            assertNotNull(id)
+            assertTrue(id!!.startsWith("icon-"))
+            assertNotNull(store.imageData(id))
+            assertTrue(store.entries().any { it.filename == id })
+            assertEquals(id, IconStore(context).find(brand))
+            store.ensureNamedFavicon(brand, server.url("/").toString())
+            assertEquals(2, server.requestCount)
+
+            val explicit = store.importBitmap(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888),
+                "custom.png", shared = true)
+            store.cache(brand, explicit)
+            store.ensureNamedFavicon(brand, server.url("/").toString())
+            assertEquals(explicit, IconStore(context).find(brand))
+            assertEquals(2, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
     @Test fun fallbackUsesHostIcoThenRootIcoThenHostPngThenRootPng() = runBlocking {
         val server = MockWebServer().apply { start() }
         try {

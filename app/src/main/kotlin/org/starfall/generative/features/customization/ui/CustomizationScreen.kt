@@ -7,6 +7,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -18,11 +19,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +59,8 @@ fun CustomizationScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     appearance: AppPreferences = AppPreferences(),
+    customizationEnabled: Boolean = true,
+    onCustomizationEnabledChange: (Boolean) -> Unit = {},
     onDynamicColorChange: (Boolean) -> Unit = {},
     onColorSchemeChange: (String) -> Unit = {},
     onCustomPaletteChange: (CustomPalette) -> Unit = {},
@@ -76,8 +82,17 @@ fun CustomizationScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var previewSlot by rememberSaveable { mutableStateOf(UserProfileImageSlot.CHAT) }
+    LaunchedEffect(customizationEnabled) {
+        if (!customizationEnabled) {
+            showStorage = false
+            menuFor = null
+            target = null
+            error = null
+        }
+    }
 
     fun storeImage(slot: UserProfileImageSlot, path: String?) {
+        if (!customizationEnabled) return
         val previous = slot.get(profile)
         val updated = slot.put(profile, path)
         onChange { slot.put(it, path) }
@@ -113,12 +128,24 @@ fun CustomizationScreen(
                 title = { Text(stringResource(R.string.customization_title), fontWeight = FontWeight.SemiBold) },
                 navigationIcon = { IconButton(onClick = onBack) {
                     SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                } }
+                } },
+                actions = {
+                    Switch(
+                        checked = customizationEnabled,
+                        onCheckedChange = onCustomizationEnabledChange,
+                        modifier = Modifier.padding(end = 16.dp)
+                            .semantics { contentDescription = context.getString(R.string.customization_enable) }
+                            .testTag("customization-enabled-switch")
+                    )
+                }
             )
         }
     ) { padding ->
+        Box(Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("customization-list"),
+            modifier = Modifier.fillMaxSize().testTag("customization-list")
+                .alpha(if (customizationEnabled) 1f else 0.4f)
+                .then(if (customizationEnabled) Modifier else Modifier.clearAndSetSemantics { disabled() }),
             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -280,8 +307,16 @@ fun CustomizationScreen(
                 InputAreaSettings(appearance, onInputAreaTransparencyChange, onInputAreaBlurChange)
             }
         }
+            if (!customizationEnabled) {
+                Box(
+                    Modifier.matchParentSize()
+                        .testTag("customization-disabled-overlay")
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                )
+            }
+        }
     }
-    if (showStorage) MediaStoragePhotoSheet(
+    if (customizationEnabled && showStorage) MediaStoragePhotoSheet(
         onDismiss = { showStorage = false },
         onSelected = { file ->
             val slot = target ?: return@MediaStoragePhotoSheet
@@ -294,9 +329,9 @@ fun CustomizationScreen(
             }
         }
     )
-    if (busy) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
+    if (customizationEnabled && busy) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
         contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-    error?.let { message -> AlertDialog(
+    error?.takeIf { customizationEnabled }?.let { message -> AlertDialog(
         onDismissRequest = { error = null }, title = { Text(stringResource(R.string.user_profile_image_error)) },
         text = { Text(message) },
         confirmButton = { TextButton(onClick = { error = null }) { Text(stringResource(R.string.common_ok)) } }

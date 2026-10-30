@@ -81,6 +81,75 @@ class ProviderDragDropTest {
     private val members = listOf(provider("m1", "g", 0), provider("m2", "g", 1))
 
     @Test
+    fun cancellingDragRestoresTheItemWithoutPersisting() {
+        val writes = mutableListOf<ProviderPlacement>()
+        show(rootProviders, emptyList(), writes)
+        val originalPosition = center("provider_a")
+        drag(originalPosition, center("provider_c"), release = false)
+        assertTrue(exists("dragged_provider"))
+        compose.onRoot().performTouchInput { cancel() }
+        compose.waitForIdle()
+        assertFalse("the returned shadow must be removed after its animation", exists("dragged_provider"))
+        assertTrue("cancellation must not persist the preview", writes.isEmpty())
+        assertTrue("the original item must still exist", exists("provider_a"))
+        assertEquals("the canceled reorder must restore the original slot",
+            originalPosition, center("provider_a"))
+    }
+
+    /** Every drop uses the same one-row move, independent of how far the list was scrolled. */
+    private fun checkLongListDrop(from: Int, grid: Boolean) {
+        val many = (0 until 48).map { provider("p$it", order = it) }
+        val writes = mutableListOf<ProviderPlacement>()
+        show(many, emptyList(), writes, grid = grid)
+        compose.onNodeWithTag("provider_list").performScrollToIndex(from)
+        compose.waitForIdle()
+
+        val target = from + if (grid) 2 else 1
+        drag(center("provider_p$from"), center("provider_p$target"))
+
+        assertFalse("the shadow must be gone once the drop finishes", exists("dragged_provider"))
+        val placement = writes.single()
+        val expectedOrder = many.map { it.id }.toMutableList().apply {
+            add(target, removeAt(from))
+        }
+        assertEquals("the final order must not change when released deep in the list",
+            expectedOrder, placement.rootOrder.map { it.id })
+        assertTrue("the dropped item must be visible in its new slot", exists("provider_p$from"))
+    }
+
+    @Test
+    fun dropNearBottomRetainsTheShadowWhileItLands() {
+        val many = (0 until 48).map { provider("p$it", order = it) }
+        val writes = mutableListOf<ProviderPlacement>()
+        show(many, emptyList(), writes)
+        compose.onNodeWithTag("provider_list").performScrollToIndex(40)
+        compose.waitForIdle()
+        // Offset the finger from the destination center: the ghost must travel the
+        // remaining distance rather than disappear as soon as the pointer lifts.
+        val source = center("provider_p40")
+        val destination = center("provider_p42") + Offset(-30f, -30f)
+        drag(source, destination, release = false)
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onRoot().performTouchInput { up() }
+            compose.mainClock.advanceTimeByFrame()
+            assertTrue("the ghost must remain visible during its landing transition",
+                exists("dragged_provider"))
+            assertEquals("storage callback is independent of the landing animation", 1, writes.size)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.waitForIdle()
+        assertFalse("the ghost must disappear after landing", exists("dragged_provider"))
+        assertEquals("p40", writes.single().providerId)
+    }
+
+    @Test fun rootGridDropNearStart() = checkLongListDrop(from = 2, grid = true)
+    @Test fun rootGridDropNearMiddle() = checkLongListDrop(from = 22, grid = true)
+    @Test fun rootGridDropNearEnd() = checkLongListDrop(from = 44, grid = true)
+    @Test fun rootListDropNearEnd() = checkLongListDrop(from = 45, grid = false)
+
+    @Test
     fun longPressOnProviderBesideFolderPicksProviderNotFolder() {
         show(listOf(provider("right", order = 11), provider("member", "g")), listOf(g))
         val root = compose.onRoot()

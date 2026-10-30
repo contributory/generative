@@ -66,7 +66,8 @@ fun RemoteMachinesScreen(
     onBack: () -> Unit,
     onOpenEditor: (RemoteMachine, Boolean) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenTerminal: (RemoteMachine) -> Unit
+    onOpenTerminal: (RemoteMachine) -> Unit,
+    onOpenFiles: (RemoteMachine) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connectedIds by viewModel.connectedMachineIds.collectAsStateWithLifecycle()
@@ -138,11 +139,7 @@ fun RemoteMachinesScreen(
                             onStartPortForward = { portForwardMachine = machine },
                             onMachineTools = { toolsMachine = machine },
                             onTerminal = { onOpenTerminal(machine) },
-                            onFiles = {
-                                if (!viewModel.openFiles(context, machine.id)) {
-                                    Toast.makeText(context, R.string.storage_open_in_files_failed, Toast.LENGTH_SHORT).show()
-                                }
-                            },
+                            onFiles = { onOpenFiles(machine) },
                             onEdit = { onOpenEditor(machine, false) },
                             onDelete = { deleting = machine },
                             onUpdateIp = {

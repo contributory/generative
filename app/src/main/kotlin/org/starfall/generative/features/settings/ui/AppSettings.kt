@@ -69,12 +69,12 @@ import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
 @Composable
-fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .toggleable(checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -83,7 +83,7 @@ fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onChecke
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 @OptIn(ExperimentalLayoutApi::class)
@@ -111,7 +111,8 @@ fun AppearanceSettingsView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("SYSTEM", "LIGHT", "DARK").forEach { mode ->
-                        FilterChip(selected = appPreferences.themeMode == mode, onClick = { onThemeChange(mode) },
+                        FilterChip(selected = appPreferences.themeMode == mode, enabled = appPreferences.customizationEnabled,
+                            onClick = { onThemeChange(mode) },
                             label = { Text(stringResource(when (mode) {
                                 "SYSTEM" -> R.string.common_system
                                 "LIGHT" -> R.string.settings_theme_light
@@ -119,7 +120,8 @@ fun AppearanceSettingsView(
                             })) }, modifier = Modifier.weight(1f))
                     }
                 }
-                PreferenceToggle(stringResource(R.string.settings_amoled), stringResource(R.string.settings_amoled_description), appPreferences.useAmoled, onAmoledChange)
+                PreferenceToggle(stringResource(R.string.settings_amoled), stringResource(R.string.settings_amoled_description),
+                    appPreferences.useAmoled, onAmoledChange, enabled = appPreferences.customizationEnabled)
             }
         }
         item {
@@ -172,12 +174,12 @@ fun PreferencesSettingsView(
         item {
             SettingsSection(stringResource(R.string.settings_language)) {
                 PreferenceToggle(stringResource(R.string.use_system_language), stringResource(R.string.use_system_language_desc),
-                    appPreferences.useSystemLanguage) { useSystem ->
+                    appPreferences.useSystemLanguage, onCheckedChange = { useSystem ->
                     // Turning the switch off starts from the language the system already uses.
                     val tag = if (useSystem) appPreferences.selectedLanguage
                         else AppLanguage.closestTo(Resources.getSystem().configuration.locales[0]).tag
                     onAppLanguageChange(useSystem, tag)
-                }
+                })
                 if (!appPreferences.useSystemLanguage) {
                     var expanded by remember { mutableStateOf(false) }
                     val selectedLanguage = AppLanguage.fromTag(appPreferences.selectedLanguage)

@@ -858,6 +858,7 @@
     <string name="remote_machine_sftp_section_help">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
     <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
     <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
+    <string name="documents_root_summary" translatable="false">MediaStorage and SFTP</string>
     <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
     <string name="remote_machine_start_port_forward">Start Port Forward</string>
     <string name="remote_machine_port_forward_started">Port forwarding started. Open terminals reuse this connection.</string>
@@ -1171,6 +1172,14 @@
     <string name="speech_edit_title">Edit Speech Service</string>
     <string name="speech_service_name">Service name</string>
     <string name="speech_system_tts">Android System TTS</string>
+    <string name="speech_platform_picker_title">Speech platform</string>
+    <string name="speech_engine_android_description">Uses Android text-to-speech</string>
+    <string name="speech_engine_direct_description">Dedicated speech API</string>
+    <string name="speech_engine_provider_description">Uses a configured model provider</string>
+    <plurals name="speech_engine_model_count">
+        <item quantity="one">%d TTS model</item>
+        <item quantity="other">%d TTS models</item>
+    </plurals>
     <string name="speech_select_tts_model">Select TTS model</string>
     <string name="speech_no_tts_models">No model is marked as text to speech yet. Set a model type in Model Providers to use it here.</string>
     <string name="speech_voice">Voice</string>
@@ -1244,6 +1253,7 @@
     <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
     <string name="customization_title">Customization</string>
+    <string name="customization_enable">Enable customization</string>
     <string name="customization_description">Colors, component transparency, profile photo and backgrounds</string>
     <string name="customization_backgrounds_title">Background images</string>
     <string name="user_profile_title">User Profile</string>
@@ -1306,7 +1316,7 @@
     <string name="provider_custom_endpoints_hint">Enter full URLs. Leave blank to use the default. Gemini generation URLs can use {model} and {method}.</string>
     <string name="provider_endpoints_invalid">Enter valid HTTP or HTTPS endpoint URLs.</string>
     <string name="launcher_drag_test_title">Launcher drag test</string>
-    <string name="launcher_drag_test_help">Long-press to move tiles. Tap the folder to open it; drag out of its panel to move to the workspace. Hold over the folder to move a tile inside.</string>
+    <string name="launcher_drag_test_help">Long-press to move tiles or folders. Use a folder edge to reorder beside it; hold over its center to move a tile inside. Drag out of the open panel to return to the workspace.</string>
     <string name="launcher_drag_test_workspace">Workspace / Folder</string>
     <string name="launcher_drag_test_initial">Long-press and drag a tile</string>
     <string name="launcher_drag_test_reset">Reset</string>
@@ -1325,4 +1335,14 @@
     <string name="customization_input_blur">Background blur</string>
     <string name="customization_input_blur_description">Blur the chat behind the input area on Android 12 and later. Text and buttons stay sharp.</string>
     <string name="settings_website">Website</string>
+    <string name="launcher_drag_test_grid">Grid</string>
+    <string name="launcher_drag_test_list">List</string>
+    <string name="launcher_drag_test_options">Interaction settings</string>
+    <string name="launcher_drag_test_reorder_delay">Reorder hover: %1$d ms</string>
+    <string name="launcher_drag_test_folder_delay">Folder open hover: %1$d ms</string>
+    <string name="launcher_drag_test_folder_hit">Folder center region: %1$d%%</string>
+    <string name="launcher_drag_test_columns">Grid columns: %1$d</string>
+    <string name="launcher_drag_test_reorder_on_entry">Reorder on target entry</string>
+    <string name="launcher_drag_test_allow_folder_join">Allow drops into folders</string>
+    <string name="launcher_drag_test_reorder_proximity">Reorder proximity: %1$d dp</string>
 </resources>

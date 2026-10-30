@@ -8,6 +8,16 @@ enum class SpeechEngine { SYSTEM, PROVIDER, ELEVENLABS, FISH_AUDIO, CARTESIA, SP
     val standalone: Boolean get() = this !in listOf(SYSTEM, PROVIDER)
 }
 
+/** Stable brand key for dedicated speech APIs; independent of the user's service name. */
+val SpeechEngine.iconMatchName: String?
+    get() = when (this) {
+        SpeechEngine.ELEVENLABS -> "ElevenLabs"
+        SpeechEngine.FISH_AUDIO -> "Fish Audio"
+        SpeechEngine.CARTESIA -> "Cartesia"
+        SpeechEngine.SPEECHIFY -> "Speechify"
+        else -> null
+    }
+
 @Serializable
 data class SpeechService(
     val id: String,
