@@ -12,10 +12,41 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.integrations.modelapis.ollama.OllamaModelCache
+import androidx.datastore.preferences.SharedPreferencesMigration
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import java.io.File
+import java.nio.file.Files
+import java.security.MessageDigest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class OllamaModelCacheTest {
+    @Test fun existingCacheIsMigratedWithoutLosingModelsOrTimestamp() = runBlocking {
+        val url = "https://legacy-ollama.example/v1/"
+        val key = MessageDigest.getInstance("SHA-256")
+            .digest(url.trim().trimEnd('/').toByteArray()).joinToString("") { "%02x".format(it) }
+        context.getSharedPreferences("ollama-model-catalog", Context.MODE_PRIVATE).edit()
+            .putString(key, """{"models":["legacy-model"],"fetchedAt":1234}""").commit()
+        val directory = Files.createTempDirectory("ollama-cache-migration").toFile()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(
+                migrations = listOf(SharedPreferencesMigration(context, "ollama-model-catalog")),
+                scope = scope,
+                produceFile = { File(directory, "catalog.preferences_pb") }
+            )
+            val entry = OllamaModelCache(store).read(url)
+            assertEquals(listOf("legacy-model"), entry?.models)
+            assertEquals(1234L, entry?.fetchedAt)
+        } finally {
+            scope.cancel()
+            directory.deleteRecursively()
+        }
+    }
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test fun reopeningUsesPersistedModelsWithoutAnotherNetworkRequest() = runBlocking {

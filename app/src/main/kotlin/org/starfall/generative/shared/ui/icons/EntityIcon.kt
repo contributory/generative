@@ -25,6 +25,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
@@ -137,7 +139,7 @@ fun IconPickerRow(
     val currentBusy by rememberUpdatedState(onBusyChange)
     val currentChange by rememberUpdatedState(onChange)
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
+        if (uri != null) scope.launch(start = CoroutineStart.UNDISPATCHED) { withContext(NonCancellable) {
             importing = true
             currentBusy(true)
             error = null
@@ -151,7 +153,7 @@ fun IconPickerRow(
                 importing = false
                 currentBusy(false)
             }
-        }
+        } }
     }
     val busy = importing || fetchState.saving
     LaunchedEffect(busy) { currentBusy(busy) }

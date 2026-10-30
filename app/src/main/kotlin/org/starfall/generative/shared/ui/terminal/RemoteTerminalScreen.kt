@@ -1,6 +1,8 @@
 package org.starfall.generative.shared.ui.terminal
 
-import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
@@ -33,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,7 +73,7 @@ import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FONT_SIZE_KEY
 import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FORCE_MOUSE_KEY
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
 import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputPreferences
@@ -98,9 +101,8 @@ internal fun RemoteTerminalScreen(
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
-    val terminalPrefs = remember {
-        context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
-    }
+    val terminalStore = remember(context) { RemoteTerminalPreferenceStore.getInstance(context) }
+    val terminalPrefs by terminalStore.data.collectAsState(initial = null)
     // Sessions live in a process-wide registry so they survive leaving this screen.
     val terminalSlots = RemoteTerminalSessions.slotsFor(machine.id)
     val activeTerminalId = RemoteTerminalSessions.activeIdFor(machine.id)
@@ -116,11 +118,14 @@ internal fun RemoteTerminalScreen(
     // Null means "follow the layout": open on wide screens, collapsed on narrow ones.
     var drawerExpanded by remember(machine.id) { mutableStateOf<Boolean?>(null) }
     val sessionsDrawerOpen = drawerExpanded ?: (LocalConfiguration.current.screenWidthDp >= 720)
-    var fontDp by remember {
-        mutableIntStateOf(
-            terminalPrefs.getInt(REMOTE_TERMINAL_FONT_SIZE_KEY, 14)
+    var fontDp by remember { mutableIntStateOf(14) }
+    var fontLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(terminalPrefs) {
+        if (!fontLoaded) terminalPrefs?.let { preferences ->
+            fontDp = (preferences[intPreferencesKey(REMOTE_TERMINAL_FONT_SIZE_KEY)] ?: 14)
                 .coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
-        )
+            fontLoaded = true
+        }
     }
     val textSizePx = (fontDp * density).toInt()
     val activeSlot = terminalSlots.firstOrNull { it.terminal.id == activeTerminalId }
@@ -134,7 +139,8 @@ internal fun RemoteTerminalScreen(
 
     fun setFontDp(value: Int) {
         fontDp = value.coerceIn(MIN_TERMINAL_FONT_DP, MAX_TERMINAL_FONT_DP)
-        terminalPrefs.edit().putInt(REMOTE_TERMINAL_FONT_SIZE_KEY, fontDp).apply()
+        val size = fontDp
+        terminalStore.update { it[intPreferencesKey(REMOTE_TERMINAL_FONT_SIZE_KEY)] = size }
     }
 
     fun closeSlot(slot: TerminalSlot) = RemoteTerminalSessions.close(machine.id, slot)
@@ -169,7 +175,8 @@ internal fun RemoteTerminalScreen(
                     }
                 }
                 // Read the live preference so sessions opened after a toolbar toggle use it too.
-                val inputPreferences = terminalPrefs.remoteTerminalInputPreferences(machine.id)
+                val preferences = terminalStore.snapshot()
+                val inputPreferences = preferences.remoteTerminalInputPreferences(machine.id)
                 if (!isActive) {
                     // The user left while connecting: do not leave an unowned shell behind.
                     opened.close()
@@ -177,7 +184,7 @@ internal fun RemoteTerminalScreen(
                 }
                 val newBridge = RemoteTerminalBridge(context.applicationContext, inputPreferences.mode).also { bridge ->
                     bridge.updateImeEnabled(inputPreferences.imeEnabled)
-                    bridge.forceMouse = terminalPrefs.getBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, false)
+                    bridge.forceMouse = preferences[booleanPreferencesKey(REMOTE_TERMINAL_FORCE_MOUSE_KEY)] ?: false
                     bridge.attachRemote(opened)
                 }
                 RemoteTerminalSessions.register(machine.id, opened, newBridge)
@@ -204,8 +211,8 @@ internal fun RemoteTerminalScreen(
         }
         onDispose { terminalSlots.forEach { it.bridge.onZoomStep = {} } }
     }
-    LaunchedEffect(machine.id) {
-        if (RemoteTerminalSessions.slotsFor(machine.id).isEmpty()) openTerminal()
+    LaunchedEffect(machine.id, terminalPrefs != null) {
+        if (terminalPrefs != null && RemoteTerminalSessions.slotsFor(machine.id).isEmpty()) openTerminal()
     }
     // Sessions can die without a clean end of stream (network drop, killed channel); keep checking while
     // the screen is open so a dead terminal is replaced by the reconnect panel instead of staying on screen.
@@ -250,30 +257,27 @@ internal fun RemoteTerminalScreen(
                 // session, not just the visible one.
                 if (activeBridge?.setInputMode(mode) == true) {
                     // IME is a Local-only preference; restore it upon returning to Local.
-                    val localImeEnabled = mode.usesLocalInput && terminalPrefs.getBoolean(
-                        remoteTerminalImePreferenceKey(machine.id), true
-                    )
+                    val localImeEnabled = mode.usesLocalInput &&
+                        (terminalPrefs?.get(booleanPreferencesKey(remoteTerminalImePreferenceKey(machine.id))) != false)
                     terminalSlots.forEach { slot ->
                         if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
                         slot.bridge.updateImeEnabled(localImeEnabled)
                     }
-                    terminalPrefs.edit()
-                        .putString(remoteTerminalInputModePreferenceKey(machine.id), mode.name)
-                        .apply()
+                    terminalStore.update { it[stringPreferencesKey(remoteTerminalInputModePreferenceKey(machine.id))] = mode.name }
                 }
             },
             onToggleIme = {
                 activeBridge?.takeIf { it.inputMode.usesLocalInput }?.let { bridge ->
                     val enabled = !bridge.imeEnabled
                     terminalSlots.forEach { it.bridge.updateImeEnabled(enabled) }
-                    terminalPrefs.edit().putBoolean(remoteTerminalImePreferenceKey(machine.id), enabled).apply()
+                    terminalStore.update { it[booleanPreferencesKey(remoteTerminalImePreferenceKey(machine.id))] = enabled }
                 }
             },
             onToggleForceMouse = {
                 activeBridge?.let { bridge ->
                     val enabled = !bridge.forceMouse
                     terminalSlots.forEach { slot -> slot.bridge.forceMouse = enabled }
-                    terminalPrefs.edit().putBoolean(REMOTE_TERMINAL_FORCE_MOUSE_KEY, enabled).apply()
+                    terminalStore.update { it[booleanPreferencesKey(REMOTE_TERMINAL_FORCE_MOUSE_KEY)] = enabled }
                 }
             }
         )

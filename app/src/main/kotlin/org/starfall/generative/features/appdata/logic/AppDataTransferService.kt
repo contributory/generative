@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.content.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -41,7 +43,8 @@ import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.shared.storage.preferences.normalizeLegacyTerminalInput
 
 data class AppDataImportResult(
     val itemCount: Int,
@@ -444,21 +447,22 @@ class AppDataTransferService(
             check(delete() && mkdirs()) { "Could not create temporary restore directory." }
         }
 
-    private fun exportRemoteTerminalPreferences(): RemoteTerminalPreferencesState {
-        val values = context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE).all
+    private suspend fun exportRemoteTerminalPreferences(): RemoteTerminalPreferencesState {
+        val values = RemoteTerminalPreferenceStore.getInstance(context).snapshot().asMap()
         return RemoteTerminalPreferencesState(
-            ints = values.mapNotNull { (key, value) -> (value as? Int)?.let { key to it } }.toMap(),
-            booleans = values.mapNotNull { (key, value) -> (value as? Boolean)?.let { key to it } }.toMap(),
-            strings = values.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap()
+            ints = values.mapNotNull { (key, value) -> (value as? Int)?.let { key.name to it } }.toMap(),
+            booleans = values.mapNotNull { (key, value) -> (value as? Boolean)?.let { key.name to it } }.toMap(),
+            strings = values.mapNotNull { (key, value) -> (value as? String)?.let { key.name to it } }.toMap()
         )
     }
 
-    private fun restoreRemoteTerminalPreferences(state: RemoteTerminalPreferencesState) {
-        context.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE).edit(commit = true) {
-            clear()
-            state.ints.forEach { (key, value) -> putInt(key, value) }
-            state.booleans.forEach { (key, value) -> putBoolean(key, value) }
-            state.strings.forEach { (key, value) -> putString(key, value) }
+    private suspend fun restoreRemoteTerminalPreferences(state: RemoteTerminalPreferencesState) {
+        RemoteTerminalPreferenceStore.getInstance(context).updateAndWait { preferences ->
+            preferences.clear()
+            state.ints.forEach { (key, value) -> preferences[intPreferencesKey(key)] = value }
+            state.booleans.forEach { (key, value) -> preferences[booleanPreferencesKey(key)] = value }
+            state.strings.forEach { (key, value) -> preferences[stringPreferencesKey(key)] = value }
+            preferences.normalizeLegacyTerminalInput()
         }
     }
 }

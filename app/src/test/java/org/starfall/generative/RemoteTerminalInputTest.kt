@@ -1,6 +1,9 @@
 package org.starfall.generative
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
@@ -241,21 +244,21 @@ class RemoteTerminalInputTest {
 
     @Test
     fun preferencesKeepLocalImeChoiceButNeverActivateImeInRemoteMode() {
-        val preferences = context.getSharedPreferences("terminal_test", Context.MODE_PRIVATE)
-        val modeKey = remoteTerminalInputModePreferenceKey("machine")
-        val imeKey = remoteTerminalImePreferenceKey("machine")
-        preferences.edit().clear().putString(modeKey, "IME").putBoolean(imeKey, false).commit()
+        val modeKey = stringPreferencesKey(remoteTerminalInputModePreferenceKey("machine"))
+        val imeKey = booleanPreferencesKey(remoteTerminalImePreferenceKey("machine"))
+        val preferences = mutablePreferencesOf(modeKey to "IME", imeKey to false)
         assertEquals(TerminalInputMode.LOCAL, preferences.remoteTerminalInputPreferences("machine").mode)
         assertTrue(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
-        assertEquals("LOCAL", preferences.getString(modeKey, null))
-        preferences.edit().putString(modeKey, "LOCAL").putBoolean(imeKey, false).commit()
+        preferences[modeKey] = "LOCAL"
+        preferences[imeKey] = false
         assertFalse(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
-        preferences.edit().putString(modeKey, "REMOTE").putBoolean(imeKey, true).commit()
+        preferences[modeKey] = "REMOTE"
+        preferences[imeKey] = true
         assertEquals(TerminalInputMode.REMOTE, preferences.remoteTerminalInputPreferences("machine").mode)
         assertFalse(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
         // The Local IME preference survives the Remote mode change.
-        assertTrue(preferences.getBoolean(imeKey, false))
-        preferences.edit().putString(modeKey, "LOCAL").commit()
+        assertEquals(true, preferences[imeKey])
+        preferences[modeKey] = "LOCAL"
         assertTrue(preferences.remoteTerminalInputPreferences("machine").imeEnabled)
     }
 }

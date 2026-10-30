@@ -41,8 +41,9 @@ import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
 import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
@@ -205,11 +206,14 @@ class RemoteMachineService(
             )
         }
         runCatching { File(appContext.filesDir, "remote-machines/keys/$id").delete() }
-        runCatching {
-            appContext.getSharedPreferences(REMOTE_TERMINAL_UI_PREFERENCES, Context.MODE_PRIVATE)
-                .edit()
-                .remove(remoteTerminalInputModePreferenceKey(id))
-                .apply()
+        try {
+            RemoteTerminalPreferenceStore.getInstance(appContext).updateAndWait {
+                it.remove(stringPreferencesKey(remoteTerminalInputModePreferenceKey(id)))
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Terminal preferences are ancillary to deleting the machine itself.
         }
     }
 

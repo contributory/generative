@@ -451,8 +451,7 @@ internal class ChatConversationCoordinator(
                 if (summaryConversationId() in targets) cancelSummary()
                 generationsFor(targets).forEach { it.stopAndJoin() }
                 // Relational file references remain readable when a quarantined chat cannot be decoded.
-                val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
-                    uploadsOf(listOfNotNull(previous))
+                val uploads = uploadsForDeletion(previous)
                 conversationRepo.deleteConversations(targets.toList())
                 generationsFor(targets).forEach { it.discardFinalSnapshot() }
                 deleted = true
@@ -474,8 +473,13 @@ internal class ChatConversationCoordinator(
         }
     }
 
-    private fun uploadsOf(conversations: Collection<Conversation>): Set<String> =
-        conversations.flatMapTo(mutableSetOf()) { it.uploadedFileNames(toolFiles) }
+    private suspend fun uploadsForDeletion(previous: Conversation?): Set<String> {
+        val uploaded = conversationRepo.userFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
+            previous?.uploadedFileNames(toolFiles).orEmpty()
+        // Normalize references before comparing: generated media can be attached again using a path.
+        val generated = conversationRepo.generatedFileReferences().mapNotNull(toolFiles::nameOf).toSet()
+        return uploaded - generated
+    }
 
     private suspend fun deleteOrphanedUploads(
         candidates: Set<String>,
@@ -539,8 +543,7 @@ internal class ChatConversationCoordinator(
                 cancelSummary()
                 allGenerations().forEach { it.stopAndJoin() }
                 previous?.takeIf { it.isTemporary }?.let { disposeTemporarySession(it.id) }
-                val uploads = conversationRepo.allFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
-                    uploadsOf(listOfNotNull(previous))
+                val uploads = uploadsForDeletion(previous)
                 conversationRepo.deleteAll()
                 allGenerations().forEach { it.discardFinalSnapshot() }
                 deleted = true

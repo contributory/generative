@@ -1,6 +1,7 @@
 package org.starfall.generative.integrations.modelapis.account
 
 import android.content.Context
+import org.starfall.generative.integrations.security.oauthRecordStorage
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.security.KeyStore
@@ -31,43 +32,38 @@ internal data class AccountTokenState(
 )
 
 internal class AccountTokenStore(context: Context, namespace: String) {
-    private val preferences = context.applicationContext.getSharedPreferences(
-        "generative.$namespace.oauth",
-        Context.MODE_PRIVATE
-    )
+    private val namespace = "generative.$namespace.oauth"
+    private val records by lazy { oauthRecordStorage(context.applicationContext) }
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     fun load(providerId: String): AccountTokenState? {
-        val encrypted = preferences.getString(providerId, null) ?: return null
+        val encrypted = records.get(namespace, providerId) ?: return null
         return runCatching {
             json.decodeFromString<AccountTokenState>(decrypt(encrypted))
         }.getOrNull()
     }
 
     fun save(providerId: String, token: AccountTokenState) {
-        check(preferences.edit()
-            .putString(providerId, encrypt(json.encodeToString(token)))
-            .commit()) { "Could not save OAuth credentials." }
+        records.put(namespace, providerId, encrypt(json.encodeToString(token)))
     }
 
     fun delete(providerId: String) {
-        preferences.edit().remove(providerId).apply()
+        records.remove(namespace, providerId)
     }
 
-    fun exportAll(): Map<String, JsonObject> = preferences.all.mapNotNull { (providerId, value) ->
-        val encrypted = value as? String ?: return@mapNotNull null
+    fun exportAll(): Map<String, JsonObject> = records.all(namespace).mapNotNull { (providerId, value) ->
+        val encrypted = value
         runCatching {
             providerId to json.encodeToJsonElement<AccountTokenState>(json.decodeFromString(decrypt(encrypted))).jsonObject
         }.getOrNull()
     }.toMap()
 
     fun importAll(credentials: Map<String, JsonObject>) {
-        val editor = preferences.edit().clear()
-        credentials.forEach { (providerId, value) ->
+        val encoded = credentials.mapValues { (_, value) ->
             val token = json.decodeFromJsonElement<AccountTokenState>(value)
-            editor.putString(providerId, encrypt(json.encodeToString(token)))
+            encrypt(json.encodeToString(token))
         }
-        check(editor.commit()) { "Could not restore OAuth credentials." }
+        records.replace(namespace, encoded)
     }
 
     private fun key(create: Boolean): SecretKey = synchronized(KEY_LOCK) {

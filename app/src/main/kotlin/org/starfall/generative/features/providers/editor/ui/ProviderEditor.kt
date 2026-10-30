@@ -114,7 +114,9 @@ fun ProviderEditor(
     onSaveModels: (String, Map<String, ModelConfiguration>) -> Unit, onReorderModels: (String, List<String>) -> Unit,
     onDismiss: () -> Unit, onSave: (ModelProvider) -> Unit,
     customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
-    customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap()
+    customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
+    onSaveIcon: (ModelProvider) -> Unit = {},
+    onSaveModelIcon: (String, String, String?) -> Unit = { _, _, _ -> }
 ) {
     val scope = rememberCoroutineScope()
     var name by remember {
@@ -299,10 +301,26 @@ fun ProviderEditor(
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
     RetainedScreenContent(editor = editingModel) { modelId ->
         if (modelId != null) key(modelId) {
+            var iconCreatedModelId by remember { mutableStateOf<String?>(null) }
             ModelEditor(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,
                 customImageMediaProfiles = customImageMediaProfiles,
                 customVideoMediaProfiles = customVideoMediaProfiles,
-                onSave = { id, config -> memory.remember(id, config); updateModels((models - modelId) + (id to config)); editingModel = null },
+                onSave = { id, config ->
+                    memory.remember(id, config)
+                    updateModels((models - modelId - setOfNotNull(iconCreatedModelId)) + (id to config))
+                    editingModel = null
+                },
+                onSaveIcon = { id, icon ->
+                    if (modelId.isBlank()) iconCreatedModelId = id
+                    val updated = (models[id] ?: ModelConfiguration()).copy(icon = icon)
+                    models = models + (id to updated)
+                    if (id !in order) order = order + id
+                    if (providerPersisted) onSaveModelIcon(initialProvider.id, id, icon)
+                    else {
+                        onSaveIcon(draft())
+                        providerPersisted = true
+                    }
+                },
                 onBack = { editingModel = null })
         } else {
             Scaffold(
@@ -336,7 +354,11 @@ fun ProviderEditor(
                     }
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
+                            IconPickerRow(providerIcon, {
+                                providerIcon = it
+                                onSaveIcon(draft())
+                                providerPersisted = true
+                            }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
                             OutlinedTextField(
                                 value = name,
                                 onValueChange = { name = it },

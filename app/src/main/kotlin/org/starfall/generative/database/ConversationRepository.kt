@@ -162,6 +162,15 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
         dao.getAllFileReferences()
     }
 
+    /** Relational references remain available even when a conversation is quarantined. */
+    suspend fun userFileReferences(): List<String> = withContext(Dispatchers.IO) {
+        dao.getUserFileReferences()
+    }
+
+    suspend fun generatedFileReferences(): List<String> = withContext(Dispatchers.IO) {
+        dao.getGeneratedFileReferences()
+    }
+
     private suspend fun entityToModel(entity: ConversationEntity): Conversation {
         val issues = dao.getMigrationIssues(entity.id)
         if (issues.isNotEmpty()) throw ConversationMigrationException(entity.id, issues.map { it.errorCode })

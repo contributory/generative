@@ -2,8 +2,7 @@
 
 These documents describe the Android implementation and are intended for maintainers and contributors, not app users.
 
-- [Project structure](structure.md) — package layout, architecture boundaries, and naming rules.
-- [UI architecture](architecture.md) — Compose design principles, appearance, and icons.
+- [Architecture](architecture.md) — project organization, dependency boundaries, UI conventions, appearance, and icons.
 - [Shared Compose audit](compose-shared-audit.md) — review of app-specific and native shared UI components.
 - [Streaming performance profiling](streaming-fps-profiling.md) — test scenarios and measurements for chat rendering.
 

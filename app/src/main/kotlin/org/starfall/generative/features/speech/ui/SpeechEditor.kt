@@ -51,7 +51,8 @@ fun SpeechEditor(
     onTest: (SpeechService, String) -> Unit,
     onDismiss: () -> Unit,
     onSave: (SpeechService) -> Unit,
-    fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null
+    fetchModels: (suspend (SpeechService) -> List<SpeechSynthesisModel>)? = null,
+    onSaveIcon: (SpeechService) -> Unit = {}
 ) {
     val context = LocalContext.current
     val localizedResources = LocalResources.current
@@ -241,7 +242,7 @@ fun SpeechEditor(
                     // is saved. Choosing or importing an icon replaces it; removing
                     // that icon falls back to the provider again.
                     image = serviceIcon,
-                    onChange = { serviceIcon = it },
+                    onChange = { serviceIcon = it; onSaveIcon(currentService()) },
                     text = providerInitials(name),
                     fallback = Icons.Outlined.RecordVoiceOver,
                     onBusyChange = { iconImporting = it },

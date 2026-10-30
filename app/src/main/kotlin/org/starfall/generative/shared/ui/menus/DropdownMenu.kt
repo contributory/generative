@@ -9,6 +9,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.LocalItemTransparency
@@ -25,6 +26,7 @@ fun DropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    properties: PopupProperties = PopupProperties(focusable = true),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val menuColor = menuContainerColor()
@@ -32,6 +34,7 @@ fun DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
+        properties = properties,
         shape = RoundedCornerShape(14.dp),
         containerColor = menuColor,
         tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,

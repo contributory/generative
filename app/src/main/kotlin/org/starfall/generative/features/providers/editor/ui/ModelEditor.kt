@@ -55,7 +55,8 @@ fun ModelEditor(
     customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     onSave: (String, ModelConfiguration) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSaveIcon: (String, String?) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val modelMemory = remember(context) { ModelConfigurationMemory(context) }
@@ -64,6 +65,8 @@ fun ModelEditor(
     var contextWindowText by remember { mutableStateOf(config.contextWindowTokens.toString()) }
     val contextWindow = contextWindowText.toIntOrNull()?.takeIf { it > 0 }
     var iconImporting by remember { mutableStateOf(false) }
+    var iconChanged by remember { mutableStateOf(false) }
+    var iconModelId by remember { mutableStateOf<String?>(null) }
     var typeExpanded by remember { mutableStateOf(false) }
     var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
@@ -92,9 +95,19 @@ fun ModelEditor(
     val idError = when {
         trimmedId.isBlank() -> idRequired
         trimmedId.any { it.isWhitespace() } -> idWhitespace
-        trimmedId != initialModelId && trimmedId in existingModelIds -> idDuplicate
+        trimmedId != initialModelId && trimmedId != iconModelId && trimmedId in existingModelIds -> idDuplicate
         else -> null
     }
+
+    fun saveIcon() {
+        if (iconChanged && (initialModelId.isNotBlank() || idError == null)) {
+            val id = initialModelId.ifBlank { iconModelId ?: trimmedId }
+            iconModelId = id
+            onSaveIcon(id, config.icon)
+            iconChanged = false
+        }
+    }
+    LaunchedEffect(trimmedId, idError) { saveIcon() }
 
     fun saveAndBack() {
         if (idError == null && contextWindow != null) {
@@ -152,7 +165,7 @@ fun ModelEditor(
         ) {
             IconPickerRow(
                 config.icon,
-                onChange = { config = config.copy(icon = it) },
+                onChange = { config = config.copy(icon = it); iconChanged = true; saveIcon() },
                 text = modelInitial(modelId),
                 onBusyChange = { iconImporting = it },
                 matchName = config.displayName.ifBlank { modelId },

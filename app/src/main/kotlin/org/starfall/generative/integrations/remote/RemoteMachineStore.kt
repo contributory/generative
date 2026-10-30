@@ -3,7 +3,7 @@ package org.starfall.generative.integrations.remote
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import androidx.core.content.edit
+import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -129,7 +129,7 @@ private data class PersistedSshMachineV2(
  */
 class RemoteMachineStore(context: Context) {
     private val appContext = context.applicationContext
-    private val preferences = appContext.getSharedPreferences(REMOTE_MACHINE_STORE_PREFERENCES, Context.MODE_PRIVATE)
+    private val preferences = MigratedStringPreferences.get(appContext, REMOTE_MACHINE_STORE_PREFERENCES)
     private val sshConfigFile = remoteMachineSshConfigFile(appContext)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val lock = Mutex()
@@ -322,7 +322,7 @@ class RemoteMachineStore(context: Context) {
             identities = state.identities
         )
         val payload = encrypt(json.encodeToString(persisted))
-        preferences.edit(commit = true) { putString(KEY, payload) }
+        preferences.putString(KEY, payload)
     }
 
     private fun hydrateMachine(machine: RemoteMachine, index: Int): RemoteMachine {

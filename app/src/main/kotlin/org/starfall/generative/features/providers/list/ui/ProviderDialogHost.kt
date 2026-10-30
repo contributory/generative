@@ -38,20 +38,27 @@ internal fun ProviderDialogHost(
     onSaveGroup: (ProviderGroup) -> Unit,
     onGroupDeleteConfirmed: (ProviderGroup) -> Unit,
     onMoveProviderToGroup: (String, String?) -> Unit,
-    onProviderDeleteConfirmed: (String) -> Unit
+    onProviderDeleteConfirmed: (String) -> Unit,
+    onSaveGroupIcon: (ProviderGroup) -> Unit = {}
 ) {
     if (dialogs.creatingGroup) {
+        val groupId = remember { UUID.randomUUID().toString() }
+        val sortOrder = remember { nextRootSortOrder() }
+        val defaultName = stringResource(R.string.new_provider_group)
         ProviderGroupNameDialog(
             title = stringResource(R.string.new_provider_group),
             initialName = "",
             initialIcon = null,
             onDismiss = { dialogs.creatingGroup = false },
+            onSaveIcon = { name, icon ->
+                onSaveGroupIcon(ProviderGroup(groupId, name.ifBlank { defaultName }, sortOrder, icon))
+            },
             onSave = { name, icon ->
                 onSaveGroup(
                     ProviderGroup(
-                        id = UUID.randomUUID().toString(),
+                        id = groupId,
                         name = name,
-                        sortOrder = nextRootSortOrder(),
+                        sortOrder = sortOrder,
                         icon = icon
                     )
                 )
@@ -66,6 +73,7 @@ internal fun ProviderDialogHost(
             initialName = group.name,
             initialIcon = group.icon,
             onDismiss = { dialogs.groupToRename = null },
+            onSaveIcon = { _, icon -> onSaveGroupIcon(group.copy(icon = icon)) },
             onSave = { name, icon ->
                 onSaveGroup(group.copy(name = name, icon = icon))
                 dialogs.groupToRename = null

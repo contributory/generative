@@ -41,7 +41,11 @@ import coil3.compose.AsyncImage
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
@@ -74,6 +78,25 @@ fun IconsScreen(onBack: () -> Unit) {
     var editing by remember { mutableStateOf<StoredIcon?>(null) }
     var patterns by remember { mutableStateOf(emptyList<String>()) }
     var pickingDark by remember { mutableStateOf(false) }
+    val matchWrites = remember { Mutex() }
+
+    fun updatePatterns(updated: List<String>) {
+        patterns = updated
+        val entry = editing ?: return
+        if (updated.any { it.isBlank() || runCatching { Regex(it) }.isFailure }) return
+        // Once accepted, finish writes in input order even if the person closes the screen.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { withContext(NonCancellable) {
+            try {
+                matchWrites.withLock {
+                    withContext(Dispatchers.IO) { store.editMatches(entry.image, updated) }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                Toast.makeText(context, R.string.icon_cache_save_failed, Toast.LENGTH_LONG).show()
+            }
+        } }
+    }
 
     fun edit(entry: StoredIcon) {
         editing = entry
@@ -266,7 +289,6 @@ fun IconsScreen(onBack: () -> Unit) {
     }
 
     editing?.let { entry ->
-        val valid = patterns.all { it.isNotBlank() && runCatching { Regex(it) }.isSuccess }
         AlertDialog(
             onDismissRequest = { if (!busy) editing = null },
             title = { Text(stringResource(R.string.icon_cache_edit)) },
@@ -320,7 +342,7 @@ fun IconsScreen(onBack: () -> Unit) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedTextField(
                                     value = pattern,
-                                    onValueChange = { value -> patterns = patterns.toMutableList().apply { this[index] = value } },
+                                    onValueChange = { value -> updatePatterns(patterns.toMutableList().apply { this[index] = value }) },
                                     modifier = Modifier.weight(1f),
                                     enabled = !busy,
                                     label = { Text(stringResource(R.string.icon_cache_regex)) },
@@ -333,7 +355,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                     supportingText = if (invalid) ({ Text(stringResource(R.string.icon_cache_invalid_regex)) }) else null
                                 )
                                 IconButton(enabled = !busy, onClick = {
-                                    patterns = patterns.filterIndexed { i, _ -> i != index }
+                                    updatePatterns(patterns.filterIndexed { i, _ -> i != index })
                                 }) { SharedIcon(FluentUi.Regular.Dismiss, stringResource(R.string.common_delete)) }
                             }
                         }
@@ -346,14 +368,8 @@ fun IconsScreen(onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(enabled = valid && !busy, onClick = {
-                    val updated = patterns.toList()
-                    mutate { store.editMatches(entry.image, updated) }
-                }) { Text(stringResource(R.string.common_save)) }
-            },
-            dismissButton = {
                 TextButton(enabled = !busy, onClick = { editing = null }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )

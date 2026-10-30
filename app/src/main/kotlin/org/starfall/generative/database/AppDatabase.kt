@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import org.starfall.generative.database.dao.OAuthTokenDao
 import org.starfall.generative.database.dao.ChatProfileDao
 import org.starfall.generative.database.dao.ConversationDao
 import org.starfall.generative.database.dao.McpServerDao
@@ -13,6 +14,7 @@ import org.starfall.generative.database.dao.ModelProviderDao
 import org.starfall.generative.database.dao.ProviderGroupDao
 import org.starfall.generative.database.dao.SpeechServiceDao
 import org.starfall.generative.database.dao.StructuredJsonDao
+import org.starfall.generative.database.entities.OAuthTokenRecordEntity
 import org.starfall.generative.database.entities.ChatProfileEntity
 import org.starfall.generative.database.entities.ConversationEntity
 import org.starfall.generative.database.entities.MessageEntity
@@ -77,9 +79,10 @@ import org.starfall.generative.database.entities.ConfigurationMigrationQuarantin
         SpeechAuthEntity::class,
         StructuredJsonDocumentEntity::class,
         StructuredJsonNodeEntity::class,
-        ConfigurationMigrationQuarantineEntity::class
+        ConfigurationMigrationQuarantineEntity::class,
+        OAuthTokenRecordEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -90,6 +93,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mcpServerDao(): McpServerDao
     abstract fun speechServiceDao(): SpeechServiceDao
     abstract fun structuredJsonDao(): StructuredJsonDao
+    abstract fun oauthTokenDao(): OAuthTokenDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -197,6 +201,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS oauth_token_records (namespace TEXT NOT NULL, recordId TEXT NOT NULL, encryptedPayload TEXT NOT NULL, PRIMARY KEY(namespace, recordId))")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -206,7 +216,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "generative_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15).build()
                 INSTANCE = instance
                 instance
             }

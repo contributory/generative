@@ -20,6 +20,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
@@ -63,7 +65,7 @@ class FaviconFetchState internal constructor(private val context: Context, priva
             try {
                 val found = service.getAll(customUrl, baseUrl)
                 results = found
-                selected = found.firstOrNull()
+                selected = null
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -77,30 +79,26 @@ class FaviconFetchState internal constructor(private val context: Context, priva
         }
     }
 
-    /** Closes the dialog. The selected logo is saved; a fetch still running keeps going. */
-    fun close(onSave: (String) -> Unit) {
-        dialogOpen = false
-        val choice = selected
-        if (fetching || choice == null) return
-        results = emptyList()
-        selected = null
-        scope.launch {
-            saving = true
+    /** Applies a picked logo immediately, without waiting for the dialog or editor to close. */
+    internal fun select(choice: FaviconResult, onSave: (String) -> Unit) {
+        if (fetching || saving || selected == choice) return
+        saving = true
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { withContext(NonCancellable) {
             try {
                 val name = choice.url.pathSegments.lastOrNull().orEmpty().ifBlank { choice.url.host }
                 val id = withContext(Dispatchers.IO) { store.importBitmap(choice.bitmap, name) }
                 onSave(id)
+                selected = choice
+                error = null
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                results = listOf(choice)
-                selected = choice
                 error = failure.message ?: context.getString(R.string.icon_import_failed)
                 dialogOpen = true
             } finally {
                 saving = false
             }
-        }
+        } }
     }
 
     fun cancel() {
@@ -120,8 +118,8 @@ fun rememberFaviconFetchState(): FaviconFetchState {
 }
 
 /**
- * Fetches logos from the web only. Every image found is listed so the person picks one; closing
- * the dialog saves the picked one. Uploading from the device lives on the logo itself.
+ * Fetches logos from the web only. Picking a result saves it immediately.
+ * Uploading from the device lives on the logo itself.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -132,8 +130,8 @@ internal fun FaviconDialog(
 ) {
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    val busy = state.fetching
-    val onClose = { state.close(onSave) }
+    val busy = state.fetching || state.saving
+    val onClose = { state.dialogOpen = false }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -154,12 +152,12 @@ internal fun FaviconDialog(
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (busy) {
+                            if (state.fetching) {
                                 // Stops the search; the dialog stays open.
                                 IconButton(onClick = { state.cancel() }) {
                                     SharedIcon(Icons.Outlined.Stop, contentDescription = localizedResources.getString(R.string.common_cancel))
                                 }
-                            } else {
+                            } else if (!state.saving) {
                                 if (state.customUrl.isNotEmpty()) {
                                     IconButton(onClick = { state.customUrl = ""; state.error = null }) {
                                         SharedIcon(Icons.Outlined.Close, contentDescription = localizedResources.getString(R.string.common_clear))
@@ -183,7 +181,7 @@ internal fun FaviconDialog(
                             val isSelected = item == state.selected
                             val shape = RoundedCornerShape(14.dp)
                             Surface(
-                                onClick = { state.selected = item },
+                                onClick = { state.select(item, onSave) },
                                 enabled = !busy,
                                 modifier = Modifier.size(72.dp),
                                 shape = shape,

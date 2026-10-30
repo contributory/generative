@@ -59,6 +59,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.Authorization
@@ -218,6 +219,65 @@ class FullBackupRestoreResilienceTest {
             // Repeated deletion after the failed restore must still work and remove the conversation.
             viewModel.deleteConversation("existing")
             awaitCondition { runBlocking { harness.conversations.loadById("existing") == null } }
+        }
+    }
+
+    @Test
+    fun deletingSelectedChatsRemovesOnlyUnusedUploads() = verifyHistoryMediaDeletion(clearAll = false)
+
+    @Test
+    fun clearingHistoryPreservesGeneratedMedia() = verifyHistoryMediaDeletion(clearAll = true)
+
+    private fun verifyHistoryMediaDeletion(clearAll: Boolean) = runBlocking {
+        withHarness { harness ->
+            harness.preferences.setContinueLastConversation(false)
+            fun storedFile(name: String) = File(harness.files.directory, name).apply { writeText(name) }
+            val upload = storedFile("upload.png")
+            val sharedUpload = storedFile("shared-upload.png")
+            val draftUpload = storedFile("draft-upload.png")
+            val generated = storedFile("generated.png")
+            val toolOutput = storedFile("tool-output.mp4")
+            val outsideDocument = File(harness.root, "user-owned.png").apply { writeText("original") }
+            val conversation = sampleConversation("drop", "Drop").copy(messages = listOf(
+                StoredMessage("user", ChatRole.USER, listOf(
+                    MessageVersion(content = "Old upload", files = listOf(upload.absolutePath)),
+                    MessageVersion(content = "New attachments", files = listOf(
+                        sharedUpload.absolutePath, draftUpload.absolutePath, generated.absolutePath,
+                        toolOutput.toURI().toString(), outsideDocument.absolutePath,
+                        "content://media/external/images/1"
+                    ))
+                ), activeVersionIndex = 1),
+                StoredMessage("assistant", ChatRole.MODEL, listOf(MessageVersion(
+                    content = "Generated media",
+                    files = listOf("tool-file:${generated.name}"),
+                    toolActivity = listOf(ToolActivity("tool", "generate_video", files = listOf("tool-file:${toolOutput.name}")))
+                )))
+            ))
+            val keep = sampleConversation("keep", "Keep").copy(messages = listOf(
+                StoredMessage("user", ChatRole.USER, listOf(MessageVersion(
+                    content = "Shared upload", files = listOf(sharedUpload.absolutePath)
+                )))
+            ))
+            harness.conversations.saveConversation(conversation)
+            harness.conversations.saveConversation(keep)
+            val viewModel = harness.createChatViewModel()
+            idleMain()
+
+            if (clearAll) {
+                viewModel.clearAllConversations(listOf(draftUpload.absolutePath))
+            } else {
+                viewModel.deleteConversations(setOf(conversation.id), listOf(draftUpload.absolutePath))
+            }
+            awaitCondition { !upload.exists() }
+
+            assertTrue("Assistant output must survive history deletion", generated.exists())
+            assertTrue("Tool output must survive history deletion", toolOutput.exists())
+            assertTrue("Files attached to the composer must survive", draftUpload.exists())
+            assertTrue("User-owned documents must survive", outsideDocument.exists())
+            assertEquals(!clearAll, sharedUpload.exists())
+            assertNull(harness.conversations.loadById(conversation.id))
+            if (clearAll) assertNull(harness.conversations.loadById(keep.id))
+            else assertNotNull(harness.conversations.loadById(keep.id))
         }
     }
 

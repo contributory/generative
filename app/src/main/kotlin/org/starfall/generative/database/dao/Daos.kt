@@ -212,6 +212,22 @@ interface ConversationDao {
         SELECT reference FROM tool_activity_files
     """)
     suspend fun getAllFileReferences(): List<String>
+
+    @Query("""
+        SELECT f.reference FROM message_version_files f
+        INNER JOIN messages m ON m.conversationId = f.conversationId AND m.id = f.messageId
+        WHERE m.role = 'user'
+    """)
+    suspend fun getUserFileReferences(): List<String>
+
+    @Query("""
+        SELECT f.reference FROM message_version_files f
+        INNER JOIN messages m ON m.conversationId = f.conversationId AND m.id = f.messageId
+        WHERE m.role != 'user'
+        UNION ALL
+        SELECT reference FROM tool_activity_files
+    """)
+    suspend fun getGeneratedFileReferences(): List<String>
 }
 
 @Dao

@@ -5,11 +5,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -20,7 +24,7 @@ import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
+import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 
@@ -63,16 +67,15 @@ internal fun SpeechModelField(
                 fetchRequested = false
             }
         }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { next ->
-                if (next && canFetch && !loading && !fetchedOnce && error == null) {
-                    fetchRequested = true
-                }
-                expanded = next
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        fun openMenu() {
+            if (canFetch && !loading && !fetchedOnce && error == null) fetchRequested = true
+            expanded = true
+        }
+        // An editable exposed-menu anchor requests focus when opened. Catalog requests and the
+        // dropdown button must leave focus (and the keyboard) with the field the user was editing.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val menuWidth = maxWidth
+            val menuAction = stringResource(if (expanded) R.string.collapse else R.string.expand)
             OutlinedTextField(service.modelId.orEmpty(), onChange,
                 label = { Text(stringResource(R.string.speech_engine_model)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
@@ -80,18 +83,18 @@ internal fun SpeechModelField(
                 trailingIcon = {
                     Row {
                         if (loading) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = expanded,
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.SecondaryEditable)
-                                .testTag("speech-model-dropdown")
-                        )
+                        IconButton(onClick = { if (expanded) expanded = false else openMenu() },
+                            modifier = Modifier.testTag("speech-model-dropdown").semantics { contentDescription = menuAction }) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
                     }
-                }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                }, modifier = Modifier.onFocusChanged { if (it.isFocused) openMenu() }
                     .fillMaxWidth().testTag("speech-model-id"))
-            ExposedDropdownMenu(
+            DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.heightIn(max = 420.dp).testTag("speech-model-menu")
+                modifier = Modifier.width(menuWidth).heightIn(max = 420.dp).testTag("speech-model-menu"),
+                properties = PopupProperties(focusable = false)
             ) {
                 error?.let { detail ->
                     Text(detail, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

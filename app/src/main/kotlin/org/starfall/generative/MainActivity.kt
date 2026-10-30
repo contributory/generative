@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
+import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
@@ -248,10 +249,11 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
                 this, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED) return
-        val permissionPrefs = getSharedPreferences("notification_permission", MODE_PRIVATE)
-        if (permissionPrefs.getBoolean("background_requested", false)) return
-        permissionPrefs.edit().putBoolean("background_requested", true).apply()
-        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        lifecycleScope.launch(LocalWriteErrors.handler) {
+            if (container.notificationPermissionStore.claimBackgroundRequest()) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.shared.model.ChatProfile
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.SpeechService
@@ -235,6 +237,44 @@ class ConfigurationViewModel(
                 prefsRepo.setSelectedModel(provider.id, modelIds.firstOrNull().orEmpty())
             }
         }
+    }
+
+    /** Logo changes save independently of the editor's other draft fields. */
+    private val logoWrites = Mutex()
+
+    private fun saveLogo(write: suspend () -> Unit) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            logoWrites.withLock { write() }
+        }
+    }
+
+    fun saveProviderIcon(draft: ModelProvider) = saveLogo {
+        val stored = providerMetadataById(draft.id)
+        modelRepo.saveProvider((stored ?: draft).copy(icon = draft.icon))
+    }
+
+    fun saveModelIcon(providerId: String, modelId: String, icon: String?) = saveLogo {
+        val provider = providerMetadataById(providerId) ?: return@saveLogo
+        val config = provider.config.modelConfigs[modelId] ?: ModelConfiguration()
+        modelRepo.saveProvider(provider.copy(config = provider.config.copy(
+            modelConfigs = provider.config.modelConfigs + (modelId to config.copy(icon = icon)),
+            modelIds = provider.config.modelIds?.let { if (modelId in it) it else it + modelId }
+        )))
+    }
+
+    fun saveProviderGroupIcon(draft: ProviderGroup) = saveLogo {
+        val stored = modelRepo.allGroups.first().firstOrNull { it.id == draft.id }
+        modelRepo.saveGroup((stored ?: draft).copy(icon = draft.icon))
+    }
+
+    fun saveMcpServerIcon(draft: McpInfo) = saveLogo {
+        val stored = mcpRepo.allServers.first().firstOrNull { it.id == draft.id }
+        mcpRepo.saveServer((stored ?: draft).copy(icon = draft.icon))
+    }
+
+    fun saveSpeechServiceIcon(draft: SpeechService) = saveLogo {
+        val stored = speechRepo.allServices.first().firstOrNull { it.id == draft.id }
+        speechRepo.saveService((stored ?: draft).copy(icon = draft.icon))
     }
 
     fun deleteProvider(providerId: String) {

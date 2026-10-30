@@ -704,6 +704,8 @@ fun AppNavigation(
                                     },
                                     onDismiss = { navController.popBackStack() },
                                     onSaveModels = configurationViewModel::saveProviderModels,
+                                    onSaveIcon = configurationViewModel::saveProviderIcon,
+                                    onSaveModelIcon = configurationViewModel::saveModelIcon,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
@@ -763,6 +765,8 @@ fun AppNavigation(
                                     },
                                     onDismiss = dismissEditor,
                                     onSaveModels = configurationViewModel::saveProviderModels,
+                                    onSaveIcon = configurationViewModel::saveProviderIcon,
+                                    onSaveModelIcon = configurationViewModel::saveModelIcon,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
@@ -797,6 +801,7 @@ fun AppNavigation(
                                 }
                             },
                             onSaveGroup = configurationViewModel::saveProviderGroup,
+                            onSaveGroupIcon = configurationViewModel::saveProviderGroupIcon,
                             onDeleteGroup = { groupId ->
                                 configurationViewModel.deleteProviderGroup(groupId)
                                 settingsViewModel.setProvidersCollapsedSections(appPrefs.providersCollapsedSections - groupId)
@@ -840,7 +845,8 @@ fun AppNavigation(
                                             onSetToolEnabled = viewModel::setMcpToolEnabled,
                                             onSetToolParameter = viewModel::setMcpToolParameter,
                                             onDismiss = { mcpEditor = null },
-                                            onSave = { configurationViewModel.saveMcpServer(it) }
+                                            onSave = { configurationViewModel.saveMcpServer(it) },
+                                            onSaveIcon = configurationViewModel::saveMcpServerIcon
                                         )
                                     }
                                 }
@@ -873,6 +879,7 @@ fun AppNavigation(
                             selectedSpeechServiceId = appPrefs.selectedSpeechServiceId,
                             onSetTtsProvider = viewModel::selectSpeechService,
                             onSaveService = { configurationViewModel.saveSpeechService(it) },
+                            onSaveServiceIcon = configurationViewModel::saveSpeechServiceIcon,
                             onDeleteService = { configurationViewModel.deleteSpeechService(it) },
                             onReorderServices = configurationViewModel::reorderSpeechServices,
                             onTestVoice = viewModel::testVoice,

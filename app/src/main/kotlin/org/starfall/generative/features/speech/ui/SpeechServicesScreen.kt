@@ -60,7 +60,8 @@ fun SpeechServicesScreen(
     onTestVoice: (SpeechService, String) -> Unit,
     onBack: () -> Unit,
     activeTestServiceId: String? = null,
-    onStopPlayback: () -> Unit = {}
+    onStopPlayback: () -> Unit = {},
+    onSaveServiceIcon: (SpeechService) -> Unit = {}
 ) = with(Launcher) {
     val context = LocalContext.current
     val localizedResources = LocalResources.current
@@ -84,7 +85,8 @@ fun SpeechServicesScreen(
                         else onTestVoice(service, text)
                     },
                     onDismiss = { editor = null },
-                    onSave = { saved -> onSaveService(saved); editor = null }
+                    onSave = { saved -> onSaveService(saved); editor = null },
+                    onSaveIcon = onSaveServiceIcon
                 )
             }
         } else {

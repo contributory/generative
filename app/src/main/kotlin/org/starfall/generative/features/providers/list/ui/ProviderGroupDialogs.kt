@@ -75,7 +75,8 @@ internal fun ProviderGroupNameDialog(
     initialName: String,
     initialIcon: String?,
     onDismiss: () -> Unit,
-    onSave: (String, String?) -> Unit
+    onSave: (String, String?) -> Unit,
+    onSaveIcon: (String, String?) -> Unit = { _, _ -> }
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var icon by remember(initialIcon) { mutableStateOf(initialIcon) }
@@ -88,7 +89,7 @@ internal fun ProviderGroupNameDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconPickerRow(
                     image = icon,
-                    onChange = { icon = it },
+                    onChange = { icon = it; onSaveIcon(trimmed, it) },
                     fallback = Icons.Outlined.Folder,
                     onBusyChange = { iconImporting = it },
                     matchName = trimmed.ifBlank { name }

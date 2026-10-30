@@ -1,6 +1,7 @@
 package org.starfall.generative.shared.icons
 
 import android.content.Context
+import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
 import org.starfall.generative.shared.icons.model.IconRule
 import org.starfall.generative.shared.icons.model.IconStoreState
 import org.starfall.generative.shared.icons.model.StoredIcon
@@ -64,12 +65,12 @@ class IconLookup(val data: Any?)
 class IconStore(private val context: Context) {
     private val directory get() = File(context.filesDir, "entity-icons").apply { mkdirs() }
 
-    private val preferences get() = context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE)
-    private val assets get() = context.getSharedPreferences("icon-assets", Context.MODE_PRIVATE)
-    private val automatic get() = context.getSharedPreferences("automatic-entity-icons", Context.MODE_PRIVATE)
-    private val variants get() = context.getSharedPreferences("icon-variants", Context.MODE_PRIVATE)
+    private val preferences = MigratedStringPreferences.get(context, "named-entity-icons")
+    private val assets = MigratedStringPreferences.get(context, "icon-assets")
+    private val automatic = MigratedStringPreferences.get(context, "automatic-entity-icons")
+    private val variants = MigratedStringPreferences.get(context, "icon-variants")
     /** Original file names of app-owned (non-shared) icons, for display next to the logo. */
-    private val names get() = context.getSharedPreferences("icon-file-names", Context.MODE_PRIVATE)
+    private val names = MigratedStringPreferences.get(context, "icon-file-names")
     companion object {
         private val changes = MutableStateFlow(0L)
         val revision = changes.asStateFlow()
@@ -144,14 +145,14 @@ class IconStore(private val context: Context) {
         currentRules()?.let { return it.rules }
         // Upgrade earlier name caches into one shared collection.
         return preferences.all.mapNotNull { (key, value) ->
-            if (':' !in key || value !is String) null
+            if (':' !in key) null
             else IconRule(pattern = Regex.escape(key.substringAfter(':')), image = value)
         }.distinctBy { it.pattern }
     }
 
     fun saveRules(rules: List<IconRule>) = synchronized(mutationLock) {
         require(rules.all { it.pattern.isNotBlank() && runCatching { Regex(it.pattern) }.isSuccess })
-        check(preferences.edit().clear().putString("rules", Json.encodeToString(rules)).commit())
+        preferences.replaceAll(mapOf("rules" to Json.encodeToString(rules)))
         lookupCache.clear()
         changes.value += 1
         lookupChanges.value += 1
@@ -159,7 +160,7 @@ class IconStore(private val context: Context) {
 
     fun entries(): List<StoredIcon> {
         val rules = rules()
-        val variantImages = variants.all.values.filterIsInstance<String>().toSet()
+        val variantImages = variants.all.values.toSet()
         return directory.listFiles().orEmpty().filter { storedIconName.matches(it.name) &&
             !it.name.startsWith("entity-icon-") && !it.name.startsWith("lobe-dark-") && it.name !in variantImages }.map { file ->
             StoredIcon(file.name, assets.getString(file.name, file.name) ?: file.name,
@@ -173,10 +174,10 @@ class IconStore(private val context: Context) {
     fun exportState(): IconStoreState = synchronized(mutationLock) {
         IconStoreState(
             rules = rules(),
-            assetLabels = assets.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
-            automatic = automatic.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
-            variants = variants.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
-            fileNames = names.all.mapNotNull { (key, value) -> (value as? String)?.let { key to it } }.toMap(),
+            assetLabels = assets.all,
+            automatic = automatic.all,
+            variants = variants.all,
+            fileNames = names.all,
             files = directory.listFiles().orEmpty()
                 .filter { storedIconName.matches(it.name) && it.isFile }
                 .map { it.name }
@@ -205,16 +206,11 @@ class IconStore(private val context: Context) {
             val destination = File(directory, name)
             files.getValue(name).inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
         }
-        check(preferences.edit().clear().putString("rules", Json.encodeToString(state.rules)).commit())
-        fun restorePreferences(preferences: android.content.SharedPreferences, values: Map<String, String>) {
-            val editor = preferences.edit().clear()
-            values.forEach { (key, value) -> editor.putString(key, value) }
-            check(editor.commit())
-        }
-        restorePreferences(assets, state.assetLabels)
-        restorePreferences(automatic, state.automatic)
-        restorePreferences(variants, state.variants)
-        restorePreferences(names, state.fileNames)
+        preferences.replaceAll(mapOf("rules" to Json.encodeToString(state.rules)))
+        assets.replaceAll(state.assetLabels)
+        automatic.replaceAll(state.automatic)
+        variants.replaceAll(state.variants)
+        names.replaceAll(state.fileNames)
         rulesSnapshot = null
         lookupCache.clear()
         changes.value += 1
@@ -231,7 +227,7 @@ class IconStore(private val context: Context) {
         // Retain the relative precedence of existing rules, appending newly added cases.
         saveRules(existing.filter { it.image != image || it.pattern in patterns } +
             replacement.filter { rule -> old.none { it.id == rule.id } })
-        check(assets.edit().putString(image, assets.getString(image, image)).commit())
+        assets.putString(image, assets.getString(image, image) ?: image)
     }
 
     fun delete(image: String) = synchronized(mutationLock) {
@@ -239,11 +235,12 @@ class IconStore(private val context: Context) {
         val file = File(directory, image)
         check(!file.exists() || file.delete())
         saveRules(rules().filterNot { it.image == image })
-        val editor = automatic.edit()
-        automatic.all.filterValues { it == image }.keys.forEach { editor.remove(it) }
-        check(editor.commit())
-        check(assets.edit().remove(image).commit())
-        check(variants.edit().remove("light:$image").remove("dark:$image").commit())
+        automatic.update { entries.removeAll { it.value == image } }
+        assets.remove(image)
+        variants.update {
+            remove("light:$image")
+            remove("dark:$image")
+        }
         changes.value += 1
     }
 
@@ -299,8 +296,8 @@ class IconStore(private val context: Context) {
                     ensureDarkVariant(id, iconSource)
                     synchronized(mutationLock) {
                         if (file.exists()) {
-                            check(assets.edit().putString(id, filename).commit())
-                            check(automatic.edit().putString(key, id).commit())
+                            assets.putString(id, filename)
+                            automatic.putString(key, id)
                             changes.value += 1
                         }
                     }
@@ -338,7 +335,7 @@ class IconStore(private val context: Context) {
                 try { staging.writeBytes(bytes); check(staging.renameTo(file)) } finally { staging.delete() }
             }
             synchronized(mutationLock) {
-                check(variants.edit().putString("dark:$image", id).commit())
+                variants.putString("dark:$image", id)
                 changes.value += 1
             }
         } catch (e: CancellationException) { throw e }
@@ -354,9 +351,7 @@ class IconStore(private val context: Context) {
         require(storedIconName.matches(image))
         require(replacement == null || (storedIconName.matches(replacement) && File(directory, replacement).isFile))
         val key = "${if (dark) "dark" else "light"}:$image"
-        val editor = variants.edit()
-        if (replacement == null) editor.remove(key) else editor.putString(key, replacement)
-        check(editor.commit())
+        if (replacement == null) variants.remove(key) else variants.putString(key, replacement)
         lookupCache.clear()
         changes.value += 1
         lookupChanges.value += 1
@@ -456,8 +451,8 @@ class IconStore(private val context: Context) {
                 }
             }.getOrNull() ?: uri.lastPathSegment ?: id
             val label = displayName?.takeIf { it.isNotBlank() } ?: filename
-            if (shared) check(assets.edit().putString(id, label).commit())
-            else check(names.edit().putString(id, label).commit())
+            if (shared) assets.putString(id, label)
+            else names.putString(id, label)
             changes.value += 1
             return id
         } finally {
@@ -508,7 +503,7 @@ class IconStore(private val context: Context) {
             rules().mapTo(this) { it.image }
             entityImages.filterNotNull().filterTo(this) { storedIconName.matches(it) }
             assets.all.keys.filterTo(this) { storedIconName.matches(it) }
-            variants.all.values.filterIsInstance<String>().filterTo(this) { storedIconName.matches(it) }
+            variants.all.values.filterTo(this) { storedIconName.matches(it) }
         }
         directory.listFiles().orEmpty().forEach { file ->
             val staleIcon = storedIconName.matches(file.name) && file.name !in referenced

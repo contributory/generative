@@ -1,5 +1,7 @@
 package org.starfall.generative
 
+import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -120,7 +122,7 @@ class EntityIconTest {
 
     @Test fun entityIconsDoNotCreateSharedMatchingRules() = runBlocking {
         installTestAndroidKeyStore()
-        context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE).edit().clear().commit()
+        MigratedStringPreferences.get(context, "named-entity-icons").replaceAll(emptyMap())
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {
             val source = ModelProvider("first", " My Provider ", ModelApiType.OPENAI,
@@ -290,7 +292,7 @@ class EntityIconTest {
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test fun remoteIconsDownloadLazilyReuseFilesAndRespectCustomRules() = runBlocking {
         listOf("named-entity-icons", "icon-assets", "automatic-entity-icons").forEach {
-            context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit()
+            MigratedStringPreferences.get(context, it).replaceAll(emptyMap())
         }
         File(context.filesDir, "entity-icons").listFiles().orEmpty().forEach { it.delete() }
         val server = okhttp3.mockwebserver.MockWebServer()
@@ -363,7 +365,7 @@ class EntityIconTest {
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test fun providerNameWithExtraWordsDownloadsTheBrandLogoFile() = runBlocking {
         listOf("named-entity-icons", "automatic-entity-icons").forEach {
-            context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit()
+            MigratedStringPreferences.get(context, it).replaceAll(emptyMap())
         }
         File(context.filesDir, "entity-icons").listFiles().orEmpty().forEach { it.delete() }
         val server = okhttp3.mockwebserver.MockWebServer().apply { start() }
@@ -401,7 +403,7 @@ class EntityIconTest {
     }
 
     @Test fun pruneRemovesOnlyUnreferencedImportedFiles() {
-        context.getSharedPreferences("named-entity-icons", Context.MODE_PRIVATE).edit().clear().commit()
+        MigratedStringPreferences.get(context, "named-entity-icons").replaceAll(emptyMap())
         val directory = File(context.filesDir, "entity-icons").apply {
             mkdirs()
             listFiles().orEmpty().forEach { it.delete() }

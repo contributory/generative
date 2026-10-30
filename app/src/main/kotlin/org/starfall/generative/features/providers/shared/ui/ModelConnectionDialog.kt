@@ -5,6 +5,8 @@ import org.starfall.generative.features.providers.shared.logic.ModelConnectionTe
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionRemovals
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,16 +55,31 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
         // Closing the dialog only hides its UI; connection tests belong to the editor screen.
         removals.close(remove = { ids -> tests.forget(ids); onRemoveModels(ids) }, dismiss = onDismiss)
     }
-    val showCounts = testingAny || progress.tested > 0
     val removedDescription = stringResource(R.string.model_removed_on_dialog_close)
     Dialog(
         onDismissRequest = ::close,
         title = { Text(stringResource(R.string.check_connection)) },
         content = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (showCounts) ModelConnectionCounts(progress, showProgress = true,
-                    modifier = Modifier.padding(vertical = 4.dp))
-                LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.75f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().testTag("connection-toolbar"), verticalAlignment = Alignment.CenterVertically) {
+                    ModelConnectionCounts(progress, showProgress = true,
+                        modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(vertical = 4.dp))
+                    if (showUnavailableAction) {
+                        val restore = unavailable.isEmpty()
+                        IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
+                            SharedIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
+                                stringResource(if (restore) R.string.restore_removed_models else R.string.remove_unavailable_models),
+                                tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
+                        enabled = (testingAny || testableModels.isNotEmpty()) && available) {
+                        if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                        else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
+                    }
+                }
+                LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
+                    .testTag("connection-model-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (textModels.isEmpty()) item { Text(stringResource(R.string.model_no_text_models)) }
                     items(textModels, key = { it }) { id ->
                         val testing = tests.running[id] == true
@@ -128,20 +145,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
         },
         buttons = {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (showUnavailableAction) {
-                    val restore = unavailable.isEmpty()
-                    IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
-                        SharedIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
-                            stringResource(if (restore) R.string.restore_removed_models else R.string.remove_unavailable_models),
-                            tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                    }
-                }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
-                    enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                    if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                    else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
-                }
                 TextButton(onClick = ::close) { Text(stringResource(R.string.common_close)) }
             }
         }

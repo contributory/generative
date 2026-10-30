@@ -37,6 +37,7 @@ import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
+import org.starfall.generative.shared.storage.preferences.NotificationPermissionStore
 import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatLabels
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
@@ -60,6 +61,7 @@ class AppContainer(context: Context) {
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
+    val notificationPermissionStore = NotificationPermissionStore(appContext)
     val remoteMachineService = RemoteMachineService(appContext)
     val appDataTransfer = AppDataTransferService(
         appContext, providers, mcp, speech, profiles, conversations, preferences, toolSettings,

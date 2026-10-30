@@ -57,6 +57,7 @@ fun ProvidersScreen(
     onToggleGridView: ((Boolean) -> Unit)? = null,
     onOpenProviderEditor: (ModelProvider, Boolean) -> Unit,
     onSaveGroup: (ProviderGroup) -> Unit = {},
+    onSaveGroupIcon: (ProviderGroup) -> Unit = {},
     onDeleteGroup: (String) -> Unit = {},
     onMoveProviderToGroup: (String, String?) -> Unit = { _, _ -> },
     onPlaceProvider: (suspend (ProviderPlacement) -> Result<Unit>)? = null,
@@ -615,6 +616,7 @@ fun ProvidersScreen(
             sortedGroups = sortedGroups,
             nextRootSortOrder = { (rootItems.maxOfOrNull { it.sortOrder } ?: -1) + 1 },
             onSaveGroup = onSaveGroup,
+            onSaveGroupIcon = onSaveGroupIcon,
             onGroupDeleteConfirmed = { group ->
                 onDeleteGroup(group.id)
                 setCollapsedSections(collapsedSections - group.id)

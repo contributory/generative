@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.SharedPreferencesMigration
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -25,7 +26,10 @@ import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.ImmediateState
 import org.starfall.generative.shared.theme.CustomPalette
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
+internal val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "app_preferences",
+    produceMigrations = { context -> listOf(SharedPreferencesMigration(context, "notification_permission")) }
+)
 
 @Serializable
 enum class WordWrapMode(val value: String) {
@@ -980,7 +984,9 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ preferences.copy(agentSkills = restoredSkillGroup) }) {
             agentSkillsStore.replaceAll(restoredSkills)
             context.dataStore.edit { stored ->
+                val notificationRequest = stored[backgroundNotificationRequestedKey]
                 stored.clear()
+                notificationRequest?.let { stored[backgroundNotificationRequestedKey] = it }
                 stored[PreferenceKeys.CHAT_RELATIONS] = Json.encodeToString(preferences.chatRelations)
                 stored[PreferenceKeys.SELECTED_MODEL] = Json.encodeToString(preferences.selectedModel)
                 preferences.selectedSpeechServiceId?.let { stored[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID] = it }

@@ -299,7 +299,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         val testBounds = compose.onNodeWithContentDescription("Test all language models").fetchSemanticsNode().boundsInRoot
         val closeBounds = compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).fetchSemanticsNode().boundsInRoot
         assertTrue("Delete unavailable belongs on the left", deleteBounds.right < testBounds.left)
-        assertTrue("Close belongs to the right of Test All", testBounds.right <= closeBounds.right)
+        assertTrue("Test All belongs above the fixed footer", testBounds.bottom <= closeBounds.top)
         compose.onNodeWithContentDescription("Remove unavailable models").performClick()
         compose.onNodeWithContentDescription("Remove unavailable models").assertDoesNotExist()
         compose.onNodeWithContentDescription("Restore models marked for removal").assertIsDisplayed()

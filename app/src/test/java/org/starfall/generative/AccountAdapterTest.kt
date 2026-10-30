@@ -1,5 +1,7 @@
 package org.starfall.generative
 
+import org.starfall.generative.integrations.security.OAuthRecordStorageOwner
+
 
 import org.starfall.generative.integrations.modelapis.account.*
 
@@ -142,8 +144,8 @@ class AccountAdapterTest {
         claude.save("one", first); claude.save("two", second); google.save("one", second)
         assertEquals(first, claude.load("one")); assertEquals(second, claude.load("two"))
         assertEquals(second, google.load("one"))
-        val encrypted = context.getSharedPreferences("generative.test_claude.oauth", Context.MODE_PRIVATE)
-            .getString("one", "")!!
+        val encrypted = (context.applicationContext as OAuthRecordStorageOwner).oauthRecordStorage
+            .get("generative.test_claude.oauth", "one")!!
         assertFalse(encrypted.contains(first.accessToken))
         assertFalse(encrypted.contains(first.refreshToken))
         claude.delete("one")

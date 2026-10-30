@@ -9,6 +9,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.appwiring.AppContainer
+import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.RoomOAuthRecordStorage
+import org.starfall.generative.integrations.security.OAuthRecordStorage
+import org.starfall.generative.integrations.security.OAuthRecordStorageOwner
 import org.starfall.generative.integrations.remote.RemoteConnectionService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
@@ -17,7 +21,11 @@ import org.starfall.generative.shared.files.CrashRecordingHandler
 import java.io.File
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 
-class GenerativeApplication : Application(), RemoteMachineServiceOwner, coil3.SingletonImageLoader.Factory {
+class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRecordStorageOwner, coil3.SingletonImageLoader.Factory {
+    override val oauthRecordStorage: OAuthRecordStorage by lazy {
+        RoomOAuthRecordStorage(this, AppDatabase.getInstance(this))
+    }
+
     override fun newImageLoader(context: android.content.Context): coil3.ImageLoader =
         org.starfall.generative.shared.icons.AppImages.createLoader(context)
 

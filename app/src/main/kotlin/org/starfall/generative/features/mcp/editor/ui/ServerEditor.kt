@@ -38,7 +38,8 @@ fun ServerEditor(
     cachedTools: List<ToolDefinition>?, cachedError: String?, cachedLoading: Boolean,
     toolSettings: ToolSettings, onSetToolEnabled: (String, String, Boolean) -> Unit,
     onSetToolParameter: (String, String, String, McpToolParameterConfig) -> Unit,
-    onDismiss: () -> Unit, onSave: (McpInfo) -> Unit
+    onDismiss: () -> Unit, onSave: (McpInfo) -> Unit,
+    onSaveIcon: (McpInfo) -> Unit = {}
 ) {
     var serverIcon by remember(initialServer.id) { mutableStateOf(initialServer.icon) }
     var iconImporting by remember { mutableStateOf(false) }
@@ -104,7 +105,8 @@ fun ServerEditor(
                     Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.common_tools), fontWeight = FontWeight.SemiBold) })
                 }
                 if (selectedTab == 0) McpConnectionSettings(
-                    name = name, onNameChange = { name = it }, icon = serverIcon, onIconChange = { serverIcon = it }, onIconBusyChange = { iconImporting = it },
+                    name = name, onNameChange = { name = it }, icon = serverIcon,
+                    onIconChange = { serverIcon = it; onSaveIcon(currentServer()) }, onIconBusyChange = { iconImporting = it },
                     protocol = protocol, onProtocolChange = { protocol = it }, url = url,
                     onUrlChange = { changed -> if (authMethod == McpAuthMethod.OAUTH2 && changed.trim() != url.trim()) oauthAuthorized = false; url = changed },
                     authMethod = authMethod, onAuthMethodChange = { method ->
