@@ -33,7 +33,6 @@ internal fun TerminalAppBar(
     bridge: RemoteTerminalBridge?,
     onToggleSessions: () -> Unit,
     onDisconnect: () -> Unit,
-    canUseRemoteInput: Boolean,
     onInputModeChange: (TerminalInputMode) -> Unit,
     onToggleIme: () -> Unit,
     onToggleForceMouse: () -> Unit
@@ -81,8 +80,7 @@ internal fun TerminalAppBar(
                             leadingIcon = {
                                 if (option == mode) SharedIcon(Icons.Default.Check, null)
                             },
-                            // Do not switch away while either editor has an unsent draft.
-                            enabled = bridge != null && (option == mode || canUseRemoteInput),
+                            enabled = bridge != null,
                             onClick = { onInputModeChange(option); inputMenuOpen = false }
                         )
                     }

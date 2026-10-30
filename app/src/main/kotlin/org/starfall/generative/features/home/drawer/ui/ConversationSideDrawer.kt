@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import org.starfall.generative.R
+import org.starfall.generative.extensions.launcher.Launcher
 import java.util.UUID
 import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.model.ConversationListItem
@@ -114,6 +116,10 @@ fun ConversationSideDrawer(
     var editingFolder by remember { mutableStateOf<ChatFolder?>(null) }
     var deletingFolder by remember { mutableStateOf<ChatFolder?>(null) }
     val folderIds = organization.folders.map { it.id }.toSet()
+    var folderOrder by remember(organization.folders) { mutableStateOf(organization.folders) }
+    var folderDragStart by remember { mutableStateOf<List<ChatFolder>?>(null) }
+    val folderDrag = Launcher.rememberState<String>()
+    val folderListState = rememberLazyListState()
     val matches = remember(conversations, search, organization.folders, organization.chatFolders) {
         val matchingFolders = organization.folders.filter { search.isNotBlank() && it.name.contains(search, true) }.map { it.id }.toSet()
         conversations.filter { search.isBlank() || it.title.contains(search, true) || organization.chatFolders[it.id] in matchingFolders }
@@ -257,8 +263,26 @@ fun ConversationSideDrawer(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
             }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val folders = organization.folders.sortedByDescending { it.pinned }
+            with(Launcher) {
+                Host(folderDrag, modifier = Modifier.weight(1f).fillMaxWidth(), preview = { drag ->
+                    folderOrder.firstOrNull { it.id == drag.item.data }?.let { folder ->
+                        Surface(shape = RoundedCornerShape(12.dp), color = prominentContainerColor(),
+                            border = prominentContainerBorder()) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                SharedIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(folder.name, maxLines = 1)
+                            }
+                        }
+                    }
+                }) {
+                    LazyColumn(
+                        state = folderListState,
+                        modifier = Modifier.fillMaxSize().autoScroll(folderDrag, folderListState),
+                        contentPadding = PaddingValues(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                val folders = folderOrder.sortedByDescending { it.pinned }
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel(stringResource(R.string.sidebar_folders)) }
                 folders.forEach { folder ->
                     val chats = matches.filter { organization.chatFolders[it.id] == folder.id }
@@ -267,6 +291,43 @@ fun ConversationSideDrawer(
                         item(key = "folder:${folder.id}") {
                             var menu by remember { mutableStateOf(false) }
                             Surface(
+                                modifier = Modifier.animateItem()
+                                    .dragSource(folderDrag, folder.id, folder.id,
+                                        enabled = search.isBlank() && !selecting,
+                                        onDragStart = { folderDragStart = folderOrder },
+                                        onDragEnd = { outcome ->
+                                            val original = folderDragStart
+                                            if (outcome.accepted && original != null && original != folderOrder) {
+                                                val ids = folderOrder.map { it.id }
+                                                onUpdateOrganization { current ->
+                                                    val byId = current.folders.associateBy { it.id }
+                                                    current.copy(folders = ids.mapNotNull(byId::get) +
+                                                        current.folders.filterNot { it.id in ids })
+                                                }
+                                            } else if (!outcome.accepted) {
+                                                original?.let { folderOrder = it }
+                                            }
+                                            folderDragStart = null
+                                        })
+                                    .dropTarget(folderDrag, "folder-slot:${folder.id}",
+                                        enabled = search.isBlank() && !selecting,
+                                        accepts = { candidate ->
+                                            candidate.key != folder.id &&
+                                                folderOrder.firstOrNull { it.id == candidate.data }?.pinned == folder.pinned
+                                        },
+                                        onDragEnter = { drag ->
+                                            val from = folderOrder.indexOfFirst { it.id == drag.item.data }
+                                            val to = folderOrder.indexOfFirst { it.id == folder.id }
+                                            if (from >= 0 && to >= 0 && from != to) {
+                                                folderOrder = folderOrder.toMutableList().apply { add(to, removeAt(from)) }
+                                            }
+                                        },
+                                        onDrop = { true })
+                                    .dropTarget(folderDrag, "folder-self:${folder.id}",
+                                        enabled = search.isBlank() && !selecting,
+                                        priority = 5,
+                                        accepts = { it.key == folder.id },
+                                        onDrop = { folderDragStart != folderOrder }),
                                 shape = RoundedCornerShape(12.dp),
                                 color = prominentContainerColor(),
                                 border = prominentContainerBorder()
@@ -322,6 +383,8 @@ fun ConversationSideDrawer(
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
                 }
                 if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
+                    }
+                }
             }
             // A single progress value drives the whole bottom row (Search width, Menu fade, New chat size),
             // so opening Search is one continuous motion instead of several independently-timed steps.

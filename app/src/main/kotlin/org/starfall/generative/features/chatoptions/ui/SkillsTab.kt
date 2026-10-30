@@ -9,13 +9,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
@@ -42,6 +41,7 @@ internal fun SkillsTab(
     skills: List<AgentSkill>,
     onEditSkill: (AgentSkill) -> Unit,
     onDeleteSkill: (AgentSkill) -> Unit,
+    onReorderSkills: (List<String>) -> Unit,
     onExportSkill: (AgentSkill) -> Unit = {},
     isGrid: Boolean = false,
     bottomPadding: Dp = 0.dp
@@ -53,16 +53,23 @@ internal fun SkillsTab(
         EmptyState(Icons.Outlined.Extension, stringResource(R.string.agent_skills_empty))
     } else {
         FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
-            LazyVerticalGrid(
+            ReorderableCollection(
+                items = skills, key = { it.id },
+                canReorder = { it.id != DEFAULT_AGENT_SKILL_ID },
                 columns = GridCells.Fixed(if (gridMode) 2 else 1),
                 contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp + bottomPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(skills, key = { it.id }) { skill ->
+                modifier = Modifier.fillMaxSize(),
+                onReorder = onReorderSkills,
+                preview = { skill ->
+                    ItemCard(isGrid = gridMode, onClick = {},
+                        icon = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Extension) },
+                        actions = {}, content = { Text(skill.name, maxLines = 1) })
+                }
+            ) { skill, dragModifier ->
                     val bundled = skill.id == DEFAULT_AGENT_SKILL_ID
                     ItemCard(
                         isGrid = gridMode,
+                        modifier = dragModifier,
                         onClick = { if (bundled) viewingBundledSkill = skill else onEditSkill(skill) },
                         icon = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Extension) },
                         actions = {
@@ -96,7 +103,6 @@ internal fun SkillsTab(
                             }
                         }
                     )
-                }
             }
         }
     }

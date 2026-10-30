@@ -47,13 +47,19 @@ class AgentSkillsStore(private val directory: File) {
     }
 
     fun readBlocking(): List<AgentSkill> = synchronized(lock) {
-        directory.listFiles()
+        val skills = directory.listFiles()
             ?.asSequence()
             ?.filter { it.isDirectory }
             ?.sortedBy { it.name }
             ?.mapNotNull(::readSkill)
             ?.toList()
             .orEmpty()
+        val orderFile = File(directory, ORDER_FILE_NAME)
+        val priority = if (orderFile.isFile && orderFile.length() <= MAX_ORDER_BYTES) {
+            runCatching { orderFile.readLines().distinct().withIndex().associate { it.value to it.index } }
+                .getOrDefault(emptyMap())
+        } else emptyMap()
+        skills.sortedWith(compareBy<AgentSkill> { priority[it.name] ?: Int.MAX_VALUE }.thenBy { it.name })
     }
 
     suspend fun replaceAll(skills: List<AgentSkill>) = withContext(Dispatchers.IO) {
@@ -72,6 +78,17 @@ class AgentSkillsStore(private val directory: File) {
                 ?.forEach { it.deleteRecursively() }
 
             normalized.values.forEach(::writeSkill)
+            // Preserve user-defined order across process restarts without reordering folders.
+            val order = File(directory, ORDER_FILE_NAME)
+            val temporary = File(directory, ".$ORDER_FILE_NAME.${UUID.randomUUID()}.tmp")
+            try {
+                temporary.writeText(normalized.keys.joinToString("\n"), Charsets.UTF_8)
+                if (!temporary.renameTo(order)) {
+                    check(order.delete() && temporary.renameTo(order)) { "Could not update Agent Skills order." }
+                }
+            } finally {
+                temporary.delete()
+            }
         }
     }
 
@@ -247,6 +264,8 @@ class AgentSkillsStore(private val directory: File) {
     companion object {
         const val DIRECTORY_NAME = "agent-skills"
         const val SKILL_FILE_NAME = "SKILL.md"
+        private const val ORDER_FILE_NAME = ".order"
+        private const val MAX_ORDER_BYTES = 64 * 1024L
         const val MAX_DESCRIPTION_LENGTH = 1024
         private const val MAX_RESOURCE_DEPTH = 5
         private const val MAX_RESOURCE_LIST = 100

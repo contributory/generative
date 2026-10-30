@@ -433,6 +433,10 @@ fun ChatOptionsScreen(
                                 isGrid = isGrid,
                                 onEditInstruction = { editingInstructionId = it.id },
                                 onPreviewInstruction = { previewingInstructionId = it.id },
+                                onReorderInstructions = { ids ->
+                                    val byId = library.instructions.associateBy { it.id }
+                                    updateLibrary(library.copy(instructions = ids.mapNotNull(byId::get)))
+                                },
                                 onDeleteInstruction = { instruction ->
                                     updateLibrary(
                                         library.copy(
@@ -447,6 +451,12 @@ fun ChatOptionsScreen(
                                 skills = skills,
                                 isGrid = isGrid,
                                 onEditSkill = { editingSkillId = it.id },
+                                onReorderSkills = { ids ->
+                                    val byId = skills.associateBy { it.id }
+                                    val reordered = ids.mapNotNull(byId::get)
+                                    skills = reordered
+                                    onAgentSkillsChange(reordered)
+                                },
                                 onDeleteSkill = { skill ->
                                     val next = skills.filterNot { it.id == skill.id }
                                     skills = next

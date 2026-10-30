@@ -37,7 +37,6 @@ class RemoteTerminalAppBarTest {
                     bridge = bridge,
                     onToggleSessions = {},
                     onDisconnect = {},
-                    canUseRemoteInput = true,
                     onInputModeChange = { bridge.setInputMode(it); modeChanges++ },
                     onToggleIme = { bridge.updateImeEnabled(!bridge.imeEnabled) },
                     onToggleForceMouse = { bridge.forceMouse = !bridge.forceMouse }
@@ -50,9 +49,13 @@ class RemoteTerminalAppBarTest {
         compose.onNodeWithText("Local").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(TerminalInputMode.LOCAL, bridge.inputMode) }
         compose.onNodeWithContentDescription("Enable IME composition").performClick().assertIsOn()
-        compose.runOnIdle { assertEquals(TerminalInputMode.LOCAL, bridge.inputMode) }
+        compose.runOnIdle {
+            assertEquals(TerminalInputMode.LOCAL, bridge.inputMode)
+            bridge.updateLocalImeDraft("unsent command", 5)
+        }
         compose.onNodeWithContentDescription("Terminal input mode: Local").performClick()
-        compose.onNodeWithText("Remote").performClick()
+        compose.onNodeWithText("Remote").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals("unsent command", bridge.localInputForIme) }
         compose.onNodeWithContentDescription("Enable IME composition").assertIsNotEnabled().assertIsOff()
         compose.runOnIdle { assertEquals(false, bridge.imeEnabled) }
         compose.onNodeWithContentDescription("Terminal input mode: Remote").performClick()
@@ -70,7 +73,7 @@ class RemoteTerminalAppBarTest {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 TerminalAppBar(
                     bridge = null, onToggleSessions = {}, onDisconnect = {},
-                    canUseRemoteInput = true, onInputModeChange = {},
+                    onInputModeChange = {},
                     onToggleIme = {}, onToggleForceMouse = {}
                 )
             }
@@ -88,7 +91,6 @@ class RemoteTerminalAppBarTest {
                     bridge = null,
                     onToggleSessions = {},
                     onDisconnect = { closed = true },
-                    canUseRemoteInput = true,
                     onInputModeChange = {},
                     onToggleIme = {},
                     onToggleForceMouse = {}

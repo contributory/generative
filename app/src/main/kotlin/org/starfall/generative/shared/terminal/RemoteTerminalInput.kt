@@ -28,7 +28,6 @@ internal class RemoteTerminalInput(
     private var historyIndex = 0
     private var historyDraft = ""
 
-    val hasLocalDraft: Boolean get() = localInput.isNotEmpty()
     val localCursorPosition: Int get() = localCursor
 
     /** The IME keeps the full editable line, including committed text, so Vietnamese
@@ -40,15 +39,16 @@ internal class RemoteTerminalInput(
         historyIndex = commandHistory.size
     }
 
-    fun setInputMode(mode: TerminalInputMode): Boolean {
-        if (!mode.usesLocalInput && hasLocalDraft) return false
+    fun setInputMode(mode: TerminalInputMode) {
+        // A local command is a draft, not a reason to lock input mode. Keep it
+        // (and its cursor) untouched until the user returns to Local Input.
         inputMode = mode
         if (!mode.usesLocalInput) submittedLocalInput = null
         clearModifiers()
-        return true
     }
 
     fun localDraftForDisplay(): String? {
+        if (!inputMode.usesLocalInput) return null
         val submitted = submittedLocalInput
         if (submitted == null && localInput.isEmpty()) return null
         return buildString {

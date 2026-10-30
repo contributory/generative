@@ -19,9 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
+import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ListViewToggle
@@ -125,16 +124,22 @@ fun RemoteMachinesScreen(
                 }
             } else {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
-                  LazyVerticalGrid(
+                  ReorderableCollection(
+                    items = state.machines,
+                    key = { it.id },
                     columns = GridCells.Fixed(if (gridMode) 2 else 1),
                     contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
-                  ) {
-                    items(state.machines, key = { machine -> machine.id }) { machine ->
+                    modifier = Modifier.fillMaxSize(),
+                    onReorder = viewModel::reorderMachines,
+                    preview = { machine ->
+                        RemoteMachineCard(machine, gridMode, machine.id in connectedIds,
+                            onDisconnect = {}, onStartPortForward = {}, onMachineTools = {},
+                            onTerminal = {}, onFiles = {}, onEdit = {}, onDelete = {}, onUpdateIp = {})
+                    }
+                  ) { machine, dragModifier ->
                         RemoteMachineCard(
                             machine = machine,
+                            modifier = dragModifier,
                             isGrid = gridMode,
                             connected = machine.id in connectedIds,
                             onDisconnect = { viewModel.disconnect(machine.id) },
@@ -157,7 +162,6 @@ fun RemoteMachinesScreen(
                                 }
                             }
                         )
-                    }
                   }
                 }
             }
@@ -235,12 +239,14 @@ private fun RemoteMachineCard(
     onFiles: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onUpdateIp: () -> Unit
+    onUpdateIp: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var menu by remember { mutableStateOf(false) }
     val gcloud = machine.type == RemoteMachineType.GCLOUD_SHELL
     ItemCard(
         isGrid = isGrid,
+        modifier = modifier,
         onClick = onEdit,
         icon = {
             RemoteIconTile(

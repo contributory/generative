@@ -192,6 +192,25 @@ allowed-tools: Read
     }
 
     @Test
+    fun reorderedSkillsSurviveStoreRecreationAndKeepFolderData() = runBlocking {
+        val root = Files.createTempDirectory("ordered-skills-").toFile()
+        try {
+            val writer = AgentSkill("writer", "writer", "## Write", "Writing skill")
+            val analyst = AgentSkill("analyst", "analyst", "## Analyze", "Analysis skill")
+            val helper = AgentSkill("helper", "helper", "## Help", "Helper skill")
+            val store = AgentSkillsStore(root)
+            store.replaceAll(listOf(writer, analyst, helper))
+            assertEquals(listOf("writer", "analyst", "helper"),
+                AgentSkillsStore(root).readBlocking().map { it.name })
+            store.replaceAll(listOf(helper, writer, analyst))
+            assertEquals(listOf("helper", "writer", "analyst"),
+                AgentSkillsStore(root).readBlocking().map { it.name })
+            assertTrue(root.resolve("writer/SKILL.md").isFile)
+            assertFalse(store.exportFiles().keys.any { it.contains(".order") })
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test
     fun writesAndReadsStandardSkillDirectory() = runBlocking {
         val directory = Files.createTempDirectory("agent-skills-").toFile()
         try {

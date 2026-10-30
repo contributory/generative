@@ -6,13 +6,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
@@ -40,6 +39,7 @@ internal fun InstructionsTab(
     onEditInstruction: (SavedInstruction) -> Unit,
     onPreviewInstruction: (SavedInstruction) -> Unit,
     onDeleteInstruction: (SavedInstruction) -> Unit,
+    onReorderInstructions: (List<String>) -> Unit,
     isGrid: Boolean = false,
     bottomPadding: Dp = 0.dp
 ) {
@@ -49,15 +49,21 @@ internal fun InstructionsTab(
         EmptyState(Icons.Outlined.Description, stringResource(R.string.instruction_library_empty))
     } else {
         FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
-            LazyVerticalGrid(
+            ReorderableCollection(
+                items = library.instructions, key = { it.id },
                 columns = GridCells.Fixed(if (gridMode) 2 else 1),
                 contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp + bottomPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(library.instructions, key = { it.id }) { instruction ->
+                modifier = Modifier.fillMaxSize(),
+                onReorder = onReorderInstructions,
+                preview = { instruction ->
+                    ItemCard(isGrid = gridMode, onClick = {},
+                        icon = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Description) },
+                        actions = {}, content = { Text(instruction.name, maxLines = 1) })
+                }
+            ) { instruction, dragModifier ->
                     ItemCard(
                         isGrid = gridMode,
+                        modifier = dragModifier,
                         onClick = { onPreviewInstruction(instruction) },
                         icon = {
                             EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Description)
@@ -83,7 +89,6 @@ internal fun InstructionsTab(
                             }
                         }
                     )
-                }
             }
         }
     }

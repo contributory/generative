@@ -251,16 +251,16 @@ internal fun RemoteTerminalScreen(
                 disconnect(machine.id)
                 onDismiss()
             },
-            canUseRemoteInput = terminalSlots.none { it.bridge.hasLocalDraft },
             onInputModeChange = { mode ->
                 // Input mode is a per-machine preference: apply it to every
                 // session, not just the visible one.
-                if (activeBridge?.setInputMode(mode) == true) {
-                    // IME is a Local-only preference; restore it upon returning to Local.
+                if (activeBridge != null) {
+                    // Apply the choice to every session. Each bridge retains its own
+                    // unsent Local draft while Remote Input is active.
                     val localImeEnabled = mode.usesLocalInput &&
                         (terminalPrefs?.get(booleanPreferencesKey(remoteTerminalImePreferenceKey(machine.id))) != false)
                     terminalSlots.forEach { slot ->
-                        if (slot.bridge !== activeBridge) slot.bridge.setInputMode(mode)
+                        slot.bridge.setInputMode(mode)
                         slot.bridge.updateImeEnabled(localImeEnabled)
                     }
                     terminalStore.update { it[stringPreferencesKey(remoteTerminalInputModePreferenceKey(machine.id))] = mode.name }

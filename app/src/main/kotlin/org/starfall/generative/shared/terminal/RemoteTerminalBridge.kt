@@ -70,7 +70,6 @@ internal class RemoteTerminalBridge(
         get() = input.shiftActive
         set(value) { input.shiftActive = value }
     val inputMode: TerminalInputMode get() = input.inputMode
-    val hasLocalDraft: Boolean get() = input.hasLocalDraft
 
     val localInputForIme: String get() = input.localInput
     val localCursorForIme: Int get() = input.localCursorPosition
@@ -102,11 +101,11 @@ internal class RemoteTerminalBridge(
         }
     }
 
-    fun setInputMode(mode: TerminalInputMode): Boolean {
+    fun setInputMode(mode: TerminalInputMode) {
         inputView?.finishImeComposition()
         val oldMode = inputMode
-        val changed = input.setInputMode(mode)
-        if (changed && mode != oldMode) {
+        input.setInputMode(mode)
+        if (mode != oldMode) {
             if (!mode.usesLocalInput && imeEnabled) {
                 // Disable composition before the view can create an IME connection in Remote mode.
                 updateImeEnabled(false)
@@ -114,7 +113,6 @@ internal class RemoteTerminalBridge(
                 inputView?.restartImeConnection()
             }
         }
-        return changed
     }
 
     private var themeBackground: Int? = null

@@ -2,8 +2,7 @@ package org.starfall.generative.features.tools.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +22,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemSurface
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
@@ -70,22 +70,36 @@ fun MediaRequestChainSettings(
             }
         )
     }) { padding ->
-        val ordered = profiles.values.sortedWith(compareBy<MediaRequestProfile> {
-            if (it.mode == MediaGenerationMode.DEFAULT) 0 else 1
-        }.thenBy { if (it.id == protectedId) 0 else 1 })
-        LazyColumn(
+        val ordered = profiles.values.toList()
+        ReorderableCollection(
+            items = ordered,
+            key = { it.id },
+            canReorder = { it.id != protectedId },
+            columns = GridCells.Fixed(1),
             modifier = Modifier.fillMaxSize().consumeWindowInsets(padding),
             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(ordered, key = { it.id }) { profile ->
+            spacing = 8.dp,
+            onReorder = { ids ->
+                // Keep the built-in Default first. LinkedHashMap preserves the user's order.
+                val reordered = linkedMapOf<String, MediaRequestProfile>()
+                if (protectedId.isNotEmpty()) profiles[protectedId]?.let { reordered[protectedId] = it }
+                ids.forEach { id -> profiles[id]?.let { reordered[id] = it } }
+                persist(reordered)
+            },
+            preview = { profile ->
+                ItemSurface(isGrid = false, onClick = {}) {
+                    Text(profile.name, Modifier.fillMaxWidth().padding(18.dp),
+                        style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        ) { profile, dragModifier ->
                 val canDelete = profile.id != protectedId &&
                     (profile.mode != MediaGenerationMode.DEFAULT ||
                         profiles.values.count { it.mode == MediaGenerationMode.DEFAULT } > 1)
                 ItemSurface(
                     isGrid = false,
                     onClick = { onOpenProfile(profile.id) },
-                    modifier = Modifier.testTag("media-profile-item_${profile.id}")
+                    modifier = dragModifier.testTag("media-profile-item_${profile.id}")
                 ) {
                     Row(
                         Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
@@ -133,7 +147,6 @@ fun MediaRequestChainSettings(
                         }
                     }
                 }
-            }
         }
     }
     deletingProfileId?.let { id ->

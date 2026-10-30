@@ -167,7 +167,7 @@ class RemoteTerminalInputTest {
         assertNotNull(view.onCreateInputConnection(composing))
         assertEquals(InputType.TYPE_CLASS_TEXT, composing.inputType and InputType.TYPE_MASK_CLASS)
 
-        assertTrue(bridge.setInputMode(TerminalInputMode.REMOTE))
+        bridge.setInputMode(TerminalInputMode.REMOTE)
         assertFalse(bridge.imeEnabled)
         assertFalse(view.onCheckIsTextEditor())
         assertSame(view.terminalView, view.inputTarget)
@@ -175,7 +175,7 @@ class RemoteTerminalInputTest {
         bridge.updateImeEnabled(true)
         assertFalse(bridge.imeEnabled)
 
-        assertTrue(bridge.setInputMode(TerminalInputMode.LOCAL))
+        bridge.setInputMode(TerminalInputMode.LOCAL)
         bridge.updateImeEnabled(true)
         assertTrue(bridge.imeEnabled)
         assertSame(view, view.inputTarget)
@@ -231,15 +231,54 @@ class RemoteTerminalInputTest {
     }
 
     @Test
-    fun modeChangePreservesUnsentLocalDraft() {
+    fun modeChangeKeepsUnsentLocalDraftWithoutSendingOrShowingItInRemoteMode() {
         val terminal = Terminal(TerminalInputMode.LOCAL, context)
         terminal.input.sendImeText("echo chào")
-        assertFalse(terminal.input.setInputMode(TerminalInputMode.REMOTE))
+        terminal.input.sendSpecial("\u001b[D")
+        val originalCursor = terminal.input.localCursorPosition
+
+        terminal.input.setInputMode(TerminalInputMode.REMOTE)
+        assertEquals(TerminalInputMode.REMOTE, terminal.input.inputMode)
         assertEquals("echo chào", terminal.input.localInput)
-        terminal.input.sendSpecial("\r")
-        assertTrue(terminal.input.setInputMode(TerminalInputMode.REMOTE))
+        assertEquals(originalCursor, terminal.input.localCursorPosition)
+        assertNull(terminal.input.localDraftForDisplay())
+        assertEquals("", terminal.text()) // Switching must not execute a draft.
+
         terminal.input.sendImeText("ls\n")
-        assertEquals("echo chào\rls\r", terminal.text())
+        assertEquals("ls\r", terminal.text())
+        terminal.input.setInputMode(TerminalInputMode.LOCAL)
+        assertEquals("echo chào", terminal.input.localInput)
+        assertEquals(originalCursor, terminal.input.localCursorPosition)
+        assertTrue(terminal.input.localDraftForDisplay()!!.contains("echo chà"))
+        terminal.input.sendSpecial("\r")
+        assertEquals("ls\recho chào\r", terminal.text())
+    }
+
+    @Test
+    fun switchingFromComposingLocalImeRestoresDraftWhenSwitchingBack() {
+        val bridge = RemoteTerminalBridge(context, TerminalInputMode.LOCAL)
+        val view = RemoteTerminalView(context, bridge)
+        view.terminalView.setTerminalViewClient(bridge)
+        bridge.view = view.terminalView
+        bridge.inputView = view
+        bridge.updateImeEnabled(true)
+        val connection = view.onCreateInputConnection(EditorInfo())!!
+        connection.setComposingText("chào thế giới", 1)
+        assertEquals("chào thế giới", bridge.localInputForIme)
+
+        bridge.setInputMode(TerminalInputMode.REMOTE)
+        assertFalse(bridge.imeEnabled)
+        assertFalse(view.onCheckIsTextEditor())
+        assertNull(bridge.localDraftForDisplay())
+        assertEquals("chào thế giới", bridge.localInputForIme)
+        bridge.setInputMode(TerminalInputMode.LOCAL)
+        bridge.updateImeEnabled(true)
+        assertTrue(bridge.imeEnabled)
+        assertNotNull(bridge.localDraftForDisplay())
+        val restored = view.onCreateInputConnection(EditorInfo())!!
+        restored.commitText("!", 1)
+        assertEquals("chào thế giới!", bridge.localInputForIme)
+        bridge.close()
     }
 
     @Test
