@@ -67,15 +67,23 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
     }
 
     suspend fun saveConversation(conversation: Conversation) {
-        // Central persistence boundary for settled conversations and completed response blocks.
         if (conversation.isTemporary) return
-        withContext(Dispatchers.IO) {
-            val persisted = conversation.pruningEmptyResponses()
-            writeLock.withLock {
-                journal?.write(persisted)
-                commitConversation(persisted)
-                journal?.remove(persisted.id)
+        val logId = DebugLog.beginOperation(DebugLogCategory.SYSTEM, "Conversation save",
+            "Saving conversation ${conversation.id}",
+            "messages=${conversation.messages.size}")
+        try {
+            withContext(Dispatchers.IO) {
+                val persisted = conversation.pruningEmptyResponses()
+                writeLock.withLock {
+                    journal?.write(persisted)
+                    commitConversation(persisted)
+                    journal?.remove(persisted.id)
+                }
             }
+            DebugLog.finishOperation(logId, "Conversation saved")
+        } catch (error: Exception) {
+            DebugLog.finishOperation(logId, "Conversation save failed", failed = true, error = error)
+            throw error
         }
     }
 
@@ -87,7 +95,7 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
                     journal.read(file)?.let { commitConversation(it) }
                     file.delete()
                 } catch (error: Exception) {
-                    DebugLog.error(DebugLogCategory.ERRORS, "Conversation save", "Pending save recovery failed", error)
+                    DebugLog.error(DebugLogCategory.SYSTEM, "Conversation save", "Pending save recovery failed", error)
                 }
             }
         }

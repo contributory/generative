@@ -5,7 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,7 +40,7 @@ class ChatOptionsAndToolsEditorTest {
             }
         }
 
-        compose.onNodeWithText("Chat Options").assertIsDisplayed()
+        compose.onNodeWithText("Configuration").assertIsDisplayed()
         compose.onNodeWithText("Options").assertIsDisplayed()
         compose.onNodeWithText("Instructions").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
@@ -149,9 +149,16 @@ class ChatOptionsAndToolsEditorTest {
         }
 
         compose.onNodeWithText("Feature Tools").assertIsDisplayed()
+        compose.onNodeWithTag("built-in-tools-media-tab").assertIsDisplayed()
+        compose.onNodeWithTag("built-in-tools-others-tab").assertIsDisplayed()
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Video Generation").assertIsDisplayed()
+        compose.onNodeWithText("Send File").assertDoesNotExist()
+        compose.onNodeWithTag("built-in-tools-others-tab").performClick()
         compose.onNodeWithText("Send File").assertIsDisplayed()
+        compose.onNodeWithText("Image Generation").assertDoesNotExist()
+        compose.onNodeWithTag("built-in-tools-media-tab").performClick()
+        compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertDoesNotExist()
         compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
     }

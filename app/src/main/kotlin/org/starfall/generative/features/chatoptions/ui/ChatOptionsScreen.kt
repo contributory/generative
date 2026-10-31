@@ -1,6 +1,7 @@
 package org.starfall.generative.features.chatoptions.ui
 
 import androidx.compose.ui.platform.LocalLayoutDirection
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,7 +16,6 @@ import org.starfall.generative.integrations.github.parseGitHubSkillUrl
 import org.starfall.generative.shared.model.parseAgentSkillDocument
 import org.starfall.generative.shared.model.agentSkillDocument
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,8 +25,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,9 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.shared.ui.layout.appTabRowColor
-import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.McpInfo
@@ -95,6 +92,7 @@ fun ChatOptionsScreen(
     onCollapsedGroupIdsChange: (Set<String>) -> Unit = {},
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
     onEditProvider: (providerId: String) -> Unit = {},
+    onEditModel: ((providerId: String, modelId: String) -> Unit)? = null,
     instructionLibrary: InstructionLibrary = InstructionLibrary(),
     onInstructionLibraryChange: (InstructionLibrary) -> Unit = {},
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
@@ -284,13 +282,7 @@ fun ChatOptionsScreen(
                     TopAppBar(
                         colors = edgeToEdgeTopAppBarColors(),
                         title = {
-                            Column {
-                                Text(stringResource(R.string.settings_chat_options),
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
-                                Text(stringResource(R.string.settings_chat_options_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline, maxLines = 1)
-                            }
+                            FixedAppBarTitle(stringResource(R.string.app_menu_default_options))
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
@@ -326,25 +318,13 @@ fun ChatOptionsScreen(
                         end = padding.calculateEndPadding(LocalLayoutDirection.current)
                     )
                 ) {
-                    PrimaryTabRow(selectedTabIndex = pager.currentPage, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
-                        Tab(
-                            selected = pager.currentPage == 0,
-                            onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
-                            text = { Text(stringResource(R.string.chat_options_tab_options)) }
-                        )
-                        Tab(
-                            selected = pager.currentPage == 1,
-                            onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
-                            text = { Text(stringResource(R.string.common_instructions)) }
-                        )
-                        Tab(
-                            selected = pager.currentPage == 2,
-                            onClick = { coroutineScope.launch { pager.animateScrollToPage(2) } },
-                            text = { Text(stringResource(R.string.chat_options_tab_skills)) }
-                        )
-                    }
-                    HorizontalPager(
-                        state = pager,
+                    AppSwipeTabs(
+                        tabs = listOf(
+                            stringResource(R.string.chat_options_tab_options),
+                            stringResource(R.string.common_instructions),
+                            stringResource(R.string.chat_options_tab_skills)
+                        ),
+                        pagerState = pager,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         verticalAlignment = Alignment.Top
                     ) { page ->
@@ -543,6 +523,7 @@ fun ChatOptionsScreen(
                 onSave(name, current.copy(providerId = providerId, modelId = modelId))
             },
             onEditProvider = onEditProvider,
+            onEditModel = onEditModel,
             onDismiss = { choosing = null }
         )
     }

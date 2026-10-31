@@ -9,14 +9,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,8 +24,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +44,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
@@ -84,18 +80,25 @@ fun CustomizationScreen(
     var showStorage by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var previewSlot by rememberSaveable { mutableStateOf(UserProfileImageSlot.CHAT) }
+    var backgroundDialog by remember { mutableStateOf<UserProfileImageSlot?>(null) }
+    var colorsDialog by remember { mutableStateOf(false) }
+    var inputDialog by remember { mutableStateOf(false) }
     LaunchedEffect(customizationEnabled) {
         if (!customizationEnabled) {
-            showStorage = false
-            menuFor = null
-            target = null
+            if (target != UserProfileImageSlot.PHOTO) {
+                showStorage = false
+                target = null
+            }
+            if (menuFor != UserProfileImageSlot.PHOTO) menuFor = null
+            backgroundDialog = null
+            colorsDialog = false
+            inputDialog = false
             error = null
         }
     }
 
     fun storeImage(slot: UserProfileImageSlot, path: String?) {
-        if (!customizationEnabled) return
+        if (!customizationEnabled && slot != UserProfileImageSlot.PHOTO) return
         val previous = slot.get(profile)
         val updated = slot.put(profile, path)
         onChange { slot.put(it, path) }
@@ -112,17 +115,12 @@ fun CustomizationScreen(
             } catch (e: Exception) { error = e.localizedMessage } finally { busy = false }
         }
     }
-    fun openMenu(slot: UserProfileImageSlot) {
-        if (slot != UserProfileImageSlot.PHOTO) previewSlot = slot
-        menuFor = slot
-    }
+    fun openMenu(slot: UserProfileImageSlot) { menuFor = slot }
     fun chooseStorage(slot: UserProfileImageSlot) {
-        if (slot != UserProfileImageSlot.PHOTO) previewSlot = slot
         target = slot; menuFor = null; showStorage = true
     }
 
     Scaffold(
-
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -132,23 +130,11 @@ fun CustomizationScreen(
                 navigationIcon = { IconButton(onClick = onBack) {
                     SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                 } },
-                actions = {
-                    Switch(
-                        checked = customizationEnabled,
-                        onCheckedChange = onCustomizationEnabledChange,
-                        modifier = Modifier.padding(end = 16.dp)
-                            .semantics { contentDescription = localizedResources.getString(R.string.customization_enable) }
-                            .testTag("customization-enabled-switch")
-                    )
-                }
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("customization-list")
-                .alpha(if (customizationEnabled) 1f else 0.4f)
-                .then(if (customizationEnabled) Modifier else Modifier.clearAndSetSemantics { disabled() }),
+            modifier = Modifier.fillMaxSize().testTag("customization-list"),
             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -184,120 +170,155 @@ fun CustomizationScreen(
                         }
                         Text(stringResource(R.string.user_profile_photo_title), style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.user_profile_photo_description), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-            item(key = "backgrounds-heading") { Text(stringResource(R.string.customization_backgrounds_title), modifier = Modifier.padding(top = 10.dp, start = 4.dp),
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
-            item(key = "background-preview") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.settings_palette_preview),
-                        style = MaterialTheme.typography.titleSmall)
-                    val slots = listOf(
-                        UserProfileImageSlot.CHAT to R.string.user_profile_background_chat,
-                        UserProfileImageSlot.DRAWER to R.string.user_profile_background_drawer,
-                        UserProfileImageSlot.MENU to R.string.user_profile_background_menu,
-                        UserProfileImageSlot.SHEET to R.string.user_profile_background_bottom_sheet,
-                        UserProfileImageSlot.DIALOG to R.string.user_profile_background_dialog
-                    )
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        slots.forEach { (slot, label) ->
-                            FilterChip(
-                                selected = previewSlot == slot, onClick = { previewSlot = slot },
-                                label = { Text(stringResource(label), maxLines = 1) },
-                                modifier = Modifier.testTag("profile-preview-select-${slot.name.lowercase()}")
+            item(key = "enable") {
+                Surface(shape = RoundedCornerShape(18.dp), color = prominentContainerColor()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(stringResource(R.string.customization_enable),
+                            style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = customizationEnabled,
+                            onCheckedChange = onCustomizationEnabledChange,
+                            modifier = Modifier.testTag("customization-enabled-switch")
+                                .semantics { contentDescription = localizedResources.getString(R.string.customization_enable) }
+                        )
+                    }
+                }
+            }
+            item(key = "backgrounds-heading") {
+                Text(stringResource(R.string.customization_backgrounds_title),
+                    modifier = Modifier.padding(top = 10.dp, start = 4.dp)
+                        .alpha(if (customizationEnabled) 1f else 0.4f),
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            item(key = "backgrounds") {
+                CustomizationEnabledSection(customizationEnabled, showDisabledTag = true) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(
+                            Triple(UserProfileImageSlot.CHAT, R.string.user_profile_background_chat, profile.chatBackground),
+                            Triple(UserProfileImageSlot.DRAWER, R.string.user_profile_background_drawer, profile.drawerBackground),
+                            Triple(UserProfileImageSlot.MENU, R.string.user_profile_background_menu, profile.menuBackground),
+                            Triple(UserProfileImageSlot.SHEET, R.string.user_profile_background_bottom_sheet, profile.sheetBackground),
+                            Triple(UserProfileImageSlot.DIALOG, R.string.user_profile_background_dialog, profile.dialogBackground)
+                        ).forEach { (slot, title, image) ->
+                            CustomizationActionRow(
+                                title = stringResource(title),
+                                summary = "${((transparencyDrafts[slot] ?: slot.imageTransparency(profile)) * 100).toInt()}%",
+                                tag = "background-setting-${slot.name.lowercase()}",
+                                onClick = { if (customizationEnabled) backgroundDialog = slot },
+                                leading = {
+                                    ProfileImage(image, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
+                                }
                             )
                         }
                     }
-                    ProfileBackdropPreview(
-                        profile, previewSlot,
-                        Modifier.fillMaxWidth().testTag("profile-preview-active"),
-                        transparencyDrafts[previewSlot] ?: previewSlot.imageTransparency(profile)
-                    )
-                }
-            }
-            item(key = "backgrounds") {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    listOf(
-                        Triple(UserProfileImageSlot.CHAT, stringResource(R.string.user_profile_background_chat), profile.chatBackground),
-                        Triple(UserProfileImageSlot.DRAWER, stringResource(R.string.user_profile_background_drawer), profile.drawerBackground),
-                        Triple(UserProfileImageSlot.MENU, stringResource(R.string.user_profile_background_menu), profile.menuBackground),
-                        Triple(UserProfileImageSlot.SHEET, stringResource(R.string.user_profile_background_bottom_sheet), profile.sheetBackground),
-                        Triple(UserProfileImageSlot.DIALOG, stringResource(R.string.user_profile_background_dialog), profile.dialogBackground)
-                    ).forEachIndexed { index, (slot, label, image) ->
-                        val transparency = transparencyDrafts[slot] ?: slot.imageTransparency(profile)
-                        val transparencyLabel = stringResource(R.string.user_profile_background_transparency)
-                        Surface(shape = if (index == 0) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp,
-                            bottomStart = 6.dp, bottomEnd = 6.dp) else RoundedCornerShape(6.dp),
-                            color = prominentContainerColor()) {
-                            Column {
-                                Row(Modifier.fillMaxWidth().clickable { openMenu(slot) }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    ProfileImage(image, Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)))
-                                    Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                    Box {
-                                        IconButton(onClick = { openMenu(slot) }) {
-                                            SharedIcon(Icons.Default.MoreVert, stringResource(R.string.user_profile_background_options, label))
-                                        }
-                                        SlotMenu(
-                                            expanded = menuFor == slot,
-                                            hasImage = image != null,
-                                            onDismiss = { menuFor = null },
-                                            onGallery = {
-                                                target = slot; menuFor = null
-                                                gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                            },
-                                            onStorage = { chooseStorage(slot) },
-                                            onRemove = { menuFor = null; storeImage(slot, null) }
-                                        )
-                                    }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 14.dp, end = 8.dp, bottom = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    ControlledSlider(
-                                        value = transparency,
-                                        onValueChange = { value ->
-                                            previewSlot = slot
-                                            transparencyDrafts[slot] = value
-                                        },
-                                        onValueChangeFinished = {
-                                            val chosen = transparencyDrafts[slot] ?: slot.imageTransparency(profile)
-                                            onChange { slot.withImageTransparency(it, chosen) }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                            .semantics { contentDescription = "$label: $transparencyLabel" }
-                                            .testTag("profile-transparency-${slot.name.lowercase()}")
-                                    )
-                                    Text(
-                                        "${(transparency * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        modifier = Modifier.width(44.dp),
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.End
-                                    )
-                                    IconButton(onClick = {
-                                        previewSlot = slot
-                                        transparencyDrafts[slot] = 0.5f
-                                        onChange { slot.withImageTransparency(it, 0.5f) }
-                                    }) {
-                                        SharedIcon(Icons.Default.Refresh,
-                                            stringResource(R.string.user_profile_background_transparency_reset))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                 }
             }
             item(key = "colors") {
+                CustomizationEnabledSection(customizationEnabled) {
+                    CustomizationActionRow(
+                        title = stringResource(R.string.settings_color),
+                        summary = if (appearance.useDynamicColor) stringResource(R.string.settings_dynamic_color)
+                            else if (appearance.colorSchemeName == "CUSTOM") stringResource(R.string.settings_customize_palette)
+                            else appearance.colorSchemeName.lowercase().replaceFirstChar { it.uppercase() },
+                        tag = "customization-colors-setting",
+                        onClick = { if (customizationEnabled) colorsDialog = true }
+                    )
+                }
+            }
+            item(key = "input-area") {
+                CustomizationEnabledSection(customizationEnabled) {
+                    CustomizationActionRow(
+                        title = stringResource(R.string.customization_input_title),
+                        summary = "${(appearance.inputAreaTransparency * 100).toInt()}% · ${appearance.inputAreaBlur.toInt()} dp",
+                        tag = "customization-input-setting",
+                        onClick = { if (customizationEnabled) inputDialog = true }
+                    )
+                }
+            }
+        }
+    }
+    val slot = backgroundDialog
+    if (customizationEnabled && slot != null && !showStorage) {
+        val label = stringResource(when (slot) {
+            UserProfileImageSlot.CHAT -> R.string.user_profile_background_chat
+            UserProfileImageSlot.DRAWER -> R.string.user_profile_background_drawer
+            UserProfileImageSlot.MENU -> R.string.user_profile_background_menu
+            UserProfileImageSlot.SHEET -> R.string.user_profile_background_bottom_sheet
+            UserProfileImageSlot.DIALOG -> R.string.user_profile_background_dialog
+            UserProfileImageSlot.PHOTO -> R.string.user_profile_photo_title
+        })
+        val transparency = transparencyDrafts[slot] ?: slot.imageTransparency(profile)
+        Dialog(
+            onDismissRequest = { backgroundDialog = null; menuFor = null },
+            title = { Text(label) },
+            scrollableContent = true,
+            content = {
+                Column(Modifier.fillMaxWidth().testTag("background-dialog-${slot.name.lowercase()}"),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.fillMaxWidth()) {
+                        ProfileBackdropPreview(
+                            profile, slot, Modifier.fillMaxWidth().testTag("profile-preview-active"), transparency
+                        )
+                        Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                            FilledTonalIconButton(
+                                onClick = { openMenu(slot) },
+                                modifier = Modifier.testTag("background-preview-options")
+                            ) {
+                                SharedIcon(Icons.Default.MoreVert,
+                                    stringResource(R.string.user_profile_background_options, label))
+                            }
+                            SlotMenu(
+                                expanded = menuFor == slot,
+                                hasImage = slot.get(profile) != null,
+                                onDismiss = { menuFor = null },
+                                onGallery = {
+                                    target = slot; menuFor = null
+                                    gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                },
+                                onStorage = { chooseStorage(slot) },
+                                onRemove = { menuFor = null; storeImage(slot, null) }
+                            )
+                        }
+                    }
+                    Text(stringResource(R.string.user_profile_background_transparency),
+                        style = MaterialTheme.typography.titleSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ControlledSlider(
+                            value = transparency,
+                            onValueChange = { transparencyDrafts[slot] = it },
+                            onValueChangeFinished = {
+                                val value = transparencyDrafts[slot] ?: slot.imageTransparency(profile)
+                                onChange { slot.withImageTransparency(it, value) }
+                            },
+                            modifier = Modifier.weight(1f)
+                                .semantics { contentDescription = "$label: ${localizedResources.getString(R.string.user_profile_background_transparency)}" }
+                                .testTag("profile-transparency-${slot.name.lowercase()}")
+                        )
+                        Text("${(transparency * 100).toInt()}%", style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(44.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        IconButton(onClick = {
+                            transparencyDrafts[slot] = 0.5f
+                            onChange { slot.withImageTransparency(it, 0.5f) }
+                        }) {
+                            SharedIcon(Icons.Default.Refresh,
+                                stringResource(R.string.user_profile_background_transparency_reset))
+                        }
+                    }
+                }
+            }
+        )
+    }
+    if (customizationEnabled && colorsDialog) {
+        Dialog(onDismissRequest = { colorsDialog = false },
+            title = { Text(stringResource(R.string.settings_color)) }, scrollableContent = true,
+            content = {
                 CustomizationColors(
                     appearance = appearance,
                     onDynamicColorChange = onDynamicColorChange,
@@ -306,20 +327,16 @@ fun CustomizationScreen(
                     onItemTransparencyChange = onItemTransparencyChange
                 )
             }
-            item(key = "input-area") {
-                InputAreaSettings(appearance, onInputAreaTransparencyChange, onInputAreaBlurChange)
-            }
-        }
-            if (!customizationEnabled) {
-                Box(
-                    Modifier.matchParentSize()
-                        .testTag("customization-disabled-overlay")
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                )
-            }
-        }
+        )
     }
-    if (customizationEnabled && showStorage) MediaStoragePhotoSheet(
+    if (customizationEnabled && inputDialog) {
+        Dialog(onDismissRequest = { inputDialog = false },
+            title = { Text(stringResource(R.string.customization_input_title)) },
+            scrollableContent = true,
+            content = { InputAreaSettings(appearance, onInputAreaTransparencyChange, onInputAreaBlurChange) }
+        )
+    }
+    if ((customizationEnabled || target == UserProfileImageSlot.PHOTO) && showStorage) MediaStoragePhotoSheet(
         onDismiss = { showStorage = false },
         onSelected = { file ->
             val slot = target ?: return@MediaStoragePhotoSheet
@@ -332,16 +349,15 @@ fun CustomizationScreen(
             }
         }
     )
-    if (customizationEnabled && busy) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
+    if (busy) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
         contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-    error?.takeIf { customizationEnabled }?.let { message -> AlertDialog(
+    error?.let { message -> AlertDialog(
         onDismissRequest = { error = null }, title = { Text(stringResource(R.string.user_profile_image_error)) },
         text = { Text(message) },
         confirmButton = { TextButton(onClick = { error = null }) { Text(stringResource(R.string.common_ok)) } }
     ) }
 }
 
-/** Live approximation of each destination using the same image and alpha as its real surface. */
 @Composable
 private fun ProfileBackdropPreview(
     profile: UserProfile,
@@ -349,32 +365,54 @@ private fun ProfileBackdropPreview(
     modifier: Modifier = Modifier,
     transparency: Float = slot.imageTransparency(profile)
 ) {
-    val title = stringResource(when (slot) {
-        UserProfileImageSlot.CHAT -> R.string.user_profile_background_chat
-        UserProfileImageSlot.DRAWER -> R.string.user_profile_background_drawer
-        UserProfileImageSlot.MENU -> R.string.user_profile_background_menu
-        UserProfileImageSlot.SHEET -> R.string.user_profile_background_bottom_sheet
-        UserProfileImageSlot.DIALOG -> R.string.user_profile_background_dialog
-        UserProfileImageSlot.PHOTO -> R.string.user_profile_photo_title
-    })
-    Surface(modifier.height(132.dp)
-        .semantics { stateDescription = "${(transparency * 100).toInt()}%" },
-        shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-        Box(Modifier.fillMaxSize()) {
+    Surface(
+        modifier.height(170.dp).semantics { stateDescription = "${(transparency * 100).toInt()}%" },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             ProfileBackground(slot.get(profile), Modifier.matchParentSize(), transparency)
-            Column(Modifier.fillMaxSize().padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(title, style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface)
-                Surface(shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)) {
-                    Text(stringResource(R.string.user_profile_background_preview_sample),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
-                }
-                Box(Modifier.fillMaxWidth(0.65f).height(8.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)))
+            if (slot.get(profile) == null) SharedIcon(Icons.Outlined.Image, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CustomizationEnabledSection(
+    enabled: Boolean,
+    showDisabledTag: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    Box(Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.4f)) {
+        content()
+        if (!enabled) {
+            Box(Modifier.matchParentSize()
+                .then(if (showDisabledTag) Modifier.testTag("customization-disabled-overlay") else Modifier)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {})
+        }
+    }
+}
+
+@Composable
+private fun CustomizationActionRow(
+    title: String,
+    summary: String,
+    tag: String,
+    onClick: () -> Unit,
+    leading: (@Composable () -> Unit)? = null
+) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(18.dp),
+        color = prominentContainerColor(),
+        modifier = Modifier.fillMaxWidth().testTag(tag)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            leading?.invoke()
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(summary, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

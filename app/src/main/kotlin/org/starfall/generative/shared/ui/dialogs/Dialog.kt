@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -120,14 +122,16 @@ private fun ConfigureAmoledDialogWindow() {
     }
 }
 
-/** Every dialog has a fixed title and action area around its independently scrollable content. */
+/** Dialog with a title, scrollable content and an optional action footer.
+ * Footer actions are ordered left-to-right: other actions, Close, Save (when present).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun Dialog(
     onDismissRequest: () -> Unit,
     title: @Composable () -> Unit,
     content: @Composable () -> Unit,
-    buttons: @Composable () -> Unit,
+    buttons: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     properties: DialogProperties = DialogProperties(),
     edgeToEdge: Boolean = false,
@@ -183,12 +187,16 @@ fun Dialog(
                             ProvideTextStyle(MaterialTheme.typography.bodyMedium) { content() }
                         }
                     }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 24.dp)
-                            .testTag("app-dialog-buttons"),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) { buttons() }
+                    if (buttons != null) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 24.dp)
+                                .testTag("app-dialog-buttons"),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) { buttons() }
+                    } else {
+                        Spacer(Modifier.height(24.dp))
+                    }
                 }
                 }
             }
@@ -213,13 +221,23 @@ fun AlertDialog(
     textContentColor: Color = AlertDialogDefaults.textContentColor,
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
     properties: DialogProperties = DialogProperties(),
-    scrollableContent: Boolean = true
+    scrollableContent: Boolean = true,
+    /** Save/Close sits at the right edge. Other confirmation actions sit left of dismissal. */
+    confirmAtRight: Boolean = false
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
         title = title,
         content = text,
-        buttons = { dismissButton?.invoke(); confirmButton() },
+        buttons = {
+            if (confirmAtRight) {
+                dismissButton?.invoke()
+                confirmButton()
+            } else {
+                confirmButton()
+                dismissButton?.invoke()
+            }
+        },
         modifier = modifier, icon = icon, scrollableContent = scrollableContent,
         shape = shape, containerColor = containerColor, iconContentColor = iconContentColor,
         titleContentColor = titleContentColor, textContentColor = textContentColor,

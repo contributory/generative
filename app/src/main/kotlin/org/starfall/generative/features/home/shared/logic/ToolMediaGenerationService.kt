@@ -36,7 +36,7 @@ internal class ToolMediaGenerationService(
 
     suspend fun executeConfiguredTool(
         name: String,
-        provider: ModelProvider,
+        provider: ModelProvider?,
         model: String,
         prompt: String,
         imageOptions: JsonObject,

@@ -8,7 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -100,7 +100,7 @@ Write clearly.
         compose.runOnIdle {
             assertTrue(saved.any { it.name == "writing-helper" &&
                 it.extraFrontmatter?.contains("license: MIT") == true &&
-                it.extraFrontmatter?.contains("  author: test") == true })
+                it.extraFrontmatter.contains("  author: test") == true })
         }
     }
 
@@ -151,7 +151,7 @@ Write clearly.
         compose.setContent {
             MaterialTheme {
                 SkillsTab(listOf(skill), onEditSkill = {}, onDeleteSkill = {},
-                    onExportSkill = { exported = it })
+                    onReorderSkills = {}, onExportSkill = { exported = it })
             }
         }
         compose.onNodeWithContentDescription("More options").performClick()

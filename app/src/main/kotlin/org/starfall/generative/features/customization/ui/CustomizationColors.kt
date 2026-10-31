@@ -43,113 +43,104 @@ internal fun CustomizationColors(
     var opacity by remember { mutableFloatStateOf(appearance.itemTransparency) }
     LaunchedEffect(appearance.itemTransparency) { opacity = appearance.itemTransparency }
 
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text(stringResource(R.string.settings_color),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(start = 4.dp))
-        Surface(shape = RoundedCornerShape(22.dp),
-            color = appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            Column(Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().toggleable(appearance.useDynamicColor, role = Role.Switch,
-                        onValueChange = onDynamicColorChange),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_dynamic_color),
-                            style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.settings_dynamic_color_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(checked = appearance.useDynamicColor, onCheckedChange = null)
-                }
-                if (!appearance.useDynamicColor) {
-                    Text(stringResource(R.string.settings_color_palette),
-                        style = MaterialTheme.typography.titleMedium)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().testTag("customization-palette-row"),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ThemePresets.forEach { preset ->
-                            val selected = appearance.colorSchemeName == preset.name
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = appearanceContainerColor(preset.preview, opacityBoost = 0.15f),
-                                border = if (selected) BorderStroke(2.dp, preset.preview) else nestedContainerBorder(),
-                                modifier = Modifier.weight(1f).height(68.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .toggleable(selected, role = Role.RadioButton) {
-                                        onColorSchemeChange(preset.name)
-                                    }
-                                    .semantics { contentDescription = preset.name }
-                                    .testTag("palette-preset-${preset.name}")
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center) {
-                                    Box(Modifier.size(26.dp).clip(CircleShape).background(preset.preview),
-                                        contentAlignment = Alignment.Center) {
-                                        if (selected) SharedIcon(Icons.Outlined.Check, null,
-                                            tint = Color.White, modifier = Modifier.size(18.dp))
-                                    }
-                                    Text(preset.name.lowercase().replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
-                        val selected = appearance.colorSchemeName == "CUSTOM"
-                        val first = appearance.customPalette.color(0)
-                        val customName = stringResource(R.string.settings_customize_palette)
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
-                            border = if (selected) BorderStroke(2.dp, first) else nestedContainerBorder(),
-                            modifier = Modifier.weight(1f).height(68.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .toggleable(selected, role = Role.RadioButton) { showMixer = true }
-                                .semantics { contentDescription = customName }
-                                .testTag("palette-preset-CUSTOM")
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center) {
-                                Box(Modifier.size(26.dp).clip(CircleShape).background(Brush.sweepGradient(
-                                    listOf(appearance.customPalette.color(0), appearance.customPalette.color(1),
-                                        appearance.customPalette.color(2), first))),
-                                    contentAlignment = Alignment.Center) {
-                                    SharedIcon(Icons.Outlined.Edit, null,
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(16.dp))
-                                }
-                                Text(stringResource(R.string.settings_customize_palette),
-                                    style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Text(stringResource(R.string.settings_item_transparency),
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().toggleable(appearance.useDynamicColor, role = Role.Switch,
+                onValueChange = onDynamicColorChange),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_dynamic_color),
                     style = MaterialTheme.typography.titleMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {
-                        opacity = 0.5f
-                        onItemTransparencyChange(0.5f)
-                    }, enabled = !LocalAmoledMode.current) {
-                        SharedIcon(Icons.Default.RestartAlt,
-                            stringResource(R.string.settings_item_transparency_reset))
+                Text(stringResource(R.string.settings_dynamic_color_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = appearance.useDynamicColor, onCheckedChange = null)
+        }
+        if (!appearance.useDynamicColor) {
+            Text(stringResource(R.string.settings_color_palette),
+                style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth().testTag("customization-palette-row"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemePresets.forEach { preset ->
+                    val selected = appearance.colorSchemeName == preset.name
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = appearanceContainerColor(preset.preview, opacityBoost = 0.15f),
+                        border = if (selected) BorderStroke(2.dp, preset.preview) else nestedContainerBorder(),
+                        modifier = Modifier.weight(1f).height(68.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .toggleable(selected, role = Role.RadioButton) {
+                                onColorSchemeChange(preset.name)
+                            }
+                            .semantics { contentDescription = preset.name }
+                            .testTag("palette-preset-${preset.name}")
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center) {
+                            Box(Modifier.size(26.dp).clip(CircleShape).background(preset.preview),
+                                contentAlignment = Alignment.Center) {
+                                if (selected) SharedIcon(Icons.Outlined.Check, null,
+                                    tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
+                            Text(preset.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelSmall)
+                        }
                     }
-                    ControlledSlider(
-                        value = opacity, onValueChange = { opacity = it },
-                        onValueChangeFinished = { onItemTransparencyChange(opacity) },
-                        modifier = Modifier.weight(1f).testTag("customization-opacity-slider"),
-                        enabled = !LocalAmoledMode.current
-                    )
-                    Text("${(opacity * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(start = 8.dp))
+                }
+                val selected = appearance.colorSchemeName == "CUSTOM"
+                val first = appearance.customPalette.color(0)
+                val customName = stringResource(R.string.settings_customize_palette)
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = appearanceContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    border = if (selected) BorderStroke(2.dp, first) else nestedContainerBorder(),
+                    modifier = Modifier.weight(1f).height(68.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .toggleable(selected, role = Role.RadioButton) { showMixer = true }
+                        .semantics { contentDescription = customName }
+                        .testTag("palette-preset-CUSTOM")
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center) {
+                        Box(Modifier.size(26.dp).clip(CircleShape).background(Brush.sweepGradient(
+                            listOf(appearance.customPalette.color(0), appearance.customPalette.color(1),
+                                appearance.customPalette.color(2), first))),
+                            contentAlignment = Alignment.Center) {
+                            SharedIcon(Icons.Outlined.Edit, null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(16.dp))
+                        }
+                        Text(stringResource(R.string.settings_customize_palette),
+                            style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Text(stringResource(R.string.settings_item_transparency),
+            style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = {
+                opacity = 0.5f
+                onItemTransparencyChange(0.5f)
+            }, enabled = !LocalAmoledMode.current) {
+                SharedIcon(Icons.Default.RestartAlt,
+                    stringResource(R.string.settings_item_transparency_reset))
+            }
+            ControlledSlider(
+                value = opacity, onValueChange = { opacity = it },
+                onValueChangeFinished = { onItemTransparencyChange(opacity) },
+                modifier = Modifier.weight(1f).testTag("customization-opacity-slider"),
+                enabled = !LocalAmoledMode.current
+            )
+            Text("${(opacity * 100).toInt()}%",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(start = 8.dp))
         }
     }
 

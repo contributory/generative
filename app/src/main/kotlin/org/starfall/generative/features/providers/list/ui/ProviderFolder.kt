@@ -222,8 +222,8 @@ internal fun ProviderFolderOverlay(
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .onGloballyPositioned { viewportBounds = it.boundsInWindow() }
-            .pointerInput(visible, dndState, edgeWidth, swipeDistance) {
-                if (!visible) return@pointerInput
+            // Retain the closing artwork but remove the full-screen hit target immediately.
+            .then(if (visible) Modifier.pointerInput(dndState, edgeWidth, swipeDistance) {
                 awaitEachGesture {
                     val down = awaitFirstDown(
                         requireUnconsumed = false, pass = PointerEventPass.Initial
@@ -251,7 +251,7 @@ internal fun ProviderFolderOverlay(
                         }
                     }
                 }
-            }
+            } else Modifier)
     ) {
         val fullWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
         val fullHeightPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
@@ -439,11 +439,11 @@ private fun ProviderFolderHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.testTag("provider_folder_toolbar_${group.id}")
             ) {
+                ProviderGroupContextMenu(onEdit = onEditGroup, onDelete = onDeleteGroup, compact = false)
+                ListViewToggle(isGrid, onToggleGridView)
                 IconButton(onClick = onAddProvider, modifier = Modifier.testTag("add_folder_provider")) {
                     SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                 }
-                ListViewToggle(isGrid, onToggleGridView)
-                ProviderGroupContextMenu(onEdit = onEditGroup, onDelete = onDeleteGroup, compact = false)
             }
         }
     }

@@ -39,7 +39,7 @@
         <item quantity="other">%d 个 TTS 模型</item>
     </plurals>
     <string name="customization_title">个性化</string>
-    <string name="customization_enable">启用个性化</string>
+    <string name="customization_enable">启用</string>
     <string name="customization_description">颜色、组件透明度、头像和背景</string>
     <string name="customization_backgrounds_title">背景图片</string>
     <string name="user_profile_background_preview_sample">带背景图片的示例内容</string>

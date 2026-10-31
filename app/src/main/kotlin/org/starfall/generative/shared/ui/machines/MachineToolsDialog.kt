@@ -75,7 +75,7 @@ fun MachineToolsDialog(
             }
         },
         buttons = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
             Button(onClick = {
                 onSave(machine.copy(aiToolsEnabled = true, aiTools = aiTools))
             }) { Text(stringResource(R.string.common_save)) }

@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
@@ -72,7 +73,7 @@ internal fun RemoteMachinesTopBar(
         colors = edgeToEdgeTopAppBarColors(),
         modifier = modifier,
         title = {
-            Column {
+            if (subtitle == null) FixedAppBarTitle(title) else Column {
                 Text(
                     title,
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),

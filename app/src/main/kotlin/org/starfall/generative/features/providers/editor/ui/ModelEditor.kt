@@ -1,7 +1,6 @@
 package org.starfall.generative.features.providers.editor.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import androidx.compose.material3.*
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +25,7 @@ import org.starfall.generative.features.providers.shared.ui.ModelToolsDialog
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
@@ -40,7 +39,6 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
@@ -67,7 +65,6 @@ fun ModelEditor(
     var iconImporting by remember { mutableStateOf(false) }
     var iconChanged by remember { mutableStateOf(false) }
     var iconModelId by remember { mutableStateOf<String?>(null) }
-    var typeExpanded by remember { mutableStateOf(false) }
     var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
@@ -75,7 +72,7 @@ fun ModelEditor(
     val trimmedId = modelId.trim()
     val isVideoGen = config.modelType == ModelType.VIDEO_GENERATION
     val mediaProfiles = (if (isVideoGen) customVideoMediaProfiles else customImageMediaProfiles)
-        .withDefaultMediaProfile(isVideoGen)
+        .withDefaultMediaProfile(isVideoGen).filterValues { !it.modelIndependent }
     val chosenMediaProfile = mediaProfiles[config.mediaRequestProfileId]
         ?: mediaProfiles.values.first { it.mode == MediaGenerationMode.DEFAULT }
     val isMediaModel = config.modelType == ModelType.IMAGE_GENERATION || isVideoGen
@@ -194,31 +191,12 @@ fun ModelEditor(
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = !typeExpanded }) {
-                OutlinedTextField(
-                    value = config.modelType.displayName,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.model_type)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth()
-                )
-                ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
-                    ModelType.entries.forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type.displayName) },
-                            onClick = {
-                                config = if (type != config.modelType &&
-                                    (type == ModelType.IMAGE_GENERATION || type == ModelType.VIDEO_GENERATION)) {
-                                    // Profiles belong to their generation type; don't reuse an ID from another library.
-                                    config.copy(modelType = type, mediaRequestProfileId = "", mediaApiType = MediaGenerationMode.DEFAULT)
-                                } else config.copy(modelType = type)
-                                profileExpanded = false
-                                typeExpanded = false
-                            }
-                        )
-                    }
-                }
+            ModelTypeSelector(config.modelType) { type ->
+                config = if (type != config.modelType &&
+                    (type == ModelType.IMAGE_GENERATION || type == ModelType.VIDEO_GENERATION)) {
+                    config.copy(modelType = type, mediaRequestProfileId = "", mediaApiType = MediaGenerationMode.DEFAULT)
+                } else config.copy(modelType = type)
+                profileExpanded = false
             }
             if (config.modelType == ModelType.TEXT_GENERATION) {
                 OutlinedTextField(

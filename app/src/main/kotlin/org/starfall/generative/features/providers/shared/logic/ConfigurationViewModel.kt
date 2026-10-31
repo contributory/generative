@@ -349,6 +349,22 @@ class ConfigurationViewModel(
     suspend fun clearMcpOAuth(server: McpInfo): McpInfo =
         mcpRepo.clearOAuth(server)
 
+    /** Import a connector by its display name, retaining its identity and other metadata. */
+    suspend fun importMcpLink(name: String, url: String) {
+        val existing = mcpRepo.allServers.first()
+            .firstOrNull { it.name.equals(name, ignoreCase = true) }
+            ?.let { mcpRepo.getById(it.id) }
+        if (existing != null && existing.url != url &&
+            existing.auth.method == org.starfall.generative.shared.model.McpAuthMethod.OAUTH2) {
+            // An OAuth token must never follow an imported link to a different endpoint.
+            mcpRepo.clearOAuth(existing)
+        }
+        val updated = mergeMcpLink(existing, name, url)
+        mcpRepo.saveServer(updated)
+        if (existing?.url != url) clearMcpToolsState(updated.id)
+        viewModelScope.launch(LocalWriteErrors.handler) { refreshMcpTools(updated) }
+    }
+
     fun saveMcpServer(server: McpInfo) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             mcpRepo.saveServer(server)

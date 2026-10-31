@@ -24,7 +24,7 @@ import org.starfall.generative.shared.ui.lists.ItemCard
 @Composable
 internal fun ChatOptionSelectionCard(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     selected: Boolean,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
@@ -57,13 +57,15 @@ internal fun ChatOptionSelectionCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 if (!detail.isNullOrBlank()) {
                     Text(
                         detail,

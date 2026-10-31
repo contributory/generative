@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -68,6 +69,9 @@ internal class BottomSheetsLinkState {
     /** The selected-model overview, model picker, and summarization share one sheet. */
     var modelSheetPage by mutableStateOf<ModelSheetPage?>(null)
         private set
+    val renderedModelSheetPage: ModelSheetPage?
+        get() = if (modelSheetPage == ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW)
+            ModelSheetPage.MODEL_PICKER else modelSheetPage
     val showSelectedModelOverview: Boolean get() = modelSheetPage == ModelSheetPage.SELECTED_MODEL
     var quickActionsPage by mutableStateOf<QuickActionsPage?>(null)
         private set
@@ -292,10 +296,7 @@ internal fun BottomSheetsLink(
         }
     }
 
-    val modelSheetPage = when (sheets.modelSheetPage) {
-        ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW -> ModelSheetPage.MODEL_PICKER
-        else -> sheets.modelSheetPage
-    }
+    val modelSheetPage = sheets.renderedModelSheetPage
     if (modelSheetPage != null && (modelSheetPage == ModelSheetPage.MODEL_PICKER || mediaKind == null)) {
         val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
         val selectedConfigEntry = selectedProvider?.config?.modelConfigs?.entries?.firstOrNull { it.key == selectedModelName }
@@ -315,6 +316,7 @@ internal fun BottomSheetsLink(
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }
+        var pickerContentOverflows by remember(modelSheetPage) { mutableStateOf(false) }
         // A conversation override wins; otherwise show the level saved for this model.
         val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
         val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
@@ -331,6 +333,7 @@ internal fun BottomSheetsLink(
                     sheets.dismissModelSheet()
                 },
                 dismissOnBack = modelSheetPage == ModelSheetPage.SELECTED_MODEL,
+                expandOnOpen = modelSheetPage == ModelSheetPage.MODEL_PICKER && pickerContentOverflows,
                 containerColor = style.color,
                 containerBrush = style.brush,
                 navigationBarColor = style.navigationBarColor,
@@ -357,6 +360,7 @@ internal fun BottomSheetsLink(
                     val pageActive = LocalScreenTransitionActive.current
                     if (target == ModelSheetPage.MODEL_PICKER) {
                         ModelPickerSheetContent(
+                            onOverflowChanged = { pickerContentOverflows = it },
                             providers = if (mediaKind != null) mediaProviders else providers,
                             providerGroups = providerGroups,
                             collapsedGroupIdsState = modelPickerCollapsedGroups,
@@ -376,6 +380,9 @@ internal fun BottomSheetsLink(
                             dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
                             modelFilter = if (mediaKind == null) chatModelPickerFilter else { _, _, config -> config.modelType == mediaKind },
                             onEditProvider = onEditProvider,
+                            onEditModel = { providerId, modelId ->
+                                if (pageActive) onEditModel(providerId, modelId)
+                            },
                             onOpenSelectedModel = if (mediaKind == null) {
                                 { if (pageActive) sheets.openSelectedModelOverview() }
                             } else null,
@@ -420,13 +427,6 @@ internal fun BottomSheetsLink(
                                 val providerId = selectedProvider!!.id
                                 val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
                                 setPassback
-                            },
-                            onEditModel = selectedProvider?.let { provider ->
-                                val modelId = selectedConfigEntry?.key ?: selectedModelName
-                                {
-                                    sheets.dismissModelSheet()
-                                    onEditModel(provider.id, modelId)
-                                }
                             },
                             onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() },
                             contextWindowContent = contextWindowContent,

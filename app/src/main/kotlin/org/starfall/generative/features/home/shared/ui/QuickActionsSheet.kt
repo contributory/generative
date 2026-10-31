@@ -126,25 +126,21 @@ internal fun QuickActionsSheetContent(
         AddActionRow(
             icon = Icons.Outlined.Lightbulb,
             title = stringResource(R.string.common_skills),
-            subtitle = stringResource(R.string.quick_action_skills_description),
             onClick = { onOpenSkills(); onDismiss() }
         )
         AddActionRow(
             icon = Icons.Outlined.DocumentSparkle,
             title = stringResource(R.string.common_instructions),
-            subtitle = stringResource(R.string.quick_action_instructions_description),
             onClick = onOpenInstructions
         )
         AddActionRow(
             icon = Icons.Outlined.Build,
             title = stringResource(R.string.common_feature_tools),
-            subtitle = stringResource(R.string.quick_action_feature_tools_description),
             onClick = onOpenFeatureTools
         )
         AddActionRow(
             icon = Icons.Outlined.Extension,
             title = stringResource(R.string.common_mcp_connectors),
-            subtitle = stringResource(R.string.quick_action_mcp_connectors_description),
             onClick = onOpenMcpConnectors
         )
     }
@@ -233,7 +229,7 @@ private fun AddActionTile(
 private fun AddActionRow(
     icon: ImageVector,
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -262,12 +258,14 @@ private fun AddActionRow(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

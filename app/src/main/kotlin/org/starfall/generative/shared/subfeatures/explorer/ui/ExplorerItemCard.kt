@@ -100,7 +100,7 @@ private fun ExplorerItemIcon(item: ExplorerItem, isGrid: Boolean) {
 }
 
 @Composable
-private fun ExplorerItemSubtitle(item: ExplorerItem): String {
+private fun explorerItemSubtitle(item: ExplorerItem): String {
     if (item.directory) return stringResource(R.string.explorer_folder)
     return Formatter.formatFileSize(LocalContext.current, item.size)
 }

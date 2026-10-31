@@ -39,7 +39,7 @@
         <item quantity="other">%d TTS-Modelle</item>
     </plurals>
     <string name="customization_title">Anpassung</string>
-    <string name="customization_enable">Anpassung aktivieren</string>
+    <string name="customization_enable">Aktivieren</string>
     <string name="customization_description">Farben, Transparenz der Elemente, Profilfoto und Hintergründe</string>
     <string name="customization_backgrounds_title">Hintergrundbilder</string>
     <string name="user_profile_background_preview_sample">Beispielinhalt mit Hintergrundbild</string>

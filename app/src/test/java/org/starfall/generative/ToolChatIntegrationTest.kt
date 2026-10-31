@@ -166,7 +166,7 @@ class ToolChatIntegrationTest {
             val irrelevant = AgentSkill("translate-text", "translate-text", "Private translation instructions", "Translate text")
             store.replaceAll(listOf(skill, irrelevant))
             val checklist = skillsRoot.resolve("review-code/references/checklist.md")
-            checklist.parentFile.mkdirs()
+            requireNotNull(checklist.parentFile).mkdirs()
             checklist.writeText("Verify tests and edge cases")
             val requests = mutableListOf<JsonObject>()
             server.dispatcher = object : Dispatcher() {
@@ -232,7 +232,7 @@ class ToolChatIntegrationTest {
             val skill = AgentSkill("review", "review", "Use references/checks.md for review details", "Review patches")
             store.replaceAll(listOf(skill))
             val reference = skillsRoot.resolve("review/references/checks.md")
-            reference.parentFile.mkdirs()
+            requireNotNull(reference.parentFile).mkdirs()
             reference.writeText("Check tests and boundary cases")
             val requests = mutableListOf<String>()
             server.dispatcher = object : Dispatcher() {

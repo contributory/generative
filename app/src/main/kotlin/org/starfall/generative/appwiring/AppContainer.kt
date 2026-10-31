@@ -74,7 +74,7 @@ class AppContainer(context: Context) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { conversations.recoverPendingSaves() }
         // Keep the debug log's on/off state and scopes in step with App settings, from process start.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            preferences.appPreferencesFlow.collect { DebugLog.configure(it.debugMode, it.debugLogCategories) }
+            preferences.appPreferencesFlow.collect { DebugLog.configure(it.debugMode, it.debugLogCategories, it.debugLogLevel) }
         }
         aiService.providerLoader = providers::resolveProvider
         mcpService.serverLoader = mcp::resolveServer

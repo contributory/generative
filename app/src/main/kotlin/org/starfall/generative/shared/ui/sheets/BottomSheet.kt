@@ -5,6 +5,7 @@ import android.view.Window
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +56,8 @@ fun BottomSheet(
     contentBehindNavigationBar: Boolean = false,
     /** Used by media pickers/editors that intentionally occupy a fixed screen fraction. */
     fixedHeightFraction: Float? = null,
+    /** Request the expanded anchor after layout; both open anchors remain available for dragging. */
+    expandOnOpen: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     // Two visible Material 3 stops: PartiallyExpanded and Expanded.
@@ -63,6 +66,12 @@ fun BottomSheet(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded)
     )
+    LaunchedEffect(expandOnOpen, sheetState) {
+        if (expandOnOpen) {
+            snapshotFlow { sheetState.isVisible && sheetState.hasExpandedState }.first { it }
+            sheetState.expand()
+        }
+    }
     // Give Material a full-height surface so both anchors exist even for short content.
     // The top inset keeps Expanded immediately below (never behind) the status bar.
     val amoled = LocalAmoledMode.current

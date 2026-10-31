@@ -10,10 +10,11 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeDown
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -90,4 +91,23 @@ class AppSheetAnchorsTest {
         assertTrue("Fixed-fraction sheets must not skip PartiallyExpanded",
             expandedTop < partialTop)
     }
+    @Test
+    fun automaticExpansionStillAllowsNativePartialStopByDraggingDown() {
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = {}, expandOnOpen = true) {
+                    Box(Modifier.fillMaxSize())
+                }
+            }
+        }
+        compose.waitForIdle()
+        val expandedTop = compose.onNodeWithTag("bottom-sheet-window")
+            .getUnclippedBoundsInRoot().top
+        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeDown() }
+        compose.waitForIdle()
+        val partialTop = compose.onNodeWithTag("bottom-sheet-window")
+            .getUnclippedBoundsInRoot().top
+        assertTrue("Auto-expand must not remove the native partially expanded anchor", partialTop > expandedTop)
+    }
+
 }

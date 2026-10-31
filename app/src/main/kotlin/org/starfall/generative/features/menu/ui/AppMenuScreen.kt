@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -168,111 +167,104 @@ fun AppMenuScreen(
                 }
             }
         }
-        item(key = "configuration-heading") {
-            SectionHeading(stringResource(R.string.common_configuration))
-        }
         item(key = "configuration-group") {
-            FeatureGroup {
+            FeatureGroup(Modifier.testTag("app-menu-group-configuration")) {
                 FeatureButton(
-                    stringResource(R.string.settings_chat_options),
-                    stringResource(R.string.settings_chat_options_description),
+                    stringResource(R.string.app_menu_default_options),
                     FluentUi.Regular.Chat,
                     onNavigateToChatOptions,
-                    shape = GroupTopShape
+                    shape = GroupTopShape,
+                    tag = "chat-options"
                 )
                 FeatureButton(
-                    stringResource(R.string.common_feature_tools),
-                    stringResource(R.string.settings_tools_editor_description),
-                    FluentUi.Regular.WrenchScrewdriver,
-                    onNavigateToToolsEditor,
-                    shape = GroupBottomShape
-                )
-            }
-        }
-        item(key = "external-services-heading") {
-            Spacer(Modifier.height(8.dp))
-            SectionHeading(stringResource(R.string.settings_group_external_services))
-        }
-        item(key = "external-services-group") {
-            FeatureGroup {
-                FeatureButton(
-                    stringResource(R.string.providers_title),
-                    stringResource(R.string.settings_providers_description),
+                    stringResource(R.string.app_menu_language_providers),
                     FluentUi.Regular.Cloud,
                     onNavigateToProviders,
-                    shape = GroupTopShape
+                    shape = GroupMiddleShape,
+                    tag = "providers"
                 )
                 FeatureButton(
-                    stringResource(R.string.common_mcp_connectors),
-                    stringResource(R.string.settings_mcp_manage_description),
-                    FluentUi.Regular.PuzzlePiece,
-                    onNavigateToMcp,
-                    shape = GroupMiddleShape
-                )
-                FeatureButton(
-                    stringResource(R.string.speech_services_title),
-                    stringResource(R.string.settings_speech_services_description),
+                    stringResource(R.string.app_menu_speech_services),
                     FluentUi.Regular.PersonVoice,
                     onNavigateToSpeech,
-                    shape = GroupMiddleShape
+                    shape = GroupBottomShape,
+                    tag = "speech"
+                )
+            }
+        }
+        item(key = "tools-group") {
+            FeatureGroup(Modifier.testTag("app-menu-group-tools")) {
+                FeatureButton(
+                    stringResource(R.string.app_menu_builtin_tools),
+                    FluentUi.Regular.WrenchScrewdriver,
+                    onNavigateToToolsEditor,
+                    shape = GroupTopShape,
+                    tag = "feature-tools"
                 )
                 FeatureButton(
-                    stringResource(R.string.remote_machines_title),
-                    stringResource(R.string.remote_machines_description),
+                    stringResource(R.string.app_menu_model_context_protocol),
+                    FluentUi.Regular.PuzzlePiece,
+                    onNavigateToMcp,
+                    shape = GroupBottomShape,
+                    tag = "mcp"
+                )
+            }
+        }
+        item(key = "remote-group") {
+            FeatureGroup(Modifier.testTag("app-menu-group-remote")) {
+                FeatureButton(
+                    stringResource(R.string.app_menu_remote_servers),
                     FluentUi.Regular.Desktop,
                     onNavigateToRemoteMachines,
-                    shape = GroupBottomShape
+                    shape = RoundedCornerShape(GroupOuterCorner),
+                    tag = "remote"
                 )
             }
         }
-        item(key = "data-caching-heading") {
-            Spacer(Modifier.height(8.dp))
-            SectionHeading(stringResource(R.string.settings_group_data_caching))
-        }
-        item(key = "data-caching-group") {
-            FeatureGroup {
+        item(key = "media-group") {
+            FeatureGroup(Modifier.testTag("app-menu-group-media")) {
                 FeatureButton(
-                    stringResource(R.string.settings_storage),
-                    stringResource(R.string.settings_storage_description),
+                    stringResource(R.string.app_menu_media_management),
                     FluentUi.Regular.FolderOpen,
                     onNavigateToStorage,
-                    shape = GroupTopShape
+                    shape = GroupTopShape,
+                    tag = "media"
                 )
                 FeatureButton(
-                    stringResource(R.string.icon_settings_title),
-                    stringResource(R.string.icon_settings_description),
+                    stringResource(R.string.app_menu_icons_management),
                     FluentUi.Regular.Image,
                     onNavigateToIcons,
-                    shape = GroupBottomShape
+                    shape = GroupBottomShape,
+                    tag = "icons"
                 )
             }
         }
-        item(key = "system-heading") {
-            Spacer(Modifier.height(8.dp))
-            SectionHeading(stringResource(R.string.common_system))
-        }
-        item(key = "system-group") {
-            FeatureGroup {
+        item(key = "settings-group") {
+            FeatureGroup(Modifier.testTag("app-menu-group-settings")) {
                 FeatureButton(
-                    stringResource(R.string.settings_category_app_settings),
-                    stringResource(R.string.settings_category_app_settings_description),
+                    stringResource(R.string.app_menu_settings),
                     FluentUi.Regular.Settings,
                     onNavigateToAppSettings,
-                    shape = GroupTopShape
+                    shape = RoundedCornerShape(GroupOuterCorner),
+                    tag = "settings"
                 )
+            }
+        }
+        item(key = "data-group") {
+            FeatureGroup(Modifier.testTag("app-menu-group-data")) {
                 FeatureButton(
-                    stringResource(R.string.settings_category_app_data),
-                    stringResource(R.string.settings_category_app_data_description),
+                    stringResource(R.string.app_menu_data),
                     FluentUi.Regular.History,
                     onNavigateToAppData,
-                    shape = GroupMiddleShape
+                    shape = GroupTopShape,
+                    tag = "data"
                 )
                 FeatureButton(
-                    stringResource(R.string.settings_category_about),
-                    stringResource(R.string.settings_category_about_description),
+                    stringResource(R.string.app_menu_about),
                     FluentUi.Regular.Info,
                     onNavigateToAbout,
-                    shape = GroupBottomShape
+                    shape = GroupBottomShape,
+                    tag = "about"
                 )
             }
         }
@@ -297,20 +289,9 @@ fun AppMenuScreen(
 }
 
 @Composable
-private fun SectionHeading(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp)
-    )
-}
-
-@Composable
-private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
+private fun FeatureGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp),
         content = content
     )
@@ -319,14 +300,14 @@ private fun FeatureGroup(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun FeatureButton(
     title: String,
-    subtitle: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    shape: Shape
+    shape: Shape,
+    tag: String
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("app-menu-$tag"),
         shape = shape,
         color = prominentContainerColor(),
         border = prominentContainerBorder(1.5.dp)
@@ -346,12 +327,12 @@ private fun FeatureButton(
                     SharedIcon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            SharedIcon(imageVector = FluentUi.Regular.ArrowForward, contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+            Text(
+                title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

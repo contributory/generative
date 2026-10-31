@@ -23,6 +23,6 @@ internal fun DeleteSpeechServiceDialog(onConfirm: () -> Unit, onDismiss: () -> U
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) { Text(stringResource(R.string.common_delete)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) } }
     )
 }

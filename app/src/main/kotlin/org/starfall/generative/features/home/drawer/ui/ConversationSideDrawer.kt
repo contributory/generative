@@ -556,7 +556,7 @@ fun ConversationSideDrawer(
                 creatingFolder = false
             }) { Text(stringResource(R.string.sidebar_create_action)) }
         },
-        dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text(stringResource(R.string.common_cancel)) } }
+        dismissButton = { TextButton(onClick = { creatingFolder = false }) { Text(stringResource(R.string.common_close)) } }
     )
     if (grouping) AlertDialog(
         onDismissRequest = { grouping = false }, title = { Text(stringResource(R.string.sidebar_move_to_folder)) },
@@ -572,19 +572,21 @@ fun ConversationSideDrawer(
             val name = folderName.trim(); val ids = selected; val id = UUID.randomUUID().toString()
             onUpdateOrganization { it.copy(folders = it.folders + ChatFolder(id, name)).moveChats(ids, id) }
             grouping = false; stopSelecting()
-        }) { Text(stringResource(R.string.sidebar_create_folder)) } }, dismissButton = { TextButton(onClick = { grouping = false }) { Text(stringResource(R.string.common_cancel)) } }
+        }) { Text(stringResource(R.string.sidebar_create_folder)) } }, dismissButton = { TextButton(onClick = { grouping = false }) { Text(stringResource(R.string.common_close)) } }
     )
     if (deleting.isNotEmpty()) AlertDialog(onDismissRequest = { deleting = emptySet() },
         title = { Text(stringResource(R.string.dialog_delete_conversations_title)) },
         text = { Text(stringResource(R.string.sidebar_delete_chats_message, deleting.size)) },
         confirmButton = { TextButton(onClick = { val ids = deleting; deleting = emptySet(); if (ids.size == 1) onDeleteConversation(ids.first()) else onDeleteConversations(ids); stopSelecting() }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text(stringResource(R.string.common_cancel)) } })
+        dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text(stringResource(R.string.common_close)) } })
     if (renaming != null) AlertDialog(onDismissRequest = { renaming = null }, title = { Text(stringResource(R.string.sidebar_rename_chat)) },
         text = { OutlinedTextField(title, { title = it }, singleLine = true, label = { Text(stringResource(R.string.sidebar_chat_title)) }) },
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.common_cancel)) } })
+        confirmAtRight = true,
+        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.common_close)) } })
     if (editingFolder != null) AlertDialog(onDismissRequest = { editingFolder = null }, title = { Text(stringResource(R.string.sidebar_rename_folder)) },
         text = { OutlinedTextField(folderName, { folderName = it }, singleLine = true) },
-        confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })
+        confirmAtRight = true,
+        confirmButton = { TextButton(enabled = folderName.isNotBlank(), onClick = { val id = editingFolder!!.id; val name = folderName.trim(); onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == id) it.copy(name = name) else it }) }; editingFolder = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { editingFolder = null }) { Text(stringResource(R.string.common_close)) } })
     if (deletingFolder != null) AlertDialog(onDismissRequest = { deletingFolder = null }, title = { Text(stringResource(R.string.dialog_remove_folder_title)) }, text = { Text(stringResource(R.string.sidebar_remove_folder_message)) },
-        confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text(stringResource(R.string.common_remove)) } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text(stringResource(R.string.common_cancel)) } })
+        confirmButton = { TextButton(onClick = { val id = deletingFolder!!.id; onUpdateOrganization { it.removeFolder(id) }; deletingFolder = null }) { Text(stringResource(R.string.common_remove)) } }, dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text(stringResource(R.string.common_close)) } })
 }

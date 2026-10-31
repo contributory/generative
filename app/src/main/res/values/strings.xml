@@ -91,6 +91,7 @@
     <string name="common_copy">Copy</string>
     <string name="common_name">Name</string>
     <string name="common_type">Type</string>
+    <string name="provider_api_type">API Type</string>
     <string name="common_key">Key</string>
     <string name="common_value">Value</string>
     <string name="common_auto">Auto</string>
@@ -248,6 +249,7 @@
     <string name="notification_oauth_channel_description">Keeps account sign-in active while you use the browser.</string>
     <string name="notification_oauth_title">Account sign-in in progress</string>
     <string name="invalid_provider_link">Invalid model provider link.</string>
+    <string name="invalid_app_link">Invalid app link</string>
     <string name="fgs_subtype_oauth" translatable="false">Receive a local OAuth browser callback while the user signs in</string>
     <string name="fgs_subtype_generation" translatable="false">Language model response generation in background</string>
     <string name="fgs_subtype_remote" translatable="false">Keep remote SSH connections and port forwards alive and let the user disconnect them</string>
@@ -455,7 +457,7 @@
     <string name="model_id_required">Model ID is required.</string>
     <string name="model_id_no_whitespace">Model ID cannot contain whitespace.</string>
     <string name="model_id_duplicate">This model provider already has a model with this ID.</string>
-    <string name="model_type" translatable="false">Model type</string>
+    <string name="model_type" translatable="false">Model Type</string>
     <string name="capabilities" translatable="false">Capabilities</string>
     <string name="input_media" translatable="false">Input</string>
     <string name="model_thinking" translatable="false">Reasoning Support</string>
@@ -465,7 +467,7 @@
     <string name="model_tools_title" translatable="false">Model Tools</string>
     <string name="model_tools_hint">Built-in tools this language model supports, sent in the model API request.</string>
     <string name="send_thinking_content_back" translatable="false">Send Thinking Content</string>
-    <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats with tool calls. On always sends it; Off never does.</string>
+    <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats with tool calls. On always sends it. Off never does.</string>
     <string name="common_default">Default</string>
     <string name="mcp_required_parameter_default_needed">Set a default value before disabling this required parameter.</string>
     <string name="model_arguments" translatable="false">Arguments</string>
@@ -532,7 +534,7 @@
     <string name="new_provider_group">New model provider group</string>
     <string name="provider_group_name">Group name</string>
     <string name="provider_group_name_required">Group name is required.</string>
-    <string name="delete_provider_group_message">Delete this model provider group? Its model providers will move back to the Model Providers root; they will not be deleted.</string>
+    <string name="delete_provider_group_message">Delete this model provider group? Its model providers will move back to the Model Providers root. They will not be deleted.</string>
     <string name="move_to_group">Move to group</string>
     <string name="ungrouped">No group</string>
     <string name="provider_count">%1$d model providers</string>
@@ -649,6 +651,19 @@
     <string name="language_name_th">Thai</string>
     <string name="language_name_id">Indonesian</string>
 
+    <!-- App Menu labels only: do not rename shared destination titles. -->
+    <string name="app_menu_default_options">Configuration</string>
+    <string name="app_menu_builtin_tools">Built-in tools</string>
+    <string name="app_menu_language_providers">Language model providers</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Speech synthesis services</string>
+    <string name="app_menu_remote_servers">Remote services</string>
+    <string name="app_menu_media_management">Media management</string>
+    <string name="app_menu_icons_management">Icons management</string>
+    <string name="app_menu_settings">Settings</string>
+    <string name="app_menu_data">Data</string>
+    <string name="app_menu_about">About</string>
+
     <string name="settings_group_external_services">External Services</string>
     <string name="settings_group_data_caching">Data &amp; Caching</string>
     <string name="settings_category_app_settings">General Settings</string>
@@ -758,7 +773,7 @@
     <string name="settings_auto_summary_description">Summarize automatically when the context fills up</string>
     <string name="settings_auto_summary_threshold">Auto summarize at %1$d%% of the context</string>
     <string name="settings_conversations">Conversations</string>
-    <string name="settings_continue_last_chat">Continue last conversation</string>
+    <string name="settings_continue_last_chat">Restore last session</string>
     <string name="settings_continue_last_chat_description">Open the most recently used conversation when the app starts.</string>
     <string name="settings_persist_selected_model">Remember the model for each conversation</string>
     <string name="settings_persist_selected_model_description">Restore the model last selected in each conversation when you return to it.</string>
@@ -782,18 +797,19 @@
     <string name="mcp_attachments_classic_description">Sends every enabled MCP tool with each request.</string>
     <string name="mcp_attachments_include_description">Include tool descriptions</string>
     <string name="mcp_attachments_include_description_summary">Off: descriptions are omitted for MCP tools attached beforehand, reducing request size. The detailed parameter on connect_mcps controls descriptions for on-demand MCPs.</string>
-    <string name="mcp_attachments_dynamic_description">The model gets list_mcps and connect_mcps and connects MCP servers only when it needs them. Dynamic applies once both minimums below are reached; until then MCPs are sent classically. Include tool descriptions applies to classically attached MCPs; for on-demand MCPs, connect_mcps uses its detailed parameter.</string>
+    <string name="mcp_attachments_dynamic_description">The model gets list_mcps and connect_mcps and connects MCP servers only when it needs them. Dynamic applies once both minimums below are reached. Until then MCPs are sent classically. Include tool descriptions applies to classically attached MCPs. For on-demand MCPs, connect_mcps uses its detailed parameter.</string>
     <string name="mcp_attachments_min_mcps">Minimum MCP servers</string>
     <string name="mcp_attachments_min_mcps_hint">Default is %1$d. 0 applies Dynamic to any number of MCPs.</string>
     <string name="mcp_attachments_min_tools">Minimum MCP tool count</string>
     <string name="mcp_attachments_min_tools_hint">Default is %1$d. 0 ignores the tool count.</string>
     <string name="mcp_attachments_dynamic_strategy_label">On-demand strategy</string>
-    <string name="mcp_attachments_strategy_overflow">Attach initial servers; load the rest on demand</string>
+    <string name="mcp_attachments_strategy_overflow">Initial + on demand</string>
     <string name="mcp_attachments_strategy_all">Load all servers on demand</string>
-    <string name="mcp_attachments_strategy_overflow_description">Overflow keeps the few MCPs below the minimum attached classically; the rest are loaded on demand.</string>
+    <string name="mcp_attachments_strategy_overflow_description">Overflow keeps the few MCPs below the minimum attached classically. The rest are loaded on demand.</string>
     <string name="mcp_attachments_strategy_all_description">All loads every MCP on demand.</string>
     <string name="mcp_attachments_list_limit">Maximum servers returned by list_mcps</string>
     <string name="mcp_attachments_load_limit">Maximum MCP servers kept connected</string>
+    <string name="mcp_attachments_limits">On-demand limits</string>
     <string name="mcp_attachments_number_invalid_from_zero">Enter a number from 0 to %1$d.</string>
     <string name="settings_limit_tool_rounds">Limit tool-call rounds</string>
     <string name="settings_limit_tool_rounds_description">When enabled, stop generating after this many rounds of tool calls. When disabled, there is no round limit.</string>
@@ -809,16 +825,40 @@
     <string name="settings_latex_description">Automatically render detected mathematical formulas while keeping currency amounts as plain text.</string>
     <string name="settings_latex_disabled">Disabled</string>
     <string name="settings_latex_auto_detect">Auto-detect</string>
-    <string name="settings_developer">Developer</string>
+    <string name="settings_developer">Developer Options</string>
     <string name="settings_debug_logs">Enable debug logging</string>
     <string name="settings_debug_logs_description">Show token usage, request details, and network activity in the debug panel.</string>
-    <string name="settings_debug_log_scope">Log categories</string>
+    <string name="settings_debug_log_scope">Log sources</string>
     <string name="settings_debug_log_scope_description">Choose which types of logs the debug panel records.</string>
     <string name="debug_log_category_network">Network</string>
-    <string name="debug_log_category_payload">Payloads</string>
-    <string name="debug_log_category_tokens">Tokens</string>
-    <string name="debug_log_category_errors">Errors</string>
+    <string name="debug_log_category_system">System</string>
+    <string name="settings_debug_log_level">Minimum log level</string>
+
+    <string name="debug_log_search">Search logs</string>
+    <string name="debug_log_all_categories">All categories</string>
+    <string name="debug_log_all_levels">All levels</string>
+    <string name="debug_log_details">Log details</string>
+    <string name="debug_log_id">Event ID</string>
+    <string name="debug_log_timestamp">Timestamp</string>
+    <string name="debug_log_category">Category</string>
+    <string name="debug_log_level">Level</string>
+    <string name="debug_log_source">Source</string>
+    <string name="debug_log_thread">Thread</string>
+    <string name="debug_log_elapsed">Duration</string>
+    <string name="debug_log_state">State</string>
+    <string name="debug_log_http_method">HTTP method</string>
+    <string name="debug_log_endpoint">Endpoint</string>
+    <string name="debug_log_http_status">HTTP status</string>
+
+    <string name="debug_log_pending">Pending</string>
+    <string name="debug_log_completed">Completed</string>
+    <string name="debug_log_failed">Failed</string>
+    <string name="debug_log_recorded">Recorded</string>
+    <string name="debug_log_stacktrace">Stack trace</string>
+    <string name="debug_log_message">Message</string>
+    <string name="debug_log_no_matches">No logs match these filters.</string>
     <string name="debug_log_title">Debug logs</string>
+    <string name="debug_log_disable">Turn off debug logs</string>
     <string name="debug_log_toggle">Show or hide debug logs</string>
     <string name="debug_log_copy_entry">Copy this log</string>
     <string name="debug_log_copy_all">Copy all logs</string>
@@ -872,7 +912,7 @@
     <string name="remote_machine_sftp_section" translatable="false">SFTP files</string>
     <string name="remote_machine_sftp_section_help">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
     <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
-    <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME; ~ and absolute paths are also supported.</string>
+    <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME. ~ and absolute paths are also supported.</string>
     <string name="documents_root_summary" translatable="false">MediaStorage and SFTP</string>
     <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
     <string name="remote_machine_start_port_forward">Start Port Forward</string>
@@ -897,7 +937,7 @@
     <string name="remote_machine_identity_file_help">Path to the private key, or the name of a key uploaded in Remote Settings. The key is never stored on the machine. Leave empty if not needed.</string>
     <string name="remote_machine_no_uploaded_keys">No keys uploaded yet</string>
     <string name="remote_machine_ssh_keys">SSH keys</string>
-    <string name="remote_machine_ssh_keys_help">Upload a private key once and reuse it across machines through IdentityFile. Google Cloud Shell also needs the matching public key (.pub); upload it with the button on each key.</string>
+    <string name="remote_machine_ssh_keys_help">Upload a private key once and reuse it across machines through IdentityFile. Google Cloud Shell also needs the matching public key (.pub). Upload it with the button on each key.</string>
     <string name="remote_machine_upload_ssh_key">Upload SSH key file</string>
     <string name="remote_machine_upload_public_key">Upload public key</string>
     <string name="remote_machine_public_key_uploaded">Public key uploaded</string>
@@ -968,6 +1008,7 @@
     <string name="remote_machine_update_ip_title">Cloud Shell IP · %1$s</string>
     <string name="remote_machine_tools_choose">Choose which tools the language model may use on this machine.</string>
     <string name="remote_machine_oauth_clients">Google OAuth clients</string>
+    <string name="remote_machine_google_oauth">Google OAuth</string>
     <string name="remote_machine_oauth_clients_help">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
     <string name="remote_machine_no_oauth_clients">No OAuth clients added yet.</string>
     <string name="remote_machine_import_oauth_json">Import OAuth client JSON</string>
@@ -1118,14 +1159,14 @@
     <string name="media_chain_header_invalid">Use a unique, valid HTTP header name and a single-line value.</string>
     <string name="media_default_params_tip">Only the most useful options are enabled for AI by default. Turn on other options below when needed.</string>
     <string name="media_default_base64_note">DALL·E image output defaults to Base64 JSON (b64_json), not a URL.</string>
-    <string name="media_default_video_options">Duration and framing use safe defaults; enable extra controls only when your video model supports them.</string>
+    <string name="media_default_video_options">Duration and framing use safe defaults. Enable extra controls only when your video model supports them.</string>
     <string name="video_option_duration">Duration (seconds)</string>
     <string name="video_option_size">Video size</string>
     <string name="video_option_resolution">Video resolution</string>
     <string name="media_chain_headers" translatable="false">Headers</string>
     <string name="media_chain_headers_editor" translatable="false">Headers JSON</string>
     <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
-    <string name="media_chain_headers_help">JSON object. Supports variables; configured provider authorization is used automatically.</string>
+    <string name="media_chain_headers_help">JSON object. Supports variables. Configured provider authorization is used automatically.</string>
     <string name="media_chain_content_type" translatable="false">Content Type</string>
     <string name="media_chain_content_type_json" translatable="false">application/json</string>
     <string name="media_chain_content_type_form" translatable="false">multipart/form-data</string>
@@ -1268,7 +1309,7 @@
     <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
     <string name="customization_title">Customization</string>
-    <string name="customization_enable">Enable customization</string>
+    <string name="customization_enable">Enable</string>
     <string name="customization_description">Colors, component transparency, profile photo and backgrounds</string>
     <string name="customization_backgrounds_title">Background images</string>
     <string name="user_profile_title">User Profile</string>
@@ -1331,7 +1372,7 @@
     <string name="provider_custom_endpoints_hint">Enter full URLs. Leave blank to use the default. Gemini generation URLs can use {model} and {method}.</string>
     <string name="provider_endpoints_invalid">Enter valid HTTP or HTTPS endpoint URLs.</string>
     <string name="launcher_drag_test_title">Launcher drag test</string>
-    <string name="launcher_drag_test_help">Long-press to move tiles or folders. Use a folder edge to reorder beside it; hold over its center to move a tile inside. Drag out of the open panel to return to the workspace.</string>
+    <string name="launcher_drag_test_help">Long-press to move tiles or folders. Use a folder edge to reorder beside it. Hold over its center to move a tile inside. Drag out of the open panel to return to the workspace.</string>
     <string name="launcher_drag_test_workspace">Workspace / Folder</string>
     <string name="launcher_drag_test_initial">Long-press and drag a tile</string>
     <string name="launcher_drag_test_reset">Reset</string>
@@ -1361,4 +1402,9 @@
     <string name="launcher_drag_test_reorder_on_entry">Reorder on target entry</string>
     <string name="launcher_drag_test_allow_folder_join">Allow drops into folders</string>
     <string name="launcher_drag_test_reorder_proximity">Reorder proximity: %1$d dp</string>
+    <string name="tool_settings_tab_media">Media</string>
+    <string name="tool_settings_tab_others">Others</string>
+    <string name="media_profile_require_model">Require model</string>
+    <string name="media_chain_test_no_model_note">Test requests may incur charges. File inputs are not available here.</string>
+    <string name="shared_attachment_failed">Could not attach one or more shared files</string>
 </resources>

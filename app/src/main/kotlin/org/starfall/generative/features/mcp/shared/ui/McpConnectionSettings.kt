@@ -33,10 +33,6 @@ internal fun mcpAuthenticationLabel(method: McpAuthMethod) = stringResource(when
 })
 
 @Composable
-internal fun mcpTransportLabel(protocol: McpProtocol) = stringResource(
-    if (protocol == McpProtocol.STREAMABLE_HTTP) R.string.mcp_streamable_http else R.string.mcp_sse)
-
-@Composable
 internal fun McpConnectionSettings(
     name: String, onNameChange: (String) -> Unit, icon: String?, onIconChange: (String?) -> Unit, onIconBusyChange: (Boolean) -> Unit,
     protocol: McpProtocol, onProtocolChange: (McpProtocol) -> Unit, url: String, onUrlChange: (String) -> Unit,
@@ -66,14 +62,11 @@ internal fun McpConnectionSettings(
         }
         HorizontalDivider()
         Text(stringResource(R.string.server_url), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.server_url_help, mcpTransportLabel(protocol)), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(url, onUrlChange, placeholder = { Text(stringResource(R.string.common_url)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (url.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_mcp_warning),
             color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         HorizontalDivider()
         Text(stringResource(R.string.mcp_auth), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.mcp_auth_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         var expanded by remember { mutableStateOf(false) }
         Box {
             OutlinedButton(onClick = { expanded = true }) { Text(stringResource(R.string.mcp_auth_type, mcpAuthenticationLabel(authMethod))) }

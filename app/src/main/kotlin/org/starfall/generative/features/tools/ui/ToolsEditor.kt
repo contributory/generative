@@ -1,12 +1,12 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -27,21 +27,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
@@ -63,11 +63,13 @@ fun ToolsEditor(
     onCollapsedProviderIdsChange: (Set<String>) -> Unit = {},
     onSaveModelConfiguration: (String, String, ModelConfiguration) -> Unit = { _, _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
+    onEditModel: ((providerId: String, modelId: String) -> Unit)? = null,
     onOpenMediaProfiles: (Boolean) -> Unit = {},
     onOpenMusicProfiles: () -> Unit = {},
     onBack: () -> Unit
 ) {
     var choosing by remember { mutableStateOf<String?>(null) }
+    val pager = rememberPagerState(pageCount = { 2 })
     fun openMediaSettings(name: String) { onOpenMediaProfiles(name == "generate_video") }
 
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
@@ -85,182 +87,161 @@ fun ToolsEditor(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text(
-                    stringResource(R.string.tool_settings_media_tools_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            items(listOf("generate_image", "generate_video")) { name ->
-                val config = settings.system[name] ?: SystemToolConfig()
-                val provider = providers.find { it.id == config.providerId }
-                val model = provider?.config?.modelConfigs?.get(config.modelId)
-                val image = name == "generate_image"
-                val selectedProfile = config.selectedMediaProfile(!image, model)
-                val profiles = config.mediaProfiles(!image)
-                val hasModel = provider != null && config.modelId.isNotBlank() && model != null
-                var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
-                    mutableStateOf(false)
-                }
-
-                SettingsCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                stringResource(
-                                    if (image) R.string.tool_image_generation_title
-                                    else R.string.tool_video_generation_title
-                                ),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(
-                                    if (image) R.string.tool_generate_image_description
-                                    else R.string.tool_generate_video_description
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+        AppSwipeTabs(
+            tabs = listOf(stringResource(R.string.tool_settings_tab_media), stringResource(R.string.tool_settings_tab_others)),
+            pagerState = pager,
+            modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            tabRowModifier = Modifier.padding(horizontal = 16.dp),
+            tabTag = { if (it == 0) "built-in-tools-media-tab" else "built-in-tools-others-tab" }
+        ) { page ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (page == 0) {
+                    items(listOf("generate_image", "generate_video")) { name ->
+                        val config = settings.system[name] ?: SystemToolConfig()
+                        val provider = providers.find { it.id == config.providerId }
+                        val model = provider?.config?.modelConfigs?.get(config.modelId)
+                        val image = name == "generate_image"
+                        val selectedProfile = config.selectedMediaProfile(!image, model)
+                        val profiles = config.mediaProfiles(!image)
+                        val hasModel = provider != null && config.modelId.isNotBlank() && model != null
+                        val eligibleProfiles = profiles.values.filter { hasModel || it.modelIndependent }
+                        val canPickProfile = eligibleProfiles.isNotEmpty()
+                        val currentProfileValid = hasModel || selectedProfile.modelIndependent
+                        var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
+                            mutableStateOf(false)
                         }
-                        Switch(
-                            checked = config.enabled,
-                            onCheckedChange = { onSave(name, config.copy(enabled = it)) }
-                        )
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    DefaultModelSelector(
-                        provider = provider,
-                        modelId = config.modelId,
-                        model = model,
-                        onClick = { choosing = name }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        ExposedDropdownMenuBox(
-                            expanded = apiTypeExpanded && hasModel,
-                            onExpandedChange = { if (hasModel) apiTypeExpanded = !apiTypeExpanded },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            OutlinedTextField(
-                                value = selectedProfile.name,
-                                onValueChange = {},
-                                readOnly = true,
-                                enabled = hasModel,
-                                label = { Text(stringResource(R.string.media_api_type)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
-                                modifier = Modifier.menuAnchor(
-                                    ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = hasModel
-                                ).fillMaxWidth().testTag("media_profile_picker_$name")
-                            )
-                            ExposedDropdownMenu(apiTypeExpanded && hasModel, { apiTypeExpanded = false }) {
-                                profiles.values.forEach { profile ->
-                                    DropdownMenuItem(
-                                        text = { Text(profile.name + " · " +
-                                            stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                        onClick = {
-                                            if (provider != null && config.modelId.isNotBlank()) {
-                                                onSaveModelConfiguration(config.providerId, config.modelId,
-                                                    (model ?: ModelConfiguration()).copy(
-                                                        mediaApiType = profile.mode,
-                                                        mediaRequestProfileId = profile.id
-                                                    ))
-                                            }
-                                            onSave(name, if (image) config.copy(
-                                                activeImageRequestProfileId = profile.id,
-                                                imageGenerationMode = profile.mode
-                                            ) else config.copy(
-                                                activeVideoRequestProfileId = profile.id,
-                                                videoGenerationMode = profile.mode
-                                            ))
-                                            apiTypeExpanded = false
-                                        }
+
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        stringResource(
+                                            if (image) R.string.tool_image_generation_title
+                                            else R.string.tool_video_generation_title
+                                        ),
+                                        style = MaterialTheme.typography.titleMedium
                                     )
+                                }
+                                Switch(
+                                    checked = config.enabled,
+                                    onCheckedChange = { onSave(name, config.copy(enabled = it)) }
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            DefaultModelSelector(
+                                provider = provider,
+                                modelId = config.modelId,
+                                model = model,
+                                onClick = { choosing = name }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider()
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ExposedDropdownMenuBox(
+                                    expanded = apiTypeExpanded && canPickProfile,
+                                    onExpandedChange = { if (canPickProfile) apiTypeExpanded = !apiTypeExpanded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = if (currentProfileValid) selectedProfile.name
+                                            else stringResource(R.string.media_chain_select_profile),
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        enabled = canPickProfile,
+                                        label = { Text(stringResource(R.string.media_api_type)) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
+                                        modifier = Modifier.menuAnchor(
+                                            ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = canPickProfile
+                                        ).fillMaxWidth().testTag("media_profile_picker_$name")
+                                    )
+                                    ExposedDropdownMenu(apiTypeExpanded && canPickProfile, { apiTypeExpanded = false }) {
+                                        eligibleProfiles.forEach { profile ->
+                                            DropdownMenuItem(
+                                                text = { Text(profile.name + " · " +
+                                                    stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                                                onClick = {
+                                                    if (!profile.modelIndependent && hasModel) {
+                                                        onSaveModelConfiguration(config.providerId, config.modelId,
+                                                            requireNotNull(model).copy(
+                                                                mediaApiType = profile.mode,
+                                                                mediaRequestProfileId = profile.id
+                                                            ))
+                                                    }
+                                                    onSave(name, config.selectMediaProfile(!image, profile))
+                                                    apiTypeExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { openMediaSettings(name) },
+                                    modifier = Modifier.padding(start = 6.dp).testTag("media_profile_library_$name")
+                                ) {
+                                    SharedIcon(Icons.Outlined.FormatListBulleted,
+                                        stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
                                 }
                             }
                         }
-                        IconButton(
-                            onClick = { openMediaSettings(name) },
-                            modifier = Modifier.padding(start = 6.dp).testTag("media_profile_library_$name")
-                        ) {
-                            SharedIcon(Icons.Outlined.FormatListBulleted,
-                                stringResource(if (image) R.string.media_image_gen_profiles else R.string.media_video_gen_profiles))
+                    }
+                    item {
+                        MusicToolSettings(settings.system["generate_music"] ?: SystemToolConfig(),
+                            onChange = { onSave("generate_music", it) }, onOpenProfiles = onOpenMusicProfiles)
+                    }
+                } else {
+                    item {
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.tool_search_tools_title), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.tool_search_tools_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(checked = settings.searchToolsEnabled, onCheckedChange = onSetSearchTools)
+                            }
                         }
                     }
-                    Text(
-                        stringResource(if (selectedProfile.mode == MediaGenerationMode.DEFAULT)
-                            R.string.media_profile_default_hint else R.string.media_chain_custom_summary),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            item {
-                MusicToolSettings(settings.system["generate_music"] ?: SystemToolConfig(),
-                    onChange = { onSave("generate_music", it) }, onOpenProfiles = onOpenMusicProfiles)
-            }
-            item {
-                Text(
-                    stringResource(R.string.tool_settings_other_tools_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            item {
-                SettingsCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.tool_search_tools_title), style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.tool_search_tools_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    item {
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.tool_agent_skills_search_title),
+                                        style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.tool_agent_skills_search_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(checked = settings.agentSkillsSearchEnabled,
+                                    onCheckedChange = onSetAgentSkillsSearch)
+                            }
                         }
-                        Switch(checked = settings.searchToolsEnabled, onCheckedChange = onSetSearchTools)
                     }
-                }
-            }
-            item {
-                SettingsCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.tool_agent_skills_search_title),
-                                style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.tool_agent_skills_search_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    item {
+                        SettingsCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        stringResource(R.string.tool_send_file_title),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        stringResource(R.string.tool_send_file_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = settings.sendFileEnabled,
+                                    onCheckedChange = onSetSendFile
+                                )
+                            }
                         }
-                        Switch(checked = settings.agentSkillsSearchEnabled,
-                            onCheckedChange = onSetAgentSkillsSearch)
-                    }
-                }
-            }
-            item {
-                SettingsCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.tool_send_file_title),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(R.string.tool_send_file_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = settings.sendFileEnabled,
-                            onCheckedChange = onSetSendFile
-                        )
                     }
                 }
             }
@@ -292,9 +273,10 @@ fun ToolsEditor(
                     provider.config.modelIds?.contains(id) != false
             },
             onSelectModel = { providerId, modelId ->
-                onSave(name, current.copy(providerId = providerId, modelId = modelId))
+                onSave(name, current.selectMediaModel(name == "generate_video", providerId, modelId))
             },
             onEditProvider = onEditProvider,
+            onEditModel = onEditModel,
             onDismiss = { choosing = null }
         )
     }

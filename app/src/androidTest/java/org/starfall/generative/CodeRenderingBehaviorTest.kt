@@ -7,7 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.*
@@ -77,16 +77,23 @@ class CodeRenderingBehaviorTest {
         compose.onNodeWithTag("word-wrap-column").assertDoesNotExist()
         compose.onNodeWithTag("word-wrap-mode").performClick()
         compose.onNodeWithText("Wrap by column").performClick()
+        compose.onNodeWithTag("word-wrap-column-open").performClick()
         compose.onNodeWithTag("word-wrap-column").performTextReplacement("0")
-        compose.onNodeWithText("Enter a positive whole number.").assertExists()
+        compose.onNodeWithText("Save").assertIsNotEnabled()
         assertEquals(80, preferences.wordWrapColumn)
         compose.onNodeWithTag("word-wrap-column").performTextReplacement("120")
+        assertEquals(80, preferences.wordWrapColumn)
+        compose.onNodeWithText("Close").performClick()
+        assertEquals(80, preferences.wordWrapColumn)
+        compose.onNodeWithTag("word-wrap-column-open").performClick()
+        compose.onNodeWithTag("word-wrap-column").performTextReplacement("120")
+        compose.onNodeWithText("Save").performClick()
         assertEquals(120, preferences.wordWrapColumn)
         compose.onNodeWithTag("word-wrap-mode").performClick()
         compose.onNodeWithText("Bounded").performClick()
-        compose.onNodeWithTag("word-wrap-column").assertExists()
+        compose.onNodeWithTag("word-wrap-column-open").assertExists()
         compose.onNodeWithTag("word-wrap-mode").performClick()
         compose.onNodeWithText("Wrap by viewport").performClick()
-        compose.onNodeWithTag("word-wrap-column").assertDoesNotExist()
+        compose.onNodeWithTag("word-wrap-column-open").assertDoesNotExist()
     }
 }

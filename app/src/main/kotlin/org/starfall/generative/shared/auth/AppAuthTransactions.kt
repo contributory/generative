@@ -91,12 +91,16 @@ internal object CompatibilityOAuth {
         // Some compatible servers omit token_type; retain the app's Bearer fallback.
         val normalized = JsonObject(response + (if (response["token_type"] == null)
             mapOf("token_type" to JsonPrimitive("Bearer")) else emptyMap()))
+        DebugLog.log(DebugLogCategory.NETWORK, "OAuth") {
+            "Token exchange succeeded; grant=${values["grant_type"] ?: "unknown"}, " +
+                "format=${if (jsonBody) "JSON" else "form"}, fallbackTokenType=${response["token_type"] == null}"
+        }
 
         // AppAuth's parser also validates OIDC ID tokens. Keep that validation diagnostic-only:
         // providers may return non-standard ID tokens, while the OAuth access token is still usable.
         runCatching { TokenResponse.Builder(request).fromResponseJson(JSONObject(normalized.toString())).build() }
             .onFailure { error ->
-                DebugLog.log(DebugLogCategory.ERRORS, "OAuth", DebugLogLevel.WARN) {
+                DebugLog.log(DebugLogCategory.NETWORK, "OAuth", DebugLogLevel.WARN) {
                     "Accepted token response despite AppAuth validation warning: ${error.message ?: error::class.java.simpleName}"
                 }
             }

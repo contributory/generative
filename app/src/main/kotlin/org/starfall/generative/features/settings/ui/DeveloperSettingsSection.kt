@@ -3,59 +3,45 @@ package org.starfall.generative.features.settings.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.logging.DebugLogCategory
+import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.ui.logging.labelRes
+import org.starfall.generative.shared.ui.layout.SettingsCard
 
 /** Debug log switch plus, while it is on, the choice of which kinds of log the floating panel records. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DeveloperSettingsSection(
     appPreferences: AppPreferences,
     onDebugModeChange: (Boolean) -> Unit,
     onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit,
-    onOpenLauncherDragTest: () -> Unit
+    onDebugLogLevelChange: (DebugLogLevel) -> Unit
 ) {
-    SettingsSection(stringResource(R.string.settings_developer)) {
+    SettingsCard {
         PreferenceToggle(
-            stringResource(R.string.settings_debug_logs), stringResource(R.string.settings_debug_logs_description),
+            stringResource(R.string.settings_debug_logs), null,
             appPreferences.debugMode, onDebugModeChange
         )
-        OutlinedButton(onClick = onOpenLauncherDragTest) {
-            Text(stringResource(R.string.launcher_drag_test_title))
-        }
         AnimatedVisibility(visible = appPreferences.debugMode) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.settings_debug_log_scope), style = MaterialTheme.typography.titleMedium)
-                Text(
-                    stringResource(R.string.settings_debug_log_scope_description),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                SettingsMultiChoicePreference(
+                    title = stringResource(R.string.settings_debug_log_scope),
+                    selected = appPreferences.debugLogCategories,
+                    choices = DebugLogCategory.entries.map { category ->
+                        SettingsChoice(category, stringResource(category.labelRes()))
+                    },
+                    onSelectedChange = onDebugLogCategoriesChange
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DebugLogCategory.entries.forEach { category ->
-                        val selected = category in appPreferences.debugLogCategories
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                onDebugLogCategoriesChange(
-                                    if (selected) appPreferences.debugLogCategories - category
-                                    else appPreferences.debugLogCategories + category
-                                )
-                            },
-                            label = { Text(stringResource(category.labelRes())) }
-                        )
-                    }
-                }
+                SettingsChoicePreference(
+                    title = stringResource(R.string.settings_debug_log_level),
+                    value = appPreferences.debugLogLevel,
+                    choices = DebugLogLevel.entries.map { SettingsChoice(it, it.name) },
+                    onSelected = onDebugLogLevelChange
+                )
             }
         }
     }

@@ -16,6 +16,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.blur
@@ -81,24 +83,32 @@ fun ProvidersScreen(
     // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var skipNextFolderEnterAnimation by rememberSaveable { mutableStateOf(false) }
-    // Keep the last opened folder composed until its reverse exit animation finishes.
-    var renderedFolderGroup by remember { mutableStateOf<ProviderGroup?>(null) }
+    // Folder selection controls input; rendered pages live independently through their exit animation.
+    val renderedFolderGroups = remember { mutableStateMapOf<String, ProviderGroup>() }
+    val folderOriginBounds = remember { mutableStateMapOf<String, Rect>() }
     var searching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchFields by remember { mutableStateOf(setOf(ProviderSearchField.PROVIDER_NAME)) }
     var searchFilterOpen by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val query = searchQuery.trim()
     fun matches(provider: ModelProvider) = matchesProviderSearch(provider, query, searchFields)
     // Search is a flat provider list, including members of matching folders.
     val matchingGroupIds = providerGroups.filter {
         matchesFolderSearch(it.name, query, searchFields)
     }.mapTo(hashSetOf()) { it.id }
-    val visibleRootItems = if (searching) {
+    val visibleRootItems = if (query.isNotBlank()) {
         orderedProviders.filter { matches(it) || it.groupId in matchingGroupIds }
             .map { ProviderRootItem.ProviderItem(it) }
     } else rootItems
-    fun closeSearch() { searching = false; searchQuery = ""; searchFilterOpen = false }
+    fun closeSearch() {
+        searching = false
+        searchFilterOpen = false
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+    }
     BackHandler(enabled = LocalScreenTransitionActive.current && searching) { closeSearch() }
     var draggedProviderId by remember { mutableStateOf<String?>(null) }
     var draggedGroupId by remember { mutableStateOf<String?>(null) }
@@ -110,7 +120,6 @@ fun ProvidersScreen(
     val dndState = Launcher.rememberState<ProviderRootOrderItem>()
     // Track the actual visible folder card, including root grid scrolling and grid/list changes.
     val folderCardBounds = remember { mutableStateMapOf<String, Rect>() }
-    var openedCardBounds by remember { mutableStateOf<Rect?>(null) }
     var containerOrigin by remember { mutableStateOf(Offset.Zero) }
     var containerWindowBounds by remember { mutableStateOf(Rect.Zero) }
     val folderEscapeEdgePx = with(LocalDensity.current) { 72.dp.toPx() }
@@ -121,7 +130,7 @@ fun ProvidersScreen(
     val validGroupIds = remember(providerGroups) { providerGroups.mapTo(hashSetOf()) { it.id } }
     val openGroup = sortedGroups.firstOrNull { it.id == openGroupId }
     LaunchedEffect(openGroup?.id) {
-        if (openGroup != null) renderedFolderGroup = openGroup
+        if (openGroup != null) renderedFolderGroups[openGroup.id] = openGroup
     }
     // Barely-there blur: items behind the translucent folder stay recognisable and their text
     // stays faintly legible (API 31+; a no-op below).
@@ -132,13 +141,15 @@ fun ProvidersScreen(
         ),
         label = "providerFolderBackdropBlur"
     )
-    val folderOverlayGroup = openGroup ?: renderedFolderGroup
+    // Render exits first; the active folder is always the uppermost interactive page.
+    val folderOverlayGroups = renderedFolderGroups.values.filter { it.id != openGroupId } +
+        listOfNotNull(openGroup)
     BackHandler(enabled = LocalScreenTransitionActive.current && openGroup != null) {
         if (openGroupId != null) openGroupId = null
     }
     // The skip flag is one-shot: the overlay reads it when first composed, then it is cleared so later opens animate.
-    LaunchedEffect(folderOverlayGroup?.id) {
-        if (folderOverlayGroup != null) skipNextFolderEnterAnimation = false
+    LaunchedEffect(openGroup?.id) {
+        if (openGroup != null) skipNextFolderEnterAnimation = false
     }
 
     fun createProvider(groupId: String? = null) {
@@ -404,7 +415,7 @@ fun ProvidersScreen(
                 // Crossing it closes the folder without ending the active DND session.
                 Box(Modifier.dropTarget(
                     state = dndState, key = "root-header", priority = -10,
-                    enabled = !searching,
+                    enabled = !searching && query.isBlank(),
                     onDragEnter = { drag ->
                         if (openGroupId != null && !drag.item.data.isGroup)
                             exitOpenFolder(drag.item.data.id)
@@ -449,7 +460,7 @@ fun ProvidersScreen(
                             modifier = Modifier.fillMaxSize()
                                 .dropTarget(
                                     state = dndState, key = "root-end", priority = -10,
-                                    enabled = !searching && openGroupId == null,
+                                    enabled = !searching && query.isBlank() && openGroupId == null,
                                     onDrop = { drag ->
                                         val dragged = drag.item.data
                                         val key = if (dragged.isGroup) "group_${dragged.id}"
@@ -476,13 +487,13 @@ fun ProvidersScreen(
                                         .padding(6.dp)
                                         .dragSource(
                                             state = dndState, key = key, data = item.toOrderItem(),
-                                            enabled = !searching && openGroupId == null,
+                                            enabled = !searching && query.isBlank() && openGroupId == null,
                                             onDragStart = { beginDrag(key) },
                                             onDragEnd = { outcome -> finishDnd(key, outcome) }
                                         )
                                         .itemDropTarget(
                                             state = dndState, key = key, priority = 11,
-                                            enabled = !searching && openGroupId == null,
+                                            enabled = !searching && query.isBlank() && openGroupId == null,
                                             policy = Launcher.DropPolicy(
                                                 reorderHitTest = Launcher.Collision.Pointer,
                                                 joinHitTest = if (item is ProviderRootItem.GroupItem)
@@ -520,7 +531,7 @@ fun ProvidersScreen(
                                         .dropTarget(
                                             state = dndState, key = "source-slot:$key",
                                             priority = 12,
-                                            enabled = !searching && openGroupId == null,
+                                            enabled = !searching && query.isBlank() && openGroupId == null,
                                             accepts = { it.key == key },
                                             onDrop = {
                                                 dragRootSnapshot != rootItems || liveOrderChanged
@@ -545,9 +556,11 @@ fun ProvidersScreen(
                                         onMoveProvider = { dialogs.movingProvider = it },
                                         onDeleteProvider = { dialogs.deletingProviderId = it },
                                         onOpenGroup = { id ->
-                                            openedCardBounds = folderCardBounds[id]
-                                            renderedFolderGroup = sortedGroups.firstOrNull { it.id == id }
-                                            openGroupId = id
+                                            folderCardBounds[id]?.let { folderOriginBounds[id] = it }
+                                            sortedGroups.firstOrNull { it.id == id }?.let {
+                                                renderedFolderGroups[id] = it
+                                                openGroupId = id
+                                            }
                                         }
                                     )
                                 }
@@ -559,7 +572,7 @@ fun ProvidersScreen(
         }
 
         // Folder draws over the entire Scaffold, including its app bar, with a separate header.
-        folderOverlayGroup?.let { group ->
+        folderOverlayGroups.forEach { group ->
             val members = orderedProviders.filter { it.groupId == group.id }
             val folderMatches = query.isEmpty() || matchesFolderSearch(group.name, query, searchFields)
             key(group.id) {
@@ -567,7 +580,7 @@ fun ProvidersScreen(
                     group = group,
                     providers = if (folderMatches) members else members.filter(::matches),
                     isGrid = isGridView,
-                    originBounds = folderCardBounds[group.id] ?: openedCardBounds,
+                    originBounds = folderOriginBounds[group.id] ?: folderCardBounds[group.id],
                     hostOrigin = containerOrigin,
                     animateExitImmediately = dndState.session != null,
                     dndState = dndState,
@@ -585,8 +598,9 @@ fun ProvidersScreen(
                     visible = openGroupId == group.id && openGroup != null,
                     animateEnter = !skipNextFolderEnterAnimation,
                     onExitFinished = {
-                        if ((openGroupId == null || openGroup == null) && renderedFolderGroup?.id == group.id) {
-                            renderedFolderGroup = null
+                        if (openGroupId != group.id) {
+                            renderedFolderGroups.remove(group.id)
+                            folderOriginBounds.remove(group.id)
                         }
                     },
                     onDismiss = { openGroupId = null },

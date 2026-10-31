@@ -43,6 +43,8 @@ class InputAreaCustomizationTest {
             )
         } }
         compose.onNodeWithTag("customization-list").performScrollToKey("input-area")
+        compose.onNodeWithTag("input-area-transparency-slider").assertDoesNotExist()
+        compose.onNodeWithTag("customization-input-setting").performClick()
         compose.onNodeWithTag("input-area-transparency-slider").performScrollTo().performTouchInput {
             swipe(Offset(width * 0.1f, center.y), Offset(width * 0.8f, center.y), 350)
         }

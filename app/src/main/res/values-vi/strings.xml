@@ -89,6 +89,7 @@
     <string name="common_copy">Sao chép</string>
     <string name="common_name">Tên</string>
     <string name="common_type">Loại</string>
+    <string name="provider_api_type">Loại API</string>
     <string name="common_key">Khóa</string>
     <string name="common_value">Giá trị</string>
     <string name="common_auto">Tự động</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">Nhà cung cấp mô hình này đã có mô hình trùng ID.</string>
     <string name="model_options_title">Tùy chọn mô hình</string>
     <string name="model_tools_hint">Các công cụ tích hợp mà mô hình ngôn ngữ này hỗ trợ sẽ được gửi kèm yêu cầu API của mô hình.</string>
-    <string name="send_thinking_content_back_hint">Tự động chỉ gửi lại suy luận trước đó ở những chat có lệnh gọi công cụ. Luôn luôn gửi lại; Không bao giờ thì không bao giờ gửi lại.</string>
+    <string name="send_thinking_content_back_hint">Tự động chỉ gửi lại suy luận trước đó ở những chat có lệnh gọi công cụ. Luôn luôn gửi lại. Không bao giờ thì không bao giờ gửi lại.</string>
     <string name="common_default">Mặc định</string>
     <string name="mcp_required_parameter_default_needed">Hãy đặt giá trị mặc định trước khi tắt tham số bắt buộc này.</string>
     <string name="model_tools_editor_hint">Chọn công cụ mặc định, thêm tên công cụ tùy chỉnh và bật hoặc tắt từng công cụ.</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Tự động tóm tắt khi ngữ cảnh dần đầy</string>
     <string name="settings_auto_summary_threshold">Tự động tóm tắt ở %1$d%% ngữ cảnh</string>
     <string name="settings_conversations">Cuộc trò chuyện</string>
-    <string name="settings_continue_last_chat">Tiếp tục cuộc trò chuyện trước</string>
+    <string name="settings_continue_last_chat">Khôi phục phiên trước</string>
     <string name="settings_continue_last_chat_description">Mở cuộc trò chuyện gần nhất khi khởi động.</string>
     <string name="settings_persist_selected_model">Ghi nhớ mô hình theo từng cuộc trò chuyện</string>
     <string name="settings_persist_selected_model_description">Dùng mô hình đã chọn của từng cuộc trò chuyện khi quay lại cuộc trò chuyện đó</string>
@@ -669,13 +670,13 @@
     <string name="mcp_attachments_classic_description">Gửi mọi công cụ MCP đã bật cùng mỗi yêu cầu.</string>
     <string name="mcp_attachments_include_description">Kèm mô tả công cụ</string>
     <string name="mcp_attachments_include_description_summary">Tắt: mô tả bị bỏ qua với các MCP đã đính kèm trước đó, giúp yêu cầu gọn hơn. Tham số chi tiết của connect_mcps điều khiển mô tả cho các MCP tải theo yêu cầu.</string>
-    <string name="mcp_attachments_dynamic_description">Mô hình nhận list_mcps và connect_mcps, và chỉ kết nối máy chủ MCP khi thật sự cần. Chế độ tải theo yêu cầu áp dụng khi đạt cả hai mức tối thiểu bên dưới; trước đó các MCP vẫn được gửi theo kiểu cổ điển. Việc kèm mô tả công cụ áp dụng cho các MCP đính kèm theo kiểu cổ điển; với MCP tải theo yêu cầu, connect_mcps dùng tham số chi tiết của nó.</string>
+    <string name="mcp_attachments_dynamic_description">Mô hình nhận list_mcps và connect_mcps, và chỉ kết nối máy chủ MCP khi thật sự cần. Chế độ tải theo yêu cầu áp dụng khi đạt cả hai mức tối thiểu bên dưới. Trước đó các MCP vẫn được gửi theo kiểu cổ điển. Việc kèm mô tả công cụ áp dụng cho các MCP đính kèm theo kiểu cổ điển. Với MCP tải theo yêu cầu, connect_mcps dùng tham số chi tiết của nó.</string>
     <string name="mcp_attachments_min_mcps">Số máy chủ MCP tối thiểu</string>
     <string name="mcp_attachments_min_mcps_hint">Mặc định là %1$d. Đặt 0 để chế độ tải theo yêu cầu áp dụng cho mọi số lượng MCP.</string>
     <string name="mcp_attachments_min_tools">Số công cụ MCP tối thiểu</string>
     <string name="mcp_attachments_min_tools_hint">Mặc định là %1$d. Đặt 0 để bỏ qua số lượng công cụ.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Chiến lược tải theo yêu cầu</string>
-    <string name="mcp_attachments_strategy_overflow">Đính kèm các máy chủ đầu tiên; tải phần còn lại theo yêu cầu</string>
+    <string name="mcp_attachments_strategy_overflow">Ban đầu + theo yêu cầu</string>
     <string name="mcp_attachments_strategy_all">Tải mọi máy chủ theo yêu cầu</string>
     <string name="mcp_attachments_strategy_overflow_description">Chế độ tràn giữ các MCP dưới mức tối thiểu ở dạng đính kèm cổ điển, còn phần còn lại được tải theo yêu cầu.</string>
     <string name="mcp_attachments_strategy_all_description">Chế độ Tất cả tải từng MCP theo yêu cầu.</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">Tự động kết xuất các công thức toán học nhận diện được, còn giá trị tiền vẫn giữ dạng văn bản thuần.</string>
     <string name="settings_latex_disabled">Tắt</string>
     <string name="settings_latex_auto_detect">Tự động nhận diện</string>
-    <string name="settings_developer">Nhà phát triển</string>
+    <string name="settings_developer">Tùy chọn nhà phát triển</string>
     <string name="settings_debug_logs">Bật nhật ký gỡ lỗi</string>
     <string name="settings_debug_logs_description">Hiện mức dùng token, chi tiết yêu cầu và hoạt động mạng trong bảng gỡ lỗi.</string>
-    <string name="settings_debug_log_scope">Phạm vi nhật ký</string>
+    <string name="settings_debug_log_scope">Nguồn nhật ký</string>
     <string name="settings_debug_log_scope_description">Chọn loại nhật ký mà bảng gỡ lỗi sẽ ghi lại.</string>
     <string name="debug_log_category_network">Mạng</string>
-    <string name="debug_log_category_payload">Dữ liệu tải trọng</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">Lỗi</string>
+    <string name="debug_log_category_system">Hệ thống</string>
+    <string name="settings_debug_log_level">Mức nhật ký tối thiểu</string>
+
     <string name="debug_log_title">Nhật ký gỡ lỗi</string>
+    <string name="debug_log_disable">Tắt nhật ký gỡ lỗi</string>
     <string name="debug_log_toggle">Hiện/ẩn nhật ký gỡ lỗi</string>
     <string name="debug_log_copy_entry">Sao chép mục này</string>
     <string name="debug_log_copy_all">Sao chép toàn bộ nhật ký</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Thông tin chung</string>
     <string name="remote_machine_connection_section">Kết nối</string>
     <string name="remote_machine_sftp_section_help">Thao tác Tìm tệp trong menu của máy này sẽ duyệt thư mục đó qua SFTP. Phiên chỉ khởi động khi thật sự cần.</string>
-    <string name="remote_machine_sftp_directory_help">Thư mục gốc của các tệp. Mặc định là $HOME; ~ và đường dẫn tuyệt đối cũng được hỗ trợ.</string>
+    <string name="remote_machine_sftp_directory_help">Thư mục gốc của các tệp. Mặc định là $HOME. ~ và đường dẫn tuyệt đối cũng được hỗ trợ.</string>
     <string name="remote_machine_start_port_forward">Bắt đầu chuyển tiếp cổng</string>
     <string name="remote_machine_port_forward_started">Đã bắt đầu chuyển tiếp cổng. Các terminal đang mở sẽ dùng lại kết nối này.</string>
     <string name="remote_machine_type_label">Loại máy</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Đường dẫn tới khoá riêng tư, hoặc tên của một khoá đã tải lên trong cài đặt từ xa. Bản thân khoá không bao giờ được lưu trên máy. Để trống nếu không cần khoá.</string>
     <string name="remote_machine_no_uploaded_keys">Chưa có khoá nào được tải lên</string>
     <string name="remote_machine_ssh_keys">Khoá SSH</string>
-    <string name="remote_machine_ssh_keys_help">Tải khoá riêng tư lên một lần rồi dùng lại qua IdentityFile cho nhiều máy. Google Cloud Shell còn cần khoá công khai tương ứng (.pub); hãy tải lên bằng nút bên cạnh từng khoá.</string>
+    <string name="remote_machine_ssh_keys_help">Tải khoá riêng tư lên một lần rồi dùng lại qua IdentityFile cho nhiều máy. Google Cloud Shell còn cần khoá công khai tương ứng (.pub). Hãy tải lên bằng nút bên cạnh từng khoá.</string>
     <string name="remote_machine_upload_ssh_key">Tải tệp khoá SSH lên</string>
     <string name="remote_machine_upload_public_key">Tải khoá công khai lên</string>
     <string name="remote_machine_public_key_uploaded">Đã tải khoá công khai lên</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Sửa bước %1$d</string>
     <string name="media_chain_endpoint_help">Đường dẫn tương đối tới nhà cung cấp hoặc URL HTTP(S). Hỗ trợ {{model}} và giá trị từ các bước trước.</string>
     <string name="media_chain_headers_json_invalid">Hãy nhập một đối tượng JSON hợp lệ với giá trị header ở dạng văn bản.</string>
-    <string name="media_chain_headers_help">Đối tượng JSON. Hỗ trợ biến; cơ chế xác thực của nhà cung cấp đã cấu hình sẽ được dùng tự động.</string>
+    <string name="media_chain_headers_help">Đối tượng JSON. Hỗ trợ biến. Cơ chế xác thực của nhà cung cấp đã cấu hình sẽ được dùng tự động.</string>
     <string name="media_chain_custom_content_type_help">Ghi đè loại MIME tuỳ chọn. Để trống để chọn tự động.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">Tệp</string>
@@ -964,7 +966,7 @@
     <string name="speech_voice_instructions_help">Giọng điệu, giọng vùng miền, cảm xúc%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini trả về âm thanh PCM được chuyển sang WAV để phát.</string>
     <string name="speech_json_invalid_hint">Hãy nhập một đối tượng JSON hợp lệ.</string>
-    <string name="speech_provider_parameters_help">Tham số riêng của nhà cung cấp; mô hình, văn bản và giọng đọc dùng các trường ở trên.</string>
+    <string name="speech_provider_parameters_help">Tham số riêng của nhà cung cấp. Mô hình, văn bản và giọng đọc dùng các trường ở trên.</string>
     <string name="speech_api_key_help">Để trống để dùng cơ chế xác thực của nhà cung cấp.</string>
     <string name="model_stream_settings_description">Để trống để dùng giá trị mặc định của API. Các cài đặt này chỉ áp dụng cho mô hình này ở nhà cung cấp này.</string>
     <string name="model_temperature_invalid">Hãy nhập số từ 0 đến %1$s, hoặc để trống trường.</string>
@@ -1103,4 +1105,21 @@
     <string name="customization_input_blur">Độ mờ của nền</string>
     <string name="customization_input_blur_description">Làm mờ nội dung chat phía sau vùng nhập trên Android 12 trở lên. Chữ và nút bấm vẫn rõ nét.</string>
     <string name="settings_website">Trang web</string>
+    <string name="app_menu_default_options">Cấu hình</string>
+    <string name="app_menu_builtin_tools">Công cụ tích hợp</string>
+    <string name="app_menu_language_providers">Nhà cung cấp mô hình ngôn ngữ</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Dịch vụ tổng hợp giọng nói</string>
+    <string name="app_menu_remote_servers">Dịch vụ từ xa</string>
+    <string name="app_menu_media_management">Quản lý phương tiện</string>
+    <string name="app_menu_icons_management">Quản lý biểu tượng</string>
+    <string name="app_menu_settings">Cài đặt</string>
+    <string name="app_menu_data">Dữ liệu</string>
+    <string name="app_menu_about">Giới thiệu</string>
+    <string name="mcp_attachments_limits">Giới hạn theo yêu cầu</string>
+    <string name="tool_settings_tab_media">Media</string>
+    <string name="tool_settings_tab_others">Khác</string>
+    <string name="media_profile_require_model">Yêu cầu có model</string>
+    <string name="media_chain_test_no_model_note">Chạy thử có thể phát sinh phí. Không hỗ trợ tệp đầu vào ở đây.</string>
+    <string name="shared_attachment_failed">Không thể đính kèm một hoặc nhiều tệp được chia sẻ</string>
 </resources>

@@ -240,7 +240,7 @@ internal fun MediaViewer(
             }) { Text(stringResource(R.string.common_delete)) }
         },
         dismissButton = {
-            TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_close)) }
         }
     )
 }

@@ -89,6 +89,7 @@
     <string name="common_copy">コピー</string>
     <string name="common_name">名前</string>
     <string name="common_type">種類</string>
+    <string name="provider_api_type">API の種類</string>
     <string name="common_key">キー</string>
     <string name="common_value">値</string>
     <string name="common_auto">自動</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">コンテキストが増えるにつれて自動的に要約します</string>
     <string name="settings_auto_summary_threshold">コンテキストの %1$d%% で自動的に要約</string>
     <string name="settings_conversations">会話</string>
-    <string name="settings_continue_last_chat">最後の会話を続ける</string>
+    <string name="settings_continue_last_chat">前回のセッションを復元</string>
     <string name="settings_continue_last_chat_description">起動時に最近の会話を開きます。</string>
     <string name="settings_persist_selected_model">会話ごとにモデルを記憶</string>
     <string name="settings_persist_selected_model_description">各会話に戻ったときに、その会話で選んだモデルを使います</string>
@@ -675,7 +676,7 @@
     <string name="mcp_attachments_min_tools">MCP ツールの最小数</string>
     <string name="mcp_attachments_min_tools_hint">既定は %1$d です。0 にすると、ツール数は無視されます。</string>
     <string name="mcp_attachments_dynamic_strategy_label">必要時の方式</string>
-    <string name="mcp_attachments_strategy_overflow">先頭のサーバーを添付し、残りを必要時に読み込む</string>
+    <string name="mcp_attachments_strategy_overflow">初期 + 必要時</string>
     <string name="mcp_attachments_strategy_all">すべてのサーバーを必要時に読み込む</string>
     <string name="mcp_attachments_strategy_overflow_description">オーバーフロー方式では、最小値未満の MCP は従来どおり添付し、残りは必要時に読み込みます。</string>
     <string name="mcp_attachments_strategy_all_description">すべて方式では、各 MCP を必要時に読み込みます。</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">認識された数式は自動的にレンダリングし、金額はプレーンテキストのままにします。</string>
     <string name="settings_latex_disabled">オフ</string>
     <string name="settings_latex_auto_detect">自動検出</string>
-    <string name="settings_developer">開発者</string>
+    <string name="settings_developer">開発者向けオプション</string>
     <string name="settings_debug_logs">デバッグログを有効にする</string>
     <string name="settings_debug_logs_description">デバッグパネルにトークン使用量、リクエストの詳細、ネットワークアクティビティを表示します。</string>
-    <string name="settings_debug_log_scope">ログのカテゴリ</string>
+    <string name="settings_debug_log_scope">ログの記録元</string>
     <string name="settings_debug_log_scope_description">デバッグパネルが記録するログの種類を選択します。</string>
     <string name="debug_log_category_network">ネットワーク</string>
-    <string name="debug_log_category_payload">ペイロード</string>
-    <string name="debug_log_category_tokens">トークン</string>
-    <string name="debug_log_category_errors">エラー</string>
+    <string name="debug_log_category_system">システム</string>
+    <string name="settings_debug_log_level">最小ログレベル</string>
+
     <string name="debug_log_title">デバッグログ</string>
+    <string name="debug_log_disable">デバッグログを無効にする</string>
     <string name="debug_log_toggle">デバッグログを表示/非表示</string>
     <string name="debug_log_copy_entry">このログをコピー</string>
     <string name="debug_log_copy_all">すべてのログをコピー</string>
@@ -1103,4 +1105,20 @@
     <string name="customization_input_blur">背景のぼかし</string>
     <string name="customization_input_blur_description">Android 12 以降では入力エリアの背後にあるチャットをぼかします。文字とボタンは鮮明に表示されます。</string>
     <string name="settings_website">ウェブサイト</string>
+    <string name="app_menu_default_options">構成</string>
+    <string name="app_menu_builtin_tools">内蔵ツール</string>
+    <string name="app_menu_language_providers">言語モデルプロバイダー</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">音声合成サービス</string>
+    <string name="app_menu_remote_servers">リモートサービス</string>
+    <string name="app_menu_media_management">メディア管理</string>
+    <string name="app_menu_icons_management">アイコン管理</string>
+    <string name="app_menu_settings">設定</string>
+    <string name="app_menu_data">データ</string>
+    <string name="app_menu_about">アプリについて</string>
+    <string name="mcp_attachments_limits">オンデマンドの上限</string>
+    <string name="tool_settings_tab_media">メディア</string>
+    <string name="tool_settings_tab_others">その他</string>
+    <string name="media_profile_require_model">モデルが必要</string>
+    <string name="media_chain_test_no_model_note">テストには料金が発生する場合があります。ここではファイル入力は使えません。</string>
 </resources>

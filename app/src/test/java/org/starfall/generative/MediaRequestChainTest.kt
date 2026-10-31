@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.integrations.media.MediaRequestChainExecutor
+import org.starfall.generative.integrations.media.SystemMediaTools
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.helpers.media.MediaTemplateContext
 import org.starfall.generative.shared.helpers.media.MediaTemplateInput
@@ -597,4 +598,56 @@ class MediaRequestChainTest {
             server.shutdown()
         }
     }
+    @Test fun customMediaToolRunsAbsoluteEndpointWithoutProviderOrModel() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        val root = Files.createTempDirectory("standalone-image-chain").toFile()
+        try {
+            val png = byteArrayOf(
+                0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            )
+            server.enqueue(MockResponse().setHeader("Content-Type", "image/png")
+                .setBody(okio.Buffer().write(png)))
+            val chain = MediaRequestChain(
+                steps = listOf(MediaRequestStep(
+                    endpoint = server.url("/generate").toString(),
+                    body = """{"prompt":"{{prompt}}"}"""
+                )),
+                finalResponse = MediaFinalResponse(type = MediaResponseType.IMAGE)
+            )
+            val result = SystemMediaTools(ToolHttp(ToolFiles(root))).generate(
+                "generate_image", null, "", "draw a fox",
+                generationMode = MediaGenerationMode.CUSTOM, requestChain = chain
+            )
+            assertTrue(result["files"]!!.jsonArray.isNotEmpty())
+            val request = server.takeRequest()
+            assertEquals("/generate", request.path)
+            assertEquals(null, request.getHeader("Authorization"))
+            assertTrue(request.body.readUtf8().contains("draw a fox"))
+        } finally {
+            server.shutdown()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun independentCustomStepTestDoesNotRequireModel() = runBlocking {
+        val server = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+            val chain = MediaRequestChain(steps = listOf(MediaRequestStep(
+                endpoint = server.url("/preview").toString(),
+                body = """{"prompt":"{{prompt}}"}"""
+            )))
+            val preview = MediaRequestChainExecutor(ToolHttp()).testThroughStep(
+                chain, null, "", "draw a fox", 0, requiresModel = false
+            )
+            assertEquals(200, preview.statusCode)
+            assertTrue(preview.body.contains("ok"))
+            assertEquals("/preview", server.takeRequest().path)
+        } finally {
+            server.shutdown()
+        }
+    }
+
 }

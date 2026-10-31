@@ -18,7 +18,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -136,7 +136,7 @@ class QuickActionsSheetTransitionTest {
             org.robolectric.shadows.ShadowLog.getLogs().joinToString { "${it.msg}: ${it.throwable}" }
         }
         assertEquals(MediaStore.ACTION_IMAGE_CAPTURE, intent.action)
-        val uri = intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT)!!
+        val uri = androidx.core.content.IntentCompat.getParcelableExtra(intent, MediaStore.EXTRA_OUTPUT, Uri::class.java)!!
         val resolver = ApplicationProvider.getApplicationContext<Context>().contentResolver
         resolver.openOutputStream(uri)!!.use { it.write(byteArrayOf(1, 2, 3)) }
         compose.runOnIdle {

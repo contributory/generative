@@ -16,9 +16,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.ui.model.*
-import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewSheet
 
 @RunWith(RobolectricTestRunner::class)
@@ -32,7 +30,6 @@ class ReasoningEffectsLifecycleTest {
         var clicks = 0
         lateinit var burst: ThinkingColorBurst
         lateinit var reopenSheet: () -> Unit
-        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
@@ -45,9 +42,7 @@ class ReasoningEffectsLifecycleTest {
                     if (sheetVisible) {
                         ThinkingScreenBurstLayer(screenBurst)
                         SelectedModelOverviewSheet(
-                            provider = provider,
-                            folderName = null,
-                            modelId = "Effect model",
+                                                                                    modelId = "Effect model",
                             config = multiLevelConfig,
                             conversationReasoningEffort = effort,
                             onSetReasoningEffort = { effort = it },
@@ -78,12 +73,14 @@ class ReasoningEffectsLifecycleTest {
          compose.runOnIdle { reopenSheet() }
          compose.waitForIdle()
          compose.mainClock.advanceTimeBy(1000)
-         compose.runOnIdle { assertTrue("Max effort should restore the settled stars", burst.keepAfterCompletion) }
+         compose.runOnIdle {
+            assertTrue("Max effort should restore the settled stars", burst.keepAfterCompletion)
+            assertEquals("Restored stars must occupy their full spread", 1f, burst.starSpreadProgress.value, 0.001f)
+        }
          compose.mainClock.advanceTimeBy(7000)
         compose.runOnIdle { assertEquals(1f, burst.progress.value, 0.001f) }
     }
     private fun setUpSheet(onBurst: (ThinkingColorBurst) -> Unit) {
-        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI, baseUrl = "")
         compose.setContent {
             MaterialTheme {
                 val screenBurst = rememberThinkingColorBurst()
@@ -92,9 +89,7 @@ class ReasoningEffectsLifecycleTest {
                 CompositionLocalProvider(LocalThinkingScreenBurst provides screenBurst) {
                     ThinkingScreenBurstLayer(screenBurst)
                     SelectedModelOverviewSheet(
-                        provider = provider,
-                        folderName = null,
-                        modelId = "Effect model",
+                                                                        modelId = "Effect model",
                         config = multiLevelConfig,
                         conversationReasoningEffort = effort,
                         onSetReasoningEffort = { effort = it },
@@ -118,6 +113,31 @@ class ReasoningEffectsLifecycleTest {
             assertTrue(burst.keepAfterCompletion)
             assertTrue("The bloom must still be spreading", burst.progress.value < 1f)
         }
+    }
+
+    @Test fun enteringMaximumSpreadsStarsOutwardAndLeavingReversesTheirTravel() {
+        lateinit var burst: ThinkingColorBurst
+        setUpSheet { burst = it }
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(6f) }
+        compose.mainClock.advanceTimeBy(100)
+        val startingSpread = burst.starSpreadProgress.value
+        assertTrue("Stars must launch close to the slider thumb", startingSpread < 0.15f)
+
+        compose.mainClock.advanceTimeBy(700)
+        val expandingSpread = burst.starSpreadProgress.value
+        assertTrue("Stars should be visibly travelling away from the thumb", expandingSpread > startingSpread)
+        assertTrue("Expansion must be animated, not an instant jump", expandingSpread < 1f)
+
+        compose.mainClock.advanceTimeBy(2000)
+        assertEquals("Stars must remain spread out while max effort is active", 1f,
+            burst.starSpreadProgress.value, 0.001f)
+        compose.onNodeWithTag("reasoning-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
+        compose.mainClock.advanceTimeBy(250)
+        val returningSpread = burst.starSpreadProgress.value
+        assertTrue("Stars must travel back toward the same thumb", returningSpread in 0.01f..0.99f)
+        compose.mainClock.advanceTimeBy(1100)
+        assertEquals("All stars should reach the original point before disappearing", 0f,
+            burst.starSpreadProgress.value, 0.001f)
     }
 
     @Test fun secondHighestLevelKeepsTheNormalColourWithoutAStarBurst() {
@@ -167,6 +187,7 @@ class ReasoningEffectsLifecycleTest {
             assertFalse(burst.isRetracting)
             assertTrue(burst.keepAfterCompletion)
             assertTrue("The returning maximum effect should bloom again", burst.progress.value < 1f)
+            assertTrue("Re-entering max must restart the outward star journey", burst.starSpreadProgress.value < 1f)
         }
     }
 }

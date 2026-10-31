@@ -68,7 +68,6 @@ internal fun TtsProviderSettings(
                 DefaultSelectionItem(
                     title = selectedService?.name
                         ?: stringResource(R.string.settings_tts_provider_none),
-                    subtitle = stringResource(R.string.settings_tts_provider_select),
                     icon = {
                         EntityIcon(
                             image = selectedService?.icon,

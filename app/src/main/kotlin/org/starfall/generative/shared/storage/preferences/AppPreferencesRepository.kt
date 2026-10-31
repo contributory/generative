@@ -23,6 +23,7 @@ import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.normalizeAgentSkillName
 import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.model.logging.DebugLogCategory
+import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.storage.ImmediateState
 import org.starfall.generative.shared.theme.CustomPalette
 
@@ -129,6 +130,7 @@ data class AppPreferences(
     val debugMode: Boolean = false,
     /** Kinds of log the floating debug panel records while [debugMode] is on. */
     val debugLogCategories: Set<DebugLogCategory> = DebugLogCategory.all,
+    val debugLogLevel: DebugLogLevel = DebugLogLevel.WARN,
     val selectedLanguage: String = "en",
     /** On: follow the Android system language. Off: use [selectedLanguage]. */
     val useSystemLanguage: Boolean = true,
@@ -174,8 +176,10 @@ data class AppPreferences(
         instructionLibraryForSelection(conversation?.selectedInstructionIds)
     fun instructionLibraryForSelection(selectedInstructionIds: Set<String>?): InstructionLibrary =
         instructionLibrary.forChat(selectedInstructionIds)
-    fun systemPromptFor(conversation: Conversation?): String = instructionLibraryFor(conversation).systemPrompt()
-    fun instructionRoleMessagesFor(conversation: Conversation?) = instructionLibraryFor(conversation).roleMessages()
+    fun systemPromptFor(conversation: Conversation?, at: java.time.ZonedDateTime = java.time.ZonedDateTime.now()): String =
+        instructionLibraryFor(conversation).systemPrompt(at)
+    fun instructionRoleMessagesFor(conversation: Conversation?, at: java.time.ZonedDateTime = java.time.ZonedDateTime.now()) =
+        instructionLibraryFor(conversation).roleMessages(at)
 }
 
 class AppPreferencesRepository(private val context: Context) {
@@ -213,6 +217,7 @@ class AppPreferencesRepository(private val context: Context) {
         val HIDE_NAVIGATION_BAR = booleanPreferencesKey("hide_navigation_bar")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
         val DEBUG_LOG_CATEGORIES = stringSetPreferencesKey("debug_log_categories")
+        val DEBUG_LOG_LEVEL = stringPreferencesKey("debug_log_level")
         val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
         val USE_SYSTEM_LANGUAGE = booleanPreferencesKey("use_system_language")
         val FEATURES_LOGO_IMAGE = stringPreferencesKey("features_logo_image")
@@ -267,9 +272,7 @@ class AppPreferencesRepository(private val context: Context) {
         }
         .map { preferences -> decodePreferences(preferences) }
 
-    /** When customization is off, do not even decode stored appearance or image keys.
-     * Other settings still need this DataStore; the archived appearance remains untouched.
-     */
+    /** Disabled customization ignores appearance images but keeps the profile photo available. */
     private fun decodePreferences(
         preferences: Preferences,
         includeCustomization: Boolean = preferences[PreferenceKeys.CUSTOMIZATION_ENABLED] ?: true
@@ -311,13 +314,15 @@ class AppPreferencesRepository(private val context: Context) {
             hideNavigationBar = preferences[PreferenceKeys.HIDE_NAVIGATION_BAR] ?: false,
             debugMode = preferences[PreferenceKeys.DEBUG_MODE] ?: false,
             debugLogCategories = DebugLogCategory.fromStored(preferences[PreferenceKeys.DEBUG_LOG_CATEGORIES]),
+            debugLogLevel = DebugLogLevel.fromStored(preferences[PreferenceKeys.DEBUG_LOG_LEVEL]),
             selectedLanguage = preferences[PreferenceKeys.SELECTED_LANGUAGE] ?: "en",
             useSystemLanguage = preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] ?: true,
-            featuresLogoImage = if (includeCustomization)
-                preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() } else null,
+            featuresLogoImage = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() },
             userProfile = if (includeCustomization) preferences[PreferenceKeys.USER_PROFILE]?.let { raw ->
                 runCatching { Json.decodeFromString<UserProfile>(raw) }.getOrNull()
-            } ?: UserProfile(photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]) else defaults.userProfile,
+            } ?: UserProfile(photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]) else defaults.userProfile.copy(
+                photo = preferences[PreferenceKeys.FEATURES_LOGO_IMAGE]?.takeIf { it.isNotBlank() }
+            ),
             showProfilesAsGrid = preferences[PreferenceKeys.SHOW_PROFILES_AS_GRID] ?: true,
             showProvidersAsGrid = preferences[PreferenceKeys.SHOW_PROVIDERS_AS_GRID] ?: false,
             showMcpAsGrid = preferences[PreferenceKeys.SHOW_MCP_AS_GRID] ?: false,
@@ -588,8 +593,8 @@ class AppPreferencesRepository(private val context: Context) {
                     itemTransparency = defaults.itemTransparency,
                     inputAreaTransparency = defaults.inputAreaTransparency,
                     inputAreaBlur = defaults.inputAreaBlur,
-                    featuresLogoImage = defaults.featuresLogoImage,
-                    userProfile = defaults.userProfile
+                    featuresLogoImage = current.userProfile.photo,
+                    userProfile = defaults.userProfile.copy(photo = current.userProfile.photo)
                 )
             }
         }) {
@@ -744,6 +749,14 @@ class AppPreferencesRepository(private val context: Context) {
         state.mutate({ it.copy(debugMode = debug) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.DEBUG_MODE] = debug
+            }
+        }
+    }
+
+    suspend fun setDebugLogLevel(level: DebugLogLevel) {
+        state.mutate({ it.copy(debugLogLevel = level) }) {
+            context.dataStore.edit { preferences ->
+                preferences[PreferenceKeys.DEBUG_LOG_LEVEL] = level.name
             }
         }
     }
@@ -1009,6 +1022,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.HIDE_NAVIGATION_BAR] = preferences.hideNavigationBar
                 stored[PreferenceKeys.DEBUG_MODE] = preferences.debugMode
                 stored[PreferenceKeys.DEBUG_LOG_CATEGORIES] = preferences.debugLogCategories.map { it.value }.toSet()
+                stored[PreferenceKeys.DEBUG_LOG_LEVEL] = preferences.debugLogLevel.name
                 stored[PreferenceKeys.SELECTED_LANGUAGE] = preferences.selectedLanguage
                 stored[PreferenceKeys.USE_SYSTEM_LANGUAGE] = preferences.useSystemLanguage
                 preferences.featuresLogoImage?.let { stored[PreferenceKeys.FEATURES_LOGO_IMAGE] = it }

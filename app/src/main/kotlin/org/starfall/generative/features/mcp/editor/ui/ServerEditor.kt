@@ -1,6 +1,7 @@
 package org.starfall.generative.features.mcp.editor.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -11,8 +12,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import org.starfall.generative.shared.ui.layout.appTabRowColor
-import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.features.mcp.shared.ui.McpConnectionSettings
 import org.starfall.generative.features.mcp.shared.ui.McpToolsTab
@@ -50,7 +49,7 @@ fun ServerEditor(
     var authMethod by remember(initialServer.id) { mutableStateOf(if (initialServer.auth.method == McpAuthMethod.CUSTOM_HEADER) McpAuthMethod.BEARER_TOKEN else initialServer.auth.method) }
     var authKey by remember(initialServer.id) { mutableStateOf(initialServer.auth.key.orEmpty().ifBlank { if (initialServer.auth.method == McpAuthMethod.QUERY_PARAM) "key" else "Authorization" }) }
     var authValue by remember(initialServer.id) { mutableStateOf(initialServer.auth.value.orEmpty()) }
-    var selectedTab by remember(initialServer.id) { mutableStateOf(0) }
+    val pager = key(initialServer.id) { androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 }) }
     val scope = rememberCoroutineScope()
     var oauthClientId by remember(initialServer.id) { mutableStateOf(initialServer.auth.oauthClientId.orEmpty()) }
     var oauthClientSecret by remember(initialServer.id) { mutableStateOf(initialServer.auth.oauthClientSecret.orEmpty()) }
@@ -100,11 +99,12 @@ fun ServerEditor(
             )
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                PrimaryTabRow(selectedTabIndex = selectedTab, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
-                    Tab(selectedTab == 0, { selectedTab = 0 }, text = { Text(stringResource(R.string.mcp_basic_settings), fontWeight = FontWeight.SemiBold) })
-                    Tab(selectedTab == 1, { selectedTab = 1 }, text = { Text(stringResource(R.string.common_tools), fontWeight = FontWeight.SemiBold) })
-                }
-                if (selectedTab == 0) McpConnectionSettings(
+                AppSwipeTabs(
+                    tabs = listOf(stringResource(R.string.mcp_basic_settings), stringResource(R.string.common_tools)),
+                    pagerState = pager,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                ) { page ->
+                    if (page == 0) McpConnectionSettings(
                     name = name, onNameChange = { name = it }, icon = serverIcon,
                     onIconChange = { serverIcon = it; onSaveIcon(currentServer()) }, onIconBusyChange = { iconImporting = it },
                     protocol = protocol, onProtocolChange = { protocol = it }, url = url,
@@ -130,9 +130,10 @@ fun ServerEditor(
                          oauthClientId = cleared.auth.oauthClientId.orEmpty(); oauthClientSecret = cleared.auth.oauthClientSecret.orEmpty()
                          oauthRedirectUri = cleared.auth.oauthRedirectUri ?: org.starfall.generative.integrations.mcp.McpOAuthService.REDIRECT_URI
                          oauthAuthorized = false; authValue = cleared.auth.value.orEmpty()
-                    }, modifier = Modifier.weight(1f)
+                    }, modifier = Modifier.fillMaxSize()
                 ) else McpToolsTab(initialServer.id, cachedTools, cachedLoading, cachedError, canSave, toolSettings,
-                    onSetToolEnabled, onSetToolParameter, ::refreshTools, Modifier.weight(1f))
+                    onSetToolEnabled, onSetToolParameter, ::refreshTools, Modifier.fillMaxSize())
+                }
             }
         }
     }

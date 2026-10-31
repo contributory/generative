@@ -28,7 +28,7 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 @Composable
 internal fun DefaultSelectionItem(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -53,13 +53,15 @@ internal fun DefaultSelectionItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             SharedIcon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,

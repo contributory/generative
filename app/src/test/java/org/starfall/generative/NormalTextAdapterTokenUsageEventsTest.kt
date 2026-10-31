@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [28])
 class NormalTextAdapterTokenUsageEventsTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
+    private val prettyJson = Json { prettyPrint = true }
     private val attachments by lazy { AttachmentResolver(context) }
     private val sdk by lazy { OfficialProviderSdk(attachments) }
     private val httpClient = HttpClient(OkHttp)
@@ -280,7 +281,7 @@ class NormalTextAdapterTokenUsageEventsTest {
 
     @Test fun ollamaNonstreamingReadsPrettyPrintedJsonAndInputOnlyUsage() = runBlocking {
         MockWebServer().use { server ->
-            val body = Json { prettyPrint = true }.encodeToString(JsonObject.serializer(),
+            val body = prettyJson.encodeToString(JsonObject.serializer(),
                 Json.parseToJsonElement(completeBody(ModelApiType.OLLAMA, "\"prompt_eval_count\":9")).jsonObject)
             server.enqueue(json(body))
             assertEvents(adapter(ModelApiType.OLLAMA).stream(request(server, ModelApiType.OLLAMA, streaming = false)).toList(), TokenUsage(9))

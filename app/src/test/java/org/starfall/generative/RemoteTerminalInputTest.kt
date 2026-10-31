@@ -237,7 +237,7 @@ class RemoteTerminalInputTest {
         terminal.input.sendSpecial("\u001b[D")
         val originalCursor = terminal.input.localCursorPosition
 
-        terminal.input.setInputMode(TerminalInputMode.REMOTE)
+        terminal.input.changeInputMode(TerminalInputMode.REMOTE)
         assertEquals(TerminalInputMode.REMOTE, terminal.input.inputMode)
         assertEquals("echo chào", terminal.input.localInput)
         assertEquals(originalCursor, terminal.input.localCursorPosition)
@@ -246,7 +246,7 @@ class RemoteTerminalInputTest {
 
         terminal.input.sendImeText("ls\n")
         assertEquals("ls\r", terminal.text())
-        terminal.input.setInputMode(TerminalInputMode.LOCAL)
+        terminal.input.changeInputMode(TerminalInputMode.LOCAL)
         assertEquals("echo chào", terminal.input.localInput)
         assertEquals(originalCursor, terminal.input.localCursorPosition)
         assertTrue(terminal.input.localDraftForDisplay()!!.contains("echo chà"))

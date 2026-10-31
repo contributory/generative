@@ -1,7 +1,7 @@
 package org.starfall.generative
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
@@ -40,8 +40,9 @@ class HelixLiveTest {
             back()
         }
         compose.onNode(gear).performClick()
-        if (compose.onAllNodesWithText("Model Providers").fetchSemanticsNodes().isEmpty()) back()
-        compose.onNodeWithText("Model Providers").performClick()
+        val providersMenuLabel = compose.activity.getString(R.string.app_menu_language_providers)
+        if (compose.onAllNodesWithText(providersMenuLabel).fetchSemanticsNodes().isEmpty()) back()
+        compose.onNodeWithText(providersMenuLabel).performClick()
         val existing = chat.providers.value.find { it.baseUrl.trimEnd('/') == "https://helixmind.online/v1" }
         if (existing == null) {
             val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

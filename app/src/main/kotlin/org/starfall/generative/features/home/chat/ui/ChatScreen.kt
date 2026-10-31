@@ -368,8 +368,10 @@ fun ChatScreen(
                     UserInputArea(
                         backdrop = inputBackdrop,
                         temporaryChatId = conversation?.takeIf { it.isTemporary }?.id,
+                        clipboardSessionKey = conversationKey,
                         attachments = inputAttachments,
                         onAttachmentsChange = { inputAttachments = it },
+                        onAddClipboardImages = { images -> inputAttachments = (inputAttachments + images).distinct() },
                         chatModeRequest = chatModeRequest,
                         modifier = Modifier
                             .onGloballyPositioned { inputAreaBounds = it.boundsInRoot() },

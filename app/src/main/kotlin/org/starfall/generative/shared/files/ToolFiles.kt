@@ -230,7 +230,12 @@ class ToolFiles(val directory: File) {
                 mime?.substringBefore(';') == "text/html" -> "html"
                 mime == "text/plain" -> "txt"
                 mime == "application/json" -> "json"
-                else -> "bin"
+                // Preserve known MIME extensions for shared documents (docx, xlsx, epub, svg,
+                // etc.) instead of turning valid attachments into anonymous .bin files.
+                else -> mime?.substringBefore(';')?.trim()?.lowercase()?.let {
+                    android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(it)
+                }
+                    ?.takeIf { it.matches(Regex("[a-z0-9]{1,10}")) } ?: "bin"
             }
             val hash = digest.digest().joinToString("") { "%02x".format(it) }
             val context = coroutineContext

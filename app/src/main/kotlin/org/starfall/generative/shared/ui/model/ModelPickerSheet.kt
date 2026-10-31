@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -33,6 +35,8 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 
+private const val FullHeightModelPickerMinRows = 5
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelPickerSheet(
@@ -51,12 +55,14 @@ fun ModelPickerSheet(
     modelFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, _ -> true },
     showReasoningEffort: Boolean = true,
     onEditProvider: (providerId: String) -> Unit = {},
+    onEditModel: ((providerId: String, modelId: String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
-    // Match Fetch Models: let list content determine the initial height, while BottomSheet
-    // continues to support handle dragging up to the top safe inset.
-    BottomSheet(onDismissRequest = onDismiss, contentBehindNavigationBar = true) {
+    var contentOverflows by remember { mutableStateOf(false) }
+    BottomSheet(onDismissRequest = onDismiss, contentBehindNavigationBar = true,
+        expandOnOpen = contentOverflows) {
         ModelPickerSheetContent(
+            onOverflowChanged = { contentOverflows = it },
             providers = providers,
             providerGroups = providerGroups,
             collapsedGroupIdsState = collapsedGroupIdsState,
@@ -72,6 +78,7 @@ fun ModelPickerSheet(
             modelFilter = modelFilter,
             showReasoningEffort = showReasoningEffort,
             onEditProvider = onEditProvider,
+            onEditModel = onEditModel,
             onDismiss = onDismiss
         )
     }
@@ -98,9 +105,11 @@ internal fun ModelPickerSheetContent(
     modelFilter: (ModelProvider, String, ModelConfiguration) -> Boolean = { _, _, _ -> true },
     showReasoningEffort: Boolean = true,
     onEditProvider: (providerId: String) -> Unit = {},
+    onEditModel: ((providerId: String, modelId: String) -> Unit)? = null,
     onOpenSelectedModel: (() -> Unit)? = null,
     // Disable when the containing sheet already reserves the navigation-bar inset.
     includeNavigationBarPadding: Boolean = true,
+    onOverflowChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit
 ) {
@@ -170,6 +179,16 @@ internal fun ModelPickerSheetContent(
         initialModelPickerItemIndex(flatItems, selectedProviderId, selectedModelId)
     }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialItemIndex)
+    val latestOnOverflowChanged by rememberUpdatedState(onOverflowChanged)
+    // A model picker with at least five visible model rows is a full-screen browsing task.
+    val manyVisibleModels = flatItems.count { it is ModelPickerItem.Model } >= FullHeightModelPickerMinRows
+    LaunchedEffect(listState, flatItems, manyVisibleModels) {
+        snapshotFlow {
+            val layout = listState.layoutInfo
+            if (layout.viewportSize.height <= 0 || layout.visibleItemsInfo.isEmpty()) null
+            else manyVisibleModels || layout.visibleItemsInfo.size < layout.totalItemsCount
+        }.filterNotNull().distinctUntilChanged().collect { latestOnOverflowChanged(it) }
+    }
 
     // Folder tabs are local navigation shortcuts. No tab selection or scroll position is persisted.
     val folderTabs = remember(flatItems, ungroupedTabLabel) { computeModelPickerTabs(flatItems, ungroupedTabLabel) }
@@ -365,6 +384,12 @@ internal fun ModelPickerSheetContent(
                                             onClick = {
                                                 onSelectModel(item.provider.id, item.modelId)
                                                 onDismiss()
+                                            },
+                                            onLongClick = onEditModel?.let { edit ->
+                                                {
+                                                    onDismiss()
+                                                    edit(item.provider.id, item.modelId)
+                                                }
                                             }
                                         )
                                     }

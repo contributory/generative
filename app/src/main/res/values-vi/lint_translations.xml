@@ -39,7 +39,7 @@
         <item quantity="other">%d mô hình TTS</item>
     </plurals>
     <string name="customization_title">Tùy chỉnh giao diện</string>
-    <string name="customization_enable">Bật tùy chỉnh</string>
+    <string name="customization_enable">Bật</string>
     <string name="customization_description">Màu sắc, độ trong suốt thành phần, ảnh đại diện và ảnh nền</string>
     <string name="customization_backgrounds_title">Ảnh nền</string>
     <string name="user_profile_background_preview_sample">Nội dung mẫu có ảnh nền</string>

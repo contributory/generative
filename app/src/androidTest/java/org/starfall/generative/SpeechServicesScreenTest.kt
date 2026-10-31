@@ -3,7 +3,7 @@ package org.starfall.generative
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -64,18 +64,18 @@ class SpeechServicesScreenTest {
         compose.onNodeWithText("Voice").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Edit Speech Service").assertIsDisplayed()
-        compose.onNodeWithText("Speech Services").assertDoesNotExist()
+        compose.onNodeWithText("Speech synthesis services").assertDoesNotExist()
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle { assertEquals("Voice", saved?.name) }
         compose.waitForIdle()
-        compose.onNodeWithText("Speech Services").assertIsDisplayed()
+        compose.onNodeWithText("Speech synthesis services").assertIsDisplayed()
 
         compose.onNodeWithContentDescription("Add speech service").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Add speech service").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Speech Services").assertIsDisplayed()
+        compose.onNodeWithText("Speech synthesis services").assertIsDisplayed()
     }
 
     @Test

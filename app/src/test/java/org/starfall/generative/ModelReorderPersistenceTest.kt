@@ -28,7 +28,7 @@ class ModelReorderPersistenceTest {
         for (order in listOf(emptyList(), listOf("b", "b"))) {
             val reordered = stored.reorderedModels(order)
             assertEquals(configs.keys, reordered.modelIds!!.toSet())
-            assertEquals(configs.size, reordered.modelIds!!.size)
+            assertEquals(configs.size, reordered.modelIds.size)
             assertEquals(configs, reordered.modelConfigs)
         }
     }

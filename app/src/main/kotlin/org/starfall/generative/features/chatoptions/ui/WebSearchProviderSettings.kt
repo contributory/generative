@@ -78,7 +78,6 @@ fun WebSearchProviderSettings(
         Box(Modifier.fillMaxWidth()) {
             DefaultSelectionItem(
                 title = selectedProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
-                subtitle = stringResource(R.string.tool_web_search_provider_select),
                 icon = {
                     EntityIcon(
                         image = selectedProvider?.icon,
@@ -105,7 +104,6 @@ fun WebSearchProviderSettings(
                         item {
                             ChatOptionSelectionCard(
                                 title = stringResource(R.string.tool_web_search_provider_none),
-                                subtitle = stringResource(R.string.tool_web_search_provider_select),
                                 selected = selectedProvider == null,
                                 icon = {
                                     EntityIcon(

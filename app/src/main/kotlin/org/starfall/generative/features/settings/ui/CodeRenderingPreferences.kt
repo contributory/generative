@@ -1,28 +1,24 @@
 package org.starfall.generative.features.settings.ui
 
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import org.starfall.generative.R
 import kotlin.math.roundToInt
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.DEFAULT_MESSAGE_FONT_SIZE
+import org.starfall.generative.shared.storage.preferences.DEFAULT_CODE_BLOCK_MAX_LINES
+import org.starfall.generative.shared.storage.preferences.DEFAULT_WORD_WRAP_COLUMN
 import org.starfall.generative.shared.storage.preferences.MessageFontFamily
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,99 +34,53 @@ internal fun CodeRenderingPreferences(
     onCodeBlockIncludeUndefinedChange: (Boolean) -> Unit = {},
     includeTextAppearance: Boolean = true
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val labels = mapOf(
-        WordWrapMode.OFF to stringResource(R.string.common_off),
-        WordWrapMode.VIEWPORT to stringResource(R.string.word_wrap_viewport),
-        WordWrapMode.COLUMN to stringResource(R.string.word_wrap_column),
-        WordWrapMode.BOUNDED to stringResource(R.string.word_wrap_bounded)
+    SettingsChoicePreference(
+        title = stringResource(R.string.word_wrap),
+        value = preferences.wordWrapMode,
+        choices = listOf(
+            SettingsChoice(WordWrapMode.OFF, stringResource(R.string.common_off)),
+            SettingsChoice(WordWrapMode.VIEWPORT, stringResource(R.string.word_wrap_viewport)),
+            SettingsChoice(WordWrapMode.COLUMN, stringResource(R.string.word_wrap_column)),
+            SettingsChoice(WordWrapMode.BOUNDED, stringResource(R.string.word_wrap_bounded))
+        ),
+        onSelected = onModeChange,
+        modifier = Modifier.testTag("word-wrap-mode")
     )
-    Text(stringResource(R.string.word_wrap), style = MaterialTheme.typography.titleMedium)
-    ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-        OutlinedTextField(
-            value = labels.getValue(preferences.wordWrapMode), onValueChange = {}, readOnly = true,
-            label = { Text(stringResource(R.string.word_wrap)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("word-wrap-mode")
-        )
-        ExposedDropdownMenu(expanded, { expanded = false }) {
-            labels.forEach { (mode, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { onModeChange(mode); expanded = false })
-            }
-        }
-    }
     if (preferences.wordWrapMode == WordWrapMode.COLUMN || preferences.wordWrapMode == WordWrapMode.BOUNDED) {
-        var column by remember(preferences.wordWrapColumn) { mutableStateOf(preferences.wordWrapColumn.toString()) }
-        val parsed = column.toIntOrNull()?.takeIf { it > 0 }
-        OutlinedTextField(
-            value = column,
-            onValueChange = { text ->
-                if (text.all(Char::isDigit)) {
-                    column = text
-                    text.toIntOrNull()?.takeIf { it > 0 }?.let(onColumnChange)
-                }
-            },
-            label = { Text(stringResource(R.string.word_wrap_column_count)) },
-            supportingText = { Text(stringResource(if (parsed == null) R.string.common_enter_positive_whole_number else R.string.word_wrap_column_hint)) },
-            isError = parsed == null, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth().testTag("word-wrap-column")
+        SettingsNumberPreference(
+            title = stringResource(R.string.word_wrap_column_count),
+            value = preferences.wordWrapColumn,
+            defaultValue = DEFAULT_WORD_WRAP_COLUMN,
+            range = 1..Int.MAX_VALUE,
+            tag = "word-wrap-column",
+            onValueChange = onColumnChange
         )
     }
-    PreferenceToggle(stringResource(R.string.code_preview), stringResource(R.string.code_preview_hint),
+    PreferenceToggle(stringResource(R.string.code_preview), null,
         preferences.codePreviewEnabled, onPreviewChange)
-    var codeBlockExpanded by remember { mutableStateOf(false) }
-    val codeBlockLabels = mapOf(
-        CodeBlockDisplayMode.SHOW_ALL to stringResource(R.string.code_block_show_all),
-        CodeBlockDisplayMode.EXTENDABLE to stringResource(R.string.code_block_extendable),
-        CodeBlockDisplayMode.SHOW_IN_DRAWER to stringResource(R.string.code_block_show_in_drawer)
+    SettingsChoicePreference(
+        title = stringResource(R.string.code_block_display),
+        value = preferences.codeBlockDisplayMode,
+        choices = listOf(
+            SettingsChoice(CodeBlockDisplayMode.SHOW_ALL, stringResource(R.string.code_block_show_all)),
+            SettingsChoice(CodeBlockDisplayMode.EXTENDABLE, stringResource(R.string.code_block_extendable)),
+            SettingsChoice(CodeBlockDisplayMode.SHOW_IN_DRAWER, stringResource(R.string.code_block_show_in_drawer))
+        ),
+        onSelected = onCodeBlockDisplayModeChange,
+        modifier = Modifier.testTag("code-block-display-mode")
     )
-    Text(stringResource(R.string.code_block_display), style = MaterialTheme.typography.titleMedium)
-    ExposedDropdownMenuBox(codeBlockExpanded, { codeBlockExpanded = !codeBlockExpanded }) {
-        OutlinedTextField(
-            value = codeBlockLabels.getValue(preferences.codeBlockDisplayMode),
-            onValueChange = {}, readOnly = true,
-            label = { Text(stringResource(R.string.code_block_display)) },
-            supportingText = { Text(stringResource(R.string.code_block_display_hint)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(codeBlockExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("code-block-display-mode")
-        )
-        ExposedDropdownMenu(codeBlockExpanded, { codeBlockExpanded = false }) {
-            codeBlockLabels.forEach { (mode, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = {
-                    onCodeBlockDisplayModeChange(mode)
-                    codeBlockExpanded = false
-                })
-            }
-        }
-    }
     if (preferences.codeBlockDisplayMode != CodeBlockDisplayMode.SHOW_ALL) {
-        Text(stringResource(R.string.code_block_max_lines), style = MaterialTheme.typography.titleMedium)
-        var maxLines by remember(preferences.codeBlockMaxLines) {
-            mutableStateOf(preferences.codeBlockMaxLines.toString())
-        }
-        val parsedMaxLines = maxLines.toIntOrNull()?.takeIf { it > 0 }
-        OutlinedTextField(
-            value = maxLines,
-            onValueChange = { value ->
-                if (value.all(Char::isDigit)) {
-                    maxLines = value
-                    value.toIntOrNull()?.takeIf { it in 1..10_000 }?.let(onCodeBlockMaxLinesChange)
-                }
-            },
-            label = { Text(stringResource(R.string.code_block_max_lines)) },
-            supportingText = {
-                Text(stringResource(if (parsedMaxLines == null) R.string.common_enter_positive_whole_number
-                    else R.string.code_block_max_lines_hint))
-            },
-            isError = parsedMaxLines == null,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth().testTag("code-block-max-lines")
+        SettingsNumberPreference(
+            title = stringResource(R.string.code_block_max_lines),
+            value = preferences.codeBlockMaxLines,
+            defaultValue = DEFAULT_CODE_BLOCK_MAX_LINES,
+            range = 1..10_000,
+            tag = "code-block-max-lines",
+            onValueChange = onCodeBlockMaxLinesChange
         )
         PreferenceToggle(
             stringResource(R.string.code_block_include_undefined),
-            stringResource(R.string.code_block_include_undefined_hint),
+            null,
             preferences.codeBlockIncludeUndefined,
             onCodeBlockIncludeUndefinedChange
         )
@@ -151,7 +101,7 @@ internal fun TextAppearancePreferences(
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     PreferenceToggle(
         stringResource(R.string.message_text_size),
-        stringResource(R.string.message_text_size_custom_hint),
+        null,
         preferences.messageFontSizeCustom,
         onFontSizeCustomChange
     )
@@ -180,29 +130,17 @@ internal fun TextAppearancePreferences(
         }
     }
 
-    Text(stringResource(R.string.message_font_family), style = MaterialTheme.typography.titleMedium)
-    var fontExpanded by remember { mutableStateOf(false) }
-    val fontLabels = mapOf(
-        MessageFontFamily.DEFAULT to stringResource(R.string.font_family_default),
-        MessageFontFamily.SANS_SERIF to stringResource(R.string.font_family_sans_serif),
-        MessageFontFamily.SERIF to stringResource(R.string.font_family_serif),
-        MessageFontFamily.MONOSPACE to stringResource(R.string.font_family_monospace),
-        MessageFontFamily.CURSIVE to stringResource(R.string.font_family_cursive)
+    SettingsChoicePreference(
+        title = stringResource(R.string.message_font_family),
+        value = preferences.messageFontFamily,
+        choices = listOf(
+            SettingsChoice(MessageFontFamily.DEFAULT, stringResource(R.string.font_family_default)),
+            SettingsChoice(MessageFontFamily.SANS_SERIF, stringResource(R.string.font_family_sans_serif)),
+            SettingsChoice(MessageFontFamily.SERIF, stringResource(R.string.font_family_serif)),
+            SettingsChoice(MessageFontFamily.MONOSPACE, stringResource(R.string.font_family_monospace)),
+            SettingsChoice(MessageFontFamily.CURSIVE, stringResource(R.string.font_family_cursive))
+        ),
+        onSelected = onFontFamilyChange,
+        modifier = Modifier.testTag("message-font-family")
     )
-    ExposedDropdownMenuBox(fontExpanded, { fontExpanded = !fontExpanded }) {
-        OutlinedTextField(
-            value = fontLabels.getValue(preferences.messageFontFamily), onValueChange = {}, readOnly = true,
-            label = { Text(stringResource(R.string.font_family_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fontExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("message-font-family")
-        )
-        ExposedDropdownMenu(fontExpanded, { fontExpanded = false }) {
-            fontLabels.forEach { (family, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = {
-                    onFontFamilyChange(family)
-                    fontExpanded = false
-                })
-            }
-        }
-    }
 }

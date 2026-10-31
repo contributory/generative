@@ -109,8 +109,14 @@ data class MediaRequestProfile(
     /** Distinguishes an intentional "enable everything" selection from an unconfigured profile. */
     val paramsConfigured: Boolean = false,
     /** Android-keystore encrypted; backups on another installation require re-entering the key. */
-    val encryptedCredential: String = ""
+    val encryptedCredential: String = "",
+    /** Custom chains can run without a provider/model when their endpoints are self-contained. */
+    val requiresModel: Boolean = true
 )
+
+/** Only a Custom request chain can bypass the model requirement. */
+val MediaRequestProfile.modelIndependent: Boolean
+    get() = mode == MediaGenerationMode.CUSTOM && !requiresModel
 
 /** Domain-specific profile names; both use the same serialized shape for backwards compatibility. */
 typealias ImageGenProfile = MediaRequestProfile
@@ -130,7 +136,7 @@ fun Map<String, MediaRequestProfile>.withDefaultMediaProfile(video: Boolean): Ma
     val builtIn = defaultMediaProfile(video)
     val existing = this[builtIn.id]
     // Keep the built-in first, so a model without an explicit selection always has a Default.
-    return linkedMapOf(builtIn.id to (existing?.copy(mode = MediaGenerationMode.DEFAULT) ?: builtIn)).apply {
+    return linkedMapOf(builtIn.id to (existing?.copy(mode = MediaGenerationMode.DEFAULT, requiresModel = true) ?: builtIn)).apply {
         putAll(this@withDefaultMediaProfile.filterKeys { it != builtIn.id })
     }
 }

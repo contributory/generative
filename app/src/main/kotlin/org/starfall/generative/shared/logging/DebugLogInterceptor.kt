@@ -1,84 +1,31 @@
 package org.starfall.generative.shared.logging
 
-import okhttp3.Headers
 import okhttp3.Interceptor
-import okhttp3.MediaType
 import okhttp3.Response
-import okio.Buffer
-import org.starfall.generative.shared.model.logging.DebugLogCategory.ERRORS
 import org.starfall.generative.shared.model.logging.DebugLogCategory.NETWORK
-import org.starfall.generative.shared.model.logging.DebugLogCategory.PAYLOAD
 import java.io.IOException
 
-private const val TAG = "HTTP"
-private const val MAX_BODY_BYTES = 256L * 1024
-
-/**
- * Records requests and responses of an OkHttp client. Bodies are captured only when they are small,
- * textual and not streamed, so reading them for the log never delays or consumes a live response.
- */
+/** Network diagnostics use native Logcat priorities and never read request/response bodies. */
 class DebugLogInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        if (!DebugLog.isEnabled(NETWORK) && !DebugLog.isEnabled(PAYLOAD) && !DebugLog.isEnabled(ERRORS)) {
-            return chain.proceed(request)
-        }
+        if (!DebugLog.isEnabled(NETWORK)) return chain.proceed(request)
         val label = "${request.method} ${DebugLogRedactor.redact(request.url.toString())}"
-        val entryId = DebugLog.beginRequest(TAG, label) {
-            buildString {
-                append(headerText(request.headers))
-                val body = request.body
-                append(
-                    when {
-                        body == null -> ""
-                        body.isOneShot() || body.isDuplex() -> "(request body not captured: one-shot)"
-                        !isText(body.contentType()) -> "(request body not captured: ${body.contentType() ?: "unknown type"})"
-                        body.contentLength() !in 0..MAX_BODY_BYTES -> "(request body not captured: ${body.contentLength()} bytes)"
-                        else -> Buffer().also { body.writeTo(it) }.readUtf8()
-                    }
-                )
-            }
-        }
+        val id = DebugLog.beginRequest("HTTP", label,
+            method = request.method, endpoint = request.url.toString())
         val startNs = System.nanoTime()
         val response = try {
             chain.proceed(request)
-        } catch (e: IOException) {
-            DebugLog.finishRequest(entryId, TAG,
-                "✗ $label (${e::class.java.simpleName}: ${e.message}, ${elapsedMs(startNs)} ms)", true)
-            throw e
+        } catch (error: IOException) {
+            DebugLog.finishRequest(id, "HTTP", "✗ $label (${elapsedMs(startNs)} ms)",
+                true, error = error)
+            throw error
         }
-        val ms = elapsedMs(startNs)
-        val failed = !response.isSuccessful && response.code !in 300..399
-        DebugLog.finishRequest(entryId, TAG, "← ${response.code} $label ($ms ms)", failed) {
-            buildString {
-                append(headerText(response.headers))
-                val body = response.body
-                val type = body.contentType()
-                val length = body.contentLength()
-                append(
-                    when {
-                        !isText(type) || type?.subtype?.contains("stream") == true || type?.subtype?.contains("ndjson") == true ->
-                            "(streamed or non-text response body not captured)"
-                        length !in 0..MAX_BODY_BYTES -> "(response body not captured: unknown or large size)"
-                        else -> response.peekBody(MAX_BODY_BYTES).string()
-                    }
-                )
-            }
-        }
+        DebugLog.finishRequest(id, "HTTP",
+            "← ${response.code} $label (${elapsedMs(startNs)} ms)",
+            failed = response.code >= 400, statusCode = response.code)
         return response
     }
 
     private fun elapsedMs(startNs: Long) = (System.nanoTime() - startNs) / 1_000_000
-
-    private fun isText(type: MediaType?): Boolean =
-        type != null && (type.type == "text" || type.subtype.let { it.contains("json") || it.contains("xml") || it == "x-www-form-urlencoded" })
-
-    private fun headerText(headers: Headers): String = buildString {
-        for (i in 0 until headers.size) {
-            val name = headers.name(i)
-            append(name).append(": ")
-            append(if (DebugLogRedactor.isSensitiveHeader(name)) DebugLogRedactor.MASK else headers.value(i)).append('\n')
-        }
-        if (isNotEmpty()) append('\n')
-    }
 }

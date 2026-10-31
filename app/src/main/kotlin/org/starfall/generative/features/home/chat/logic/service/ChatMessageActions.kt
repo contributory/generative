@@ -186,18 +186,18 @@ internal class ChatMessageActions(
             }
 
             val provider = providerWithReasoning(requireNotNull(baseProvider), modelId, conv)
-            val context = effectiveContext(
-                conv,
-                conv.messages.dropLast(1),
-                prefs.systemPromptFor(conv)
-            ).let { it.copy(messages = prefs.instructionRoleMessagesFor(conv) + it.messages) }
+            val instructionTime = java.time.ZonedDateTime.now()
+            val instructionPrompt = prefs.systemPromptFor(conv, instructionTime)
+            val instructionMessages = prefs.instructionRoleMessagesFor(conv, instructionTime)
+            val context = effectiveContext(conv, conv.messages.dropLast(1), instructionPrompt)
+                .let { it.copy(messages = instructionMessages + it.messages) }
             val started = generationFor(conv.id).startEvents(
                 conv,
                 assistant.id,
                 toolEvents(provider, modelId, context.messages, context.systemPrompt, conv.id, createSkillRequested),
-                usageContextKey = contextUsageKey(conv, prefs.systemPromptFor(conv),
+                usageContextKey = contextUsageKey(conv, instructionPrompt,
                     baseProvider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                    prefs.instructionRoleMessagesFor(conv), toolSettings.value)
+                    instructionMessages, toolSettings.value)
             )
             val titleSettings = toolSettings.value.system["title_generation"]
             if (started && !conv.isTemporary && !conv.startedWithDirectMedia() && shouldGenerateConversationTitle(
@@ -421,11 +421,11 @@ internal class ChatMessageActions(
                 ))
             )
         } else conversation.messages.take(responseIndex)
-        val context = effectiveContext(
-            conversation,
-            contextMessages.dropLast(1),
-            preferences.systemPromptFor(conversation)
-        ).let { it.copy(messages = preferences.instructionRoleMessagesFor(conversation) + it.messages + contextMessages.last()) }
+        val instructionTime = java.time.ZonedDateTime.now()
+        val instructionPrompt = preferences.systemPromptFor(conversation, instructionTime)
+        val instructionMessages = preferences.instructionRoleMessagesFor(conversation, instructionTime)
+        val context = effectiveContext(conversation, contextMessages.dropLast(1), instructionPrompt)
+            .let { it.copy(messages = instructionMessages + it.messages + contextMessages.last()) }
         val configuredProvider = providerWithReasoning(provider, modelId, conversation)
         return generationFor(conversation.id).startEvents(
             conversation,
@@ -434,9 +434,9 @@ internal class ChatMessageActions(
                 conversation.messages[responseIndex - 1].activeVersion.createSkillRequested),
             rollbackConversation = rollbackConversation,
             resume = resume,
-            usageContextKey = contextUsageKey(conversation, preferences.systemPromptFor(conversation),
+            usageContextKey = contextUsageKey(conversation, instructionPrompt,
                 provider.config.modelConfigs[modelId] ?: ModelConfiguration(displayName = modelId),
-                preferences.instructionRoleMessagesFor(conversation), toolSettings.value)
+                instructionMessages, toolSettings.value)
         )
     }
 

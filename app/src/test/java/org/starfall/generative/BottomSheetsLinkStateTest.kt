@@ -29,13 +29,18 @@ class BottomSheetsLinkStateTest {
         val state = BottomSheetsLinkState()
         state.openModelPicker()
         assertEquals(ModelSheetPage.MODEL_PICKER, state.modelSheetPage)
+        assertEquals(ModelSheetPage.MODEL_PICKER, state.renderedModelSheetPage)
         state.backFromModelPicker()
         assertNull(state.modelSheetPage)
 
         state.openSelectedModelOverview()
         state.switchToModelPicker()
         assertEquals(ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW, state.modelSheetPage)
+        assertEquals(ModelSheetPage.MODEL_PICKER, state.renderedModelSheetPage)
         state.backFromModelPicker()
         assertEquals(ModelSheetPage.SELECTED_MODEL, state.modelSheetPage)
+        assertEquals(ModelSheetPage.SELECTED_MODEL, state.renderedModelSheetPage)
+        state.dismissModelSheet()
+        assertNull(state.renderedModelSheetPage)
     }
 }

@@ -43,9 +43,10 @@ import org.starfall.generative.shared.model.auth.defaultAuthorization
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
 class McpToolLoopTest {
+    @Suppress("DEPRECATION") // Robolectric 4.17 only exposes MIME registration through this legacy shadow.
     @Before fun prepareKeystore() {
         installTestAndroidKeyStore()
-        org.robolectric.Shadows.shadowOf(android.webkit.MimeTypeMap.getSingleton())
+        org.robolectric.shadow.api.Shadow.extract<org.robolectric.shadows.ShadowMimeTypeMap>(android.webkit.MimeTypeMap.getSingleton())
             .addExtensionMimeTypeMapping("png", "image/png")
     }
     private val context: Context get() = ApplicationProvider.getApplicationContext()
@@ -105,7 +106,6 @@ class McpToolLoopTest {
                         ModelApiType.OLLAMA->buildJsonObject{put("message",message)}
                         ModelApiType.ANTHROPIC, ModelApiType.CLAUDE_CODE->buildJsonObject{put("content",buildJsonArray{add(if(first)buildJsonObject{put("type","tool_use");put("id","c1");put("name",name);put("input",buildJsonObject{})}else buildJsonObject{put("type","text");put("text","done")})})}
                         ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY->buildJsonObject{put("candidates",buildJsonArray{add(buildJsonObject{put("content",buildJsonObject{put("parts",buildJsonArray{add(if(first)buildJsonObject{put("functionCall",buildJsonObject{put("name",name);put("args",buildJsonObject{})});put("thoughtSignature","sig")}else buildJsonObject{put("text","done")})})})})})}
-                        else->error("Unsupported provider type: $type")
                     }
                     return json(if (type == ModelApiType.ANTIGRAVITY) obj("response" to response) else response)
                 }

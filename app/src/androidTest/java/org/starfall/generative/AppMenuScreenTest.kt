@@ -16,7 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertTrue
@@ -69,7 +69,7 @@ class AppMenuScreenTest {
                                 onCodePreviewEnabledChange = {}, onCodeBlockDisplayModeChange = {}, onCodeBlockMaxLinesChange = {},
                                 onCodeBlockIncludeUndefinedChange = {}, onMessageFontSizeChange = {}, onMessageFontSizeCustomChange = {},
                                 onMessageFontFamilyChange = {}, onContinueLastConversationChange = {}, onPersistSelectedModelChange = {},
-                                onAutoScrollChange = autoScroll, onEnableVibrationChange = {}, onDebugModeChange = {}, onLatexModeChange = {},
+                                onAutoScrollChange = autoScroll, onEnableVibrationChange = {}, onLatexModeChange = {},
                                 onTtsReadCodeBlocksChange = {}, onToolRoundLimitEnabledChange = {}, onToolRoundLimitChange = {},
                                 onToolCallStrategyChange = {}, onToolCallConcurrentLimitChange = {}, onScreenWakelockModeChange = {},
                                 onAppLanguageChange = { _, _ -> }
@@ -182,27 +182,18 @@ class AppMenuScreenTest {
     @Test fun featuresLandingGroupsAndRoutesEveryFeatureItem() {
         val destinations = mutableListOf<String>()
         showFeatures(destinations)
-        val headings = listOf(
-            R.string.common_configuration, R.string.settings_group_external_services,
-            R.string.settings_group_data_caching, R.string.common_system
-        )
-        headings.forEach { id ->
-            val label = context.getString(id)
-            scrollListTo(label)
-            compose.onNodeWithText(label).assertIsDisplayed()
-        }
         val items = listOf(
-            R.string.settings_chat_options to "Chat Options",
-            R.string.common_feature_tools to "Feature Tools",
-            R.string.providers_title to "Model Providers",
-            R.string.common_mcp_connectors to "MCP Connectors",
-            R.string.speech_services_title to "Speech Services",
-            R.string.remote_machines_title to "Remote Machines",
-            R.string.settings_storage to "Media Storage",
-            R.string.icon_settings_title to "Icons & Trademarks",
-            R.string.settings_category_app_settings to "General Settings",
-            R.string.settings_category_app_data to "Data Controls",
-            R.string.settings_category_about to "About"
+            R.string.app_menu_default_options to "Chat Options",
+            R.string.app_menu_language_providers to "Model Providers",
+            R.string.app_menu_speech_services to "Speech Services",
+            R.string.app_menu_builtin_tools to "Feature Tools",
+            R.string.app_menu_model_context_protocol to "MCP Connectors",
+            R.string.app_menu_remote_servers to "Remote Machines",
+            R.string.app_menu_media_management to "Media Storage",
+            R.string.app_menu_icons_management to "Icons & Trademarks",
+            R.string.app_menu_settings to "General Settings",
+            R.string.app_menu_data to "Data Controls",
+            R.string.app_menu_about to "About"
         )
         items.forEach { (labelId, _) ->
             val label = context.getString(labelId)
@@ -210,6 +201,44 @@ class AppMenuScreenTest {
             compose.onNodeWithText(label).performClick()
         }
         compose.runOnIdle { assertEquals(items.map { it.second }, destinations) }
+        listOf(
+            "configuration" to R.string.app_menu_default_options,
+            "tools" to R.string.app_menu_builtin_tools,
+            "remote" to R.string.app_menu_remote_servers,
+            "media" to R.string.app_menu_media_management,
+            "settings" to R.string.app_menu_settings,
+            "data" to R.string.app_menu_data
+        ).forEach { (group, label) ->
+            scrollListTo(context.getString(label))
+            compose.onNodeWithTag("app-menu-group-$group").assertExists()
+        }
+        listOf(
+            R.string.settings_group_external_services,
+            R.string.settings_group_data_caching,
+            R.string.common_system
+        ).forEach { heading ->
+            compose.onNodeWithText(context.getString(heading)).assertDoesNotExist()
+        }
+    }
+
+    @Test fun menuUsesSingleLabelsWithoutDescriptions() {
+        showFeatures()
+        val oldDescriptions = listOf(
+            R.string.settings_chat_options_description,
+            R.string.settings_tools_editor_description,
+            R.string.settings_providers_description,
+            R.string.settings_mcp_manage_description,
+            R.string.settings_speech_services_description,
+            R.string.remote_machines_description,
+            R.string.settings_storage_description,
+            R.string.icon_settings_description,
+            R.string.settings_category_app_settings_description,
+            R.string.settings_category_app_data_description,
+            R.string.settings_category_about_description
+        )
+        oldDescriptions.forEach { id ->
+            compose.onNodeWithText(context.getString(id)).assertDoesNotExist()
+        }
     }
 
     @Test fun customizationOpensFromLogoWithoutDuplicateMenuItem() {
@@ -226,7 +255,7 @@ class AppMenuScreenTest {
         val destinations = mutableListOf<String>()
         showFeatures(destinations, showAboutPage = true)
         compose.onNodeWithText(context.getString(R.string.settings_software_update)).assertDoesNotExist()
-        val about = context.getString(R.string.settings_category_about)
+        val about = context.getString(R.string.app_menu_about)
         scrollListTo(about)
         compose.onNodeWithText(about).performClick()
         compose.onNodeWithText(context.getString(R.string.settings_software_update)).assertIsDisplayed()
@@ -240,7 +269,7 @@ class AppMenuScreenTest {
     @Test fun preferenceRowTogglesOnce() {
         val updates = mutableListOf<Boolean>()
         showFeatures(autoScroll = { updates.add(it) }, showSettingsPage = true)
-        val settings = context.getString(R.string.settings_category_app_settings)
+        val settings = context.getString(R.string.app_menu_settings)
         scrollListTo(settings)
         compose.onNodeWithText(settings).performClick()
         compose.onNodeWithText(context.getString(R.string.settings_tab_preferences)).performClick()

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
+import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.CustomPalette
@@ -89,6 +90,9 @@ class SettingsViewModel(
     }
     fun setDebugMode(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setDebugMode(value) }
+    }
+    fun setDebugLogLevel(value: DebugLogLevel) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setDebugLogLevel(value) }
     }
     fun setDebugLogCategories(value: Set<DebugLogCategory>) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setDebugLogCategories(value) }

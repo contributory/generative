@@ -125,10 +125,11 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp, private val
         provider: ModelProvider?,
         model: String,
         prompt: String,
-        stepIndex: Int
+        stepIndex: Int,
+        requiresModel: Boolean = true
     ): MediaStepTestResult {
         require(stepIndex in chain.steps.indices) { "Invalid step number." }
-        require(music || model.isNotBlank()) { "Select a model before testing the request." }
+        require(!requiresModel || music || model.isNotBlank()) { "Select a model before testing the request." }
         val responses = mutableListOf<JsonElement>()
         val responseHeaders = mutableListOf<Map<String, String>>()
         val steps = mutableListOf<MediaStepTemplateContext>()

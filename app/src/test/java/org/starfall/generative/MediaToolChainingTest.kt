@@ -41,8 +41,9 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)
 class MediaToolChainingTest {
+    @Suppress("DEPRECATION") // Robolectric 4.17 only exposes MIME registration through this legacy shadow.
     @Before fun mimeTypes() {
-        org.robolectric.Shadows.shadowOf(android.webkit.MimeTypeMap.getSingleton())
+        org.robolectric.shadow.api.Shadow.extract<org.robolectric.shadows.ShadowMimeTypeMap>(android.webkit.MimeTypeMap.getSingleton())
             .addExtensionMimeTypeMapping("png", "image/png")
     }
     @Test fun uploadedImageBecomesReusableReferenceAndVideoAppearsInChat() = scenario(true)

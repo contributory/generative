@@ -36,8 +36,8 @@ allowed-tools: Read
         assertEquals("Review code when requested", skill.description)
         assertEquals("# Code Review\n\n## Instructions\n\n1. Check tests.\n2. Inspect changes.", skill.content)
         assertTrue(skill.extraFrontmatter!!.contains("license: MIT"))
-        assertTrue(skill.extraFrontmatter!!.contains("  author: reviewer"))
-        assertTrue(skill.extraFrontmatter!!.contains("allowed-tools: Read"))
+        assertTrue(skill.extraFrontmatter.contains("  author: reviewer"))
+        assertTrue(skill.extraFrontmatter.contains("allowed-tools: Read"))
         assertEquals(skill, parseAgentSkillDocument(agentSkillDocument(skill), preserveEmptyExtras = true))
     }
 

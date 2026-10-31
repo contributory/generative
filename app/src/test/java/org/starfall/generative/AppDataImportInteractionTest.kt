@@ -6,7 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,9 +45,53 @@ class AppDataImportInteractionTest {
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Import Complete Backup (ZIP)").assertIsNotEnabled()
         // Changes that could corrupt a full restore stay unavailable, but navigation does not.
-        compose.onNodeWithText("Clear All Chat History").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("app-data-manage").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Clear All Chat History").assertDoesNotExist()
+        compose.onNodeWithText("Reset All Application Data").assertDoesNotExist()
         compose.onNodeWithContentDescription("Back").assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, backCalls) }
+    }
+
+    @Test fun destructiveActionsAreBelowBackupAndRequireSeparateConfirmation() {
+        var cleared = 0
+        var reset = 0
+        compose.setContent {
+            GenerativeTheme(darkTheme = false, amoledMode = false) {
+                AppDataScreen(5, 2, onClearAllConversations = { cleared++ },
+                    onResetAllData = { reset++ }, onBack = {})
+            }
+        }
+        val backup = compose.onNodeWithText("Import Complete Backup (ZIP)")
+            .performScrollTo().fetchSemanticsNode().boundsInRoot
+        val manage = compose.onNodeWithTag("app-data-manage")
+            .performScrollTo().fetchSemanticsNode().boundsInRoot
+        org.junit.Assert.assertTrue("Manage data must follow backup", manage.top > backup.top)
+        compose.onNodeWithText("Clear All Chat History").assertDoesNotExist()
+        compose.onNodeWithText("Reset All Application Data").assertDoesNotExist()
+
+        compose.onNodeWithTag("app-data-manage").performClick()
+        compose.onNodeWithTag("app-data-clear-chats").assertExists()
+        compose.onNodeWithTag("app-data-reset-all").assertExists()
+        compose.onNodeWithTag("app-data-clear-chats").performClick()
+        compose.onNodeWithText("Clear All Chats").assertExists()
+        compose.runOnIdle { assertEquals(0, cleared) }
+        compose.onNodeWithText("Close").performClick()
+        compose.runOnIdle { assertEquals(0, cleared) }
+
+        compose.onNodeWithTag("app-data-manage").performClick()
+        compose.onNodeWithTag("app-data-clear-chats").performClick()
+        compose.onNodeWithText("Clear All").performClick()
+        compose.runOnIdle {
+            assertEquals(1, cleared)
+            assertEquals(0, reset)
+        }
+
+        compose.onNodeWithTag("app-data-manage").performClick()
+        compose.onNodeWithTag("app-data-reset-all").performClick()
+        compose.onNodeWithText("Factory Reset Data").assertExists()
+        compose.runOnIdle { assertEquals(0, reset) }
+        compose.onNodeWithText("Reset Everything").performClick()
+        compose.runOnIdle { assertEquals(1, reset) }
     }
 
     @Test fun importActionsBecomeAvailableAgainWhenTheBackgroundJobFinishes() {

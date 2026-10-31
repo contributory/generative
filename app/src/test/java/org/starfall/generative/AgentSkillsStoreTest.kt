@@ -99,7 +99,7 @@ description: Obsolete skill
             val store = AgentSkillsStore(folder)
             store.replaceAll(listOf(AgentSkill("research", "research", "Read references/guide.md", "Research work")))
             val guide = folder.resolve("research/references/guide.md")
-            guide.parentFile.mkdirs()
+            requireNotNull(guide.parentFile).mkdirs()
             guide.writeText("Reference instructions")
             assertEquals(listOf("references/guide.md"), store.listResources(context, "research"))
             assertEquals("Reference instructions", store.readResource(context, "research", "references/guide.md"))
@@ -127,7 +127,7 @@ description: Obsolete skill
         val folder = Files.createTempDirectory("skill-metadata-").toFile()
         try {
             val skillFile = folder.resolve("review/SKILL.md")
-            skillFile.parentFile.mkdirs()
+            requireNotNull(skillFile.parentFile).mkdirs()
             skillFile.writeText("""---
 name: review
 description: Review code
@@ -142,7 +142,7 @@ allowed-tools: Read
 # Review
 """.trimIndent())
             val resource = folder.resolve("review/references/notes.md")
-            resource.parentFile.mkdirs()
+            requireNotNull(resource.parentFile).mkdirs()
             resource.writeText("Notes remain")
             val store = AgentSkillsStore(folder)
             store.replaceAll(listOf(AgentSkill("review", "review", "Updated instructions", "Review code changes")))
@@ -181,7 +181,7 @@ allowed-tools: Read
         val folder = Files.createTempDirectory("skill-invalid-").toFile()
         try {
             val invalid = folder.resolve("broken/SKILL.md")
-            invalid.parentFile.mkdirs()
+            requireNotNull(invalid.parentFile).mkdirs()
             invalid.writeText("not YAML frontmatter")
             AgentSkillsStore(folder).replaceAll(listOf(
                 AgentSkill("valid", "valid", "## Instructions", "A valid skill")))

@@ -85,8 +85,8 @@ class AppLanguageSelectionTest {
     fun closestLanguageHandlesBothIndonesianSpellings() {
         assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale.forLanguageTag("id")))
         assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale.forLanguageTag("in")))
-        assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale("in")))
-        assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale("id")))
+        assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale.forLanguageTag("in")))
+        assertEquals(AppLanguage.INDONESIAN, AppLanguage.closestTo(Locale.forLanguageTag("id")))
     }
 
     @Test

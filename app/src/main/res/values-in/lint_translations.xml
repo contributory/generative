@@ -39,7 +39,7 @@
         <item quantity="other">%d model TTS</item>
     </plurals>
     <string name="customization_title">Penyesuaian</string>
-    <string name="customization_enable">Aktifkan penyesuaian</string>
+    <string name="customization_enable">Aktifkan</string>
     <string name="customization_description">Warna, transparansi komponen, foto profil, dan latar belakang</string>
     <string name="customization_backgrounds_title">Gambar latar belakang</string>
     <string name="user_profile_background_preview_sample">Contoh konten dengan gambar latar belakang</string>

@@ -94,14 +94,7 @@ internal fun HelperSettingsSheet(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            stringResource(R.string.tool_customize_instructions_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(title, style = MaterialTheme.typography.titleLarge)
                 }
                 item {
                     OutlinedTextField(
@@ -179,11 +172,6 @@ internal fun HelperSettingsSheet(
                             Text(
                                 stringResource(R.string.tool_summary_settings_title),
                                 style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(R.string.tool_summary_settings_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             HelperPreferenceToggle(
                                 title = stringResource(R.string.settings_summary_suggestion),

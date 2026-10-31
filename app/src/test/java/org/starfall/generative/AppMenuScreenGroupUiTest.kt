@@ -15,8 +15,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -90,47 +91,53 @@ class AppMenuScreenGroupUiTest {
     }
 
     @Test
-    fun interactiveAreaFollowsOuterAndInnerRoundedCornersInsteadOfSquareBounds() {
+    fun groupedRowsRespectRoundedCornersAndIndependentGroupBoundaries() {
         val clicked = mutableListOf<String>()
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 AppMenuScreen(
+                    onNavigateToChatOptions = { clicked += "Configuration" },
                     onNavigateToProviders = { clicked += "Providers" },
+                    onNavigateToSpeech = { clicked += "Speech" },
+                    onNavigateToToolsEditor = { clicked += "Tools" },
                     onNavigateToMcp = { clicked += "MCP" },
-                    onNavigateToRemoteMachines = { clicked += "Machines" }
+                    onNavigateToRemoteMachines = { clicked += "Remote" }
                 )
             }
         }
         compose.waitForIdle()
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Remote Machines"))
+
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Configuration"))
         compose.waitForIdle()
-
-        val providersBounds = compose.onNodeWithText("Model Providers").fetchSemanticsNode().boundsInRoot
-        val mcpBounds = compose.onNodeWithText("MCP Connectors").fetchSemanticsNode().boundsInRoot
-        val machinesBounds = compose.onNodeWithText("Remote Machines").fetchSemanticsNode().boundsInRoot
-
-        // Outside the 24dp (48px at xhdpi) top-left and top-right outer corners of the group's first item.
-        tapAt(Offset(providersBounds.left + 4f, providersBounds.top + 4f))
-        tapAt(Offset(providersBounds.right - 4f, providersBounds.top + 4f))
-
-        // Outside the 6dp (12px at xhdpi) inner adjacent corners where items meet in the same group.
-        tapAt(Offset(providersBounds.left + 1f, providersBounds.bottom - 1f))
-        tapAt(Offset(mcpBounds.left + 1f, mcpBounds.top + 1f))
-        tapAt(Offset(mcpBounds.left + 1f, mcpBounds.bottom - 1f))
-        tapAt(Offset(machinesBounds.left + 1f, machinesBounds.top + 1f))
-
-        // Outside the 24dp (48px at xhdpi) bottom-left and bottom-right outer corners of the group's last item.
-        tapAt(Offset(machinesBounds.left + 4f, machinesBounds.bottom - 4f))
-        tapAt(Offset(machinesBounds.right - 4f, machinesBounds.bottom - 4f))
-
+        val first = compose.onNodeWithTag("app-menu-chat-options").fetchSemanticsNode().boundsInRoot
+        val middle = compose.onNodeWithTag("app-menu-providers").fetchSemanticsNode().boundsInRoot
+        val last = compose.onNodeWithTag("app-menu-speech").fetchSemanticsNode().boundsInRoot
+        tapAt(Offset(first.left + 4f, first.top + 4f))
+        tapAt(Offset(first.right - 4f, first.top + 4f))
+        tapAt(Offset(middle.left + 1f, middle.top + 1f))
+        tapAt(Offset(last.left + 4f, last.bottom - 4f))
+        tapAt(Offset(last.right - 4f, last.bottom - 4f))
         assertEquals(emptyList<String>(), clicked)
+        tapAt(Offset(first.left + 24f, first.top + 24f))
+        tapAt(Offset(middle.left + 24f, middle.top + 24f))
+        tapAt(Offset(last.left + 24f, last.bottom - 24f))
 
-        // Inside the rounded curves of each item triggers navigation as expected.
-        tapAt(Offset(providersBounds.left + 24f, providersBounds.top + 24f))
-        tapAt(Offset(mcpBounds.left + 4f, mcpBounds.top + 4f))
-        tapAt(Offset(machinesBounds.left + 24f, machinesBounds.bottom - 24f))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Built-in tools"))
+        compose.waitForIdle()
+        val tools = compose.onNodeWithTag("app-menu-feature-tools").fetchSemanticsNode().boundsInRoot
+        val mcp = compose.onNodeWithTag("app-menu-mcp").fetchSemanticsNode().boundsInRoot
+        tapAt(Offset(tools.left + 4f, tools.top + 4f))
+        tapAt(Offset(mcp.left + 4f, mcp.bottom - 4f))
+        tapAt(Offset(tools.left + 24f, tools.top + 24f))
+        tapAt(Offset(mcp.left + 24f, mcp.bottom - 24f))
 
-        assertEquals(listOf("Providers", "MCP", "Machines"), clicked)
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Remote services"))
+        compose.waitForIdle()
+        val remote = compose.onNodeWithTag("app-menu-remote").fetchSemanticsNode().boundsInRoot
+        tapAt(Offset(remote.left + 4f, remote.top + 4f))
+        tapAt(Offset(remote.right - 4f, remote.bottom - 4f))
+        tapAt(Offset(remote.left + 24f, remote.top + 24f))
+        assertEquals(listOf("Configuration", "Providers", "Speech", "Tools", "MCP", "Remote"), clicked)
     }
 
     @Test

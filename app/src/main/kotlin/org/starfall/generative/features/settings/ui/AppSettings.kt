@@ -1,9 +1,8 @@
 package org.starfall.generative.features.settings.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import androidx.compose.ui.platform.LocalLayoutDirection
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -18,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
@@ -41,15 +39,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.URL
-import org.starfall.generative.shared.ui.layout.appTabRowColor
-import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import androidx.compose.ui.res.stringResource
-import android.content.res.Resources
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.KeyboardType
-import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.storage.preferences.AppLanguage
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
@@ -65,11 +57,10 @@ import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 
 @Composable
-fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
+fun PreferenceToggle(title: String, subtitle: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -81,7 +72,10 @@ fun PreferenceToggle(title: String, subtitle: String, checked: Boolean, onChecke
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
@@ -106,21 +100,19 @@ fun AppearanceSettingsView(
 ) {
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            SettingsSection(stringResource(R.string.settings_theme)) {
-                Text(stringResource(R.string.settings_theme_description), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("SYSTEM", "LIGHT", "DARK").forEach { mode ->
-                        FilterChip(selected = appPreferences.themeMode == mode, enabled = appPreferences.customizationEnabled,
-                            onClick = { onThemeChange(mode) },
-                            label = { Text(stringResource(when (mode) {
-                                "SYSTEM" -> R.string.common_system
-                                "LIGHT" -> R.string.settings_theme_light
-                                else -> R.string.settings_theme_dark
-                            })) }, modifier = Modifier.weight(1f))
-                    }
-                }
-                PreferenceToggle(stringResource(R.string.settings_amoled), stringResource(R.string.settings_amoled_description),
+            org.starfall.generative.shared.ui.layout.SettingsCard {
+                SettingsChoicePreference(
+                    title = stringResource(R.string.settings_theme),
+                    value = appPreferences.themeMode,
+                    choices = listOf(
+                        SettingsChoice("SYSTEM", stringResource(R.string.common_system)),
+                        SettingsChoice("LIGHT", stringResource(R.string.settings_theme_light)),
+                        SettingsChoice("DARK", stringResource(R.string.settings_theme_dark))
+                    ),
+                    onSelected = onThemeChange,
+                    enabled = appPreferences.customizationEnabled
+                )
+                PreferenceToggle(stringResource(R.string.settings_amoled), null,
                     appPreferences.useAmoled, onAmoledChange, enabled = appPreferences.customizationEnabled)
             }
         }
@@ -139,7 +131,7 @@ fun AppearanceSettingsView(
         }
         item {
             SettingsSection(stringResource(R.string.settings_system_bars)) {
-                PreferenceToggle(stringResource(R.string.settings_immersive_mode), stringResource(R.string.settings_immersive_mode_description),
+                PreferenceToggle(stringResource(R.string.settings_immersive_mode), null,
                     appPreferences.hideStatusBar, onHideStatusBarChange)
             }
         }
@@ -153,9 +145,6 @@ fun PreferencesSettingsView(
     onPersistSelectedModelChange: (Boolean) -> Unit,
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
-    onDebugModeChange: (Boolean) -> Unit,
-    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
-    onOpenLauncherDragTest: () -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit = {},
     onToolRoundLimitEnabledChange: (Boolean) -> Unit = {},
@@ -168,171 +157,88 @@ fun PreferencesSettingsView(
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
     onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
     onAutoSummaryPercentChange: (Int) -> Unit = {},
+    onOpenDeveloperOptions: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            SettingsSection(stringResource(R.string.settings_language)) {
-                PreferenceToggle(stringResource(R.string.use_system_language), stringResource(R.string.use_system_language_desc),
-                    appPreferences.useSystemLanguage, onCheckedChange = { useSystem ->
-                    // Turning the switch off starts from the language the system already uses.
-                    val tag = if (useSystem) appPreferences.selectedLanguage
-                        else AppLanguage.closestTo(Resources.getSystem().configuration.locales[0]).tag
-                    onAppLanguageChange(useSystem, tag)
-                })
-                if (!appPreferences.useSystemLanguage) {
-                    var expanded by remember { mutableStateOf(false) }
-                    val selectedLanguage = AppLanguage.fromTag(appPreferences.selectedLanguage)
-                    ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-                        OutlinedTextField(
-                            value = stringResource(selectedLanguage.nameRes),
-                            onValueChange = {}, readOnly = true,
-                            label = { Text(stringResource(R.string.app_language)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("app-language")
-                        )
-                        ExposedDropdownMenu(expanded, { expanded = false }) {
-                            AppLanguage.entries.forEach { language ->
-                                DropdownMenuItem(text = {
-                                    // The name in the app language leads, the native name supports it.
-                                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                        Text(
-                                            stringResource(language.nameRes),
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                        Text(
-                                            language.nativeName,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }, onClick = {
-                                    onAppLanguageChange(false, language.tag)
-                                    expanded = false
-                                })
-                            }
-                        }
-                    }
-                }
+            org.starfall.generative.shared.ui.layout.SettingsCard {
+                SettingsChoicePreference(
+                    title = stringResource(R.string.settings_language),
+                    value = if (appPreferences.useSystemLanguage) "" else appPreferences.selectedLanguage,
+                    choices = listOf(SettingsChoice("", stringResource(R.string.use_system_language))) +
+                        AppLanguage.entries.map { language ->
+                            SettingsChoice(language.tag, stringResource(language.nameRes), language.nativeName)
+                        },
+                    onSelected = { tag ->
+                        onAppLanguageChange(tag.isEmpty(), tag.ifEmpty { appPreferences.selectedLanguage })
+                    },
+                    modifier = Modifier.testTag("app-language")
+                )
             }
         }
         item {
-            var wakelockExpanded by remember { mutableStateOf(false) }
-            val wakelockLabels = mapOf(
-                ScreenWakelockMode.EXCEPT_TOOL_CALLS to stringResource(R.string.common_auto),
-                ScreenWakelockMode.ALL to stringResource(R.string.common_on),
-                ScreenWakelockMode.NONE to stringResource(R.string.common_off)
-            )
-            SettingsSection(stringResource(R.string.screen_wakelock_title)) {
-                Text(stringResource(R.string.screen_wakelock_description),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ExposedDropdownMenuBox(wakelockExpanded, { wakelockExpanded = !wakelockExpanded }) {
-                    OutlinedTextField(
-                        value = wakelockLabels.getValue(appPreferences.screenWakelockMode),
-                        onValueChange = {}, readOnly = true,
-                        label = { Text(stringResource(R.string.screen_wakelock_title)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wakelockExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(wakelockExpanded, { wakelockExpanded = false }) {
-                        wakelockLabels.forEach { (mode, label) ->
-                            DropdownMenuItem(text = { Text(label) }, onClick = {
-                                onScreenWakelockModeChange(mode)
-                                wakelockExpanded = false
-                            })
-                        }
-                    }
-                }
+            org.starfall.generative.shared.ui.layout.SettingsCard {
+                SettingsChoicePreference(
+                    title = stringResource(R.string.screen_wakelock_title),
+                    value = appPreferences.screenWakelockMode,
+                    choices = listOf(
+                        SettingsChoice(ScreenWakelockMode.EXCEPT_TOOL_CALLS, stringResource(R.string.common_auto)),
+                        SettingsChoice(ScreenWakelockMode.ALL, stringResource(R.string.common_on)),
+                        SettingsChoice(ScreenWakelockMode.NONE, stringResource(R.string.common_off))
+                    ),
+                    onSelected = onScreenWakelockModeChange
+                )
             }
         }
         item {
             SettingsSection(stringResource(R.string.settings_conversations)) {
-                PreferenceToggle(stringResource(R.string.settings_continue_last_chat), stringResource(R.string.settings_continue_last_chat_description),
+                PreferenceToggle(stringResource(R.string.settings_continue_last_chat), null,
                     appPreferences.continueLastConversation, onContinueLastConversationChange)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                PreferenceToggle(stringResource(R.string.settings_persist_selected_model), stringResource(R.string.settings_persist_selected_model_description),
+                PreferenceToggle(stringResource(R.string.settings_persist_selected_model), null,
                     appPreferences.persistSelectedModel, onPersistSelectedModelChange)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                PreferenceToggle(stringResource(R.string.settings_auto_scroll), stringResource(R.string.settings_auto_scroll_description),
+                PreferenceToggle(stringResource(R.string.settings_auto_scroll), null,
                     appPreferences.autoScroll, onAutoScrollChange)
             }
         }
         item {
             SettingsSection(stringResource(R.string.settings_mcp_tools)) {
                 Text(stringResource(R.string.tool_call_options), style = MaterialTheme.typography.titleMedium)
-                var strategyExpanded by remember { mutableStateOf(false) }
-                val strategyLabels = mapOf(
-                    ToolCallStrategy.SEQUENTIAL to stringResource(R.string.tool_call_strategy_sequential),
-                    ToolCallStrategy.PARALLEL to stringResource(R.string.tool_call_strategy_parallel)
+                SettingsChoicePreference(
+                    title = stringResource(R.string.tool_call_strategy),
+                    value = appPreferences.toolCallStrategy,
+                    choices = listOf(
+                        SettingsChoice(ToolCallStrategy.SEQUENTIAL, stringResource(R.string.tool_call_strategy_sequential)),
+                        SettingsChoice(ToolCallStrategy.PARALLEL, stringResource(R.string.tool_call_strategy_parallel))
+                    ),
+                    onSelected = onToolCallStrategyChange,
+                    modifier = Modifier.testTag("tool-call-strategy")
                 )
-                ExposedDropdownMenuBox(strategyExpanded, { strategyExpanded = !strategyExpanded }) {
-                    OutlinedTextField(
-                        value = strategyLabels.getValue(appPreferences.toolCallStrategy),
-                        onValueChange = {}, readOnly = true,
-                        label = { Text(stringResource(R.string.tool_call_strategy)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).testTag("tool-call-strategy")
-                    )
-                    ExposedDropdownMenu(strategyExpanded, { strategyExpanded = false }) {
-                        strategyLabels.forEach { (strategy, label) ->
-                            DropdownMenuItem(text = { Text(label) }, onClick = {
-                                onToolCallStrategyChange(strategy)
-                                strategyExpanded = false
-                            })
-                        }
-                    }
-                }
                 if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
-                    var limit by remember(appPreferences.toolCallConcurrentLimit) {
-                        mutableStateOf(appPreferences.toolCallConcurrentLimit.takeUnless {
-                            it == DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
-                        }?.toString().orEmpty())
-                    }
-                    val parsed = limit.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }
-                    OutlinedTextField(
-                        value = limit,
-                        onValueChange = { text ->
-                            if (text.length <= 2 && text.all(Char::isDigit)) {
-                                limit = text
-                                if (text.isBlank()) onToolCallConcurrentLimitChange(DEFAULT_TOOL_CALL_CONCURRENT_LIMIT)
-                                else text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_CALL_CONCURRENT_LIMIT }?.let(onToolCallConcurrentLimitChange)
-                            }
-                        },
-                        label = { Text(stringResource(R.string.tool_call_concurrent_limit)) },
-                        placeholder = { Text(stringResource(R.string.common_default_value_hint, DEFAULT_TOOL_CALL_CONCURRENT_LIMIT)) },
-                        isError = limit.isNotBlank() && parsed == null,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth().testTag("tool-call-concurrent-limit")
+                    SettingsNumberPreference(
+                        title = stringResource(R.string.tool_call_concurrent_limit),
+                        value = appPreferences.toolCallConcurrentLimit,
+                        defaultValue = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
+                        range = 1..MAX_TOOL_CALL_CONCURRENT_LIMIT,
+                        tag = "tool-call-concurrent-limit",
+                        onValueChange = onToolCallConcurrentLimitChange
                     )
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 PreferenceToggle(stringResource(R.string.settings_limit_tool_rounds),
-                    stringResource(R.string.settings_limit_tool_rounds_description),
+                    null,
                     appPreferences.toolRoundLimitEnabled, onToolRoundLimitEnabledChange)
                 if (appPreferences.toolRoundLimitEnabled) {
-                    var rounds by remember(appPreferences.toolRoundLimit) {
-                        mutableStateOf(appPreferences.toolRoundLimit.takeUnless {
-                            it == DEFAULT_TOOL_ROUND_LIMIT
-                        }?.toString().orEmpty())
-                    }
-                    val parsed = rounds.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }
-                    OutlinedTextField(
-                        value = rounds,
-                        onValueChange = { text ->
-                            if (text.length <= 4 && text.all(Char::isDigit)) {
-                                rounds = text
-                                if (text.isBlank()) onToolRoundLimitChange(DEFAULT_TOOL_ROUND_LIMIT)
-                                else text.toIntOrNull()?.takeIf { it in 1..MAX_TOOL_ROUND_LIMIT }?.let(onToolRoundLimitChange)
-                            }
-                        },
-                        label = { Text(stringResource(R.string.settings_maximum_tool_rounds)) },
-                        placeholder = { Text(stringResource(R.string.common_default_value_hint, DEFAULT_TOOL_ROUND_LIMIT)) },
-                        isError = rounds.isNotBlank() && parsed == null,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth().testTag("tool-round-limit")
+                    SettingsNumberPreference(
+                        title = stringResource(R.string.settings_maximum_tool_rounds),
+                        value = appPreferences.toolRoundLimit,
+                        defaultValue = DEFAULT_TOOL_ROUND_LIMIT,
+                        range = 1..MAX_TOOL_ROUND_LIMIT,
+                        tag = "tool-round-limit",
+                        onValueChange = onToolRoundLimitChange
                     )
                 }
 
@@ -342,34 +248,33 @@ fun PreferencesSettingsView(
         }
         item {
             SettingsSection(stringResource(R.string.settings_feedback)) {
-                PreferenceToggle(stringResource(R.string.settings_haptic_vibration), stringResource(R.string.settings_haptic_vibration_description),
+                PreferenceToggle(stringResource(R.string.settings_haptic_vibration), null,
                     appPreferences.enableVibration, onEnableVibrationChange)
             }
         }
         item {
             SettingsSection(stringResource(R.string.settings_text_to_speech)) {
-                PreferenceToggle(stringResource(R.string.settings_read_code_blocks), stringResource(R.string.settings_read_code_blocks_description),
+                PreferenceToggle(stringResource(R.string.settings_read_code_blocks), null,
                     appPreferences.ttsReadCodeBlocks, onTtsReadCodeBlocksChange)
             }
         }
         item {
             SettingsSection(stringResource(R.string.settings_content)) {
-                Text(stringResource(R.string.settings_latex_equation_rendering), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.settings_latex_description),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "OFF" to R.string.settings_latex_disabled,
-                        "AUTO" to R.string.settings_latex_auto_detect
-                    ).forEach { (mode, labelRes) ->
-                        FilterChip(selected = appPreferences.latexMode == mode, onClick = { onLatexModeChange(mode) },
-                            label = { Text(stringResource(labelRes)) })
-                    }
-                }
+                SettingsChoicePreference(
+                    title = stringResource(R.string.settings_latex_equation_rendering),
+                    value = appPreferences.latexMode,
+                    choices = listOf(
+                        SettingsChoice("OFF", stringResource(R.string.settings_latex_disabled)),
+                        SettingsChoice("AUTO", stringResource(R.string.settings_latex_auto_detect))
+                    ),
+                    onSelected = onLatexModeChange
+                )
             }
         }
         item {
-            DeveloperSettingsSection(appPreferences, onDebugModeChange, onDebugLogCategoriesChange, onOpenLauncherDragTest)
+            org.starfall.generative.shared.ui.layout.SettingsCard {
+                SettingsActionPreference(stringResource(R.string.settings_developer), onClick = onOpenDeveloperOptions)
+            }
         }
     }
 }
@@ -393,9 +298,6 @@ fun AppSettings(
     onPersistSelectedModelChange: (Boolean) -> Unit,
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
-    onDebugModeChange: (Boolean) -> Unit,
-    onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit = {},
-    onOpenLauncherDragTest: () -> Unit = {},
     onLatexModeChange: (String) -> Unit,
     onTtsReadCodeBlocksChange: (Boolean) -> Unit,
     onToolRoundLimitEnabledChange: (Boolean) -> Unit,
@@ -408,10 +310,10 @@ fun AppSettings(
     onAutoSummaryEnabledChange: (Boolean) -> Unit = {},
     onSummarySuggestionEnabledChange: (Boolean) -> Unit = {},
     onAutoSummaryPercentChange: (Int) -> Unit = {},
+    onOpenDeveloperOptions: () -> Unit = {},
     scaffoldPadding: PaddingValues = PaddingValues()
 ) {
     val pager = rememberPagerState(pageCount = { 2 })
-    val coroutineScope = rememberCoroutineScope()
     // Tabs stay below the toolbar. The pages themselves scroll under the navigation bar.
     val pagePadding = scrollableScaffoldPadding(
         PaddingValues(
@@ -421,27 +323,19 @@ fun AppSettings(
         ), horizontal = 16.dp, top = 8.dp, bottom = 24.dp
     )
     Column(Modifier.fillMaxSize().padding(top = scaffoldPadding.calculateTopPadding() + 8.dp)) {
-        PrimaryTabRow(
-            selectedTabIndex = pager.currentPage,
-            containerColor = appTabRowColor(),
-            modifier = Modifier.padding(
+        AppSwipeTabs(
+            tabs = listOf(
+                stringResource(R.string.settings_tab_preferences),
+                stringResource(R.string.settings_tab_appearances)
+            ),
+            pagerState = pager,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            tabRowModifier = Modifier.padding(
                 start = scaffoldPadding.calculateStartPadding(LocalLayoutDirection.current) + 16.dp,
                 end = scaffoldPadding.calculateEndPadding(LocalLayoutDirection.current) + 16.dp
-            ).then(appTabRowBorder())
-        ) {
-            Tab(
-                selected = pager.currentPage == 0,
-                onClick = { coroutineScope.launch { pager.animateScrollToPage(0) } },
-                text = { Text(stringResource(R.string.settings_tab_preferences)) }
-            )
-            Tab(
-                selected = pager.currentPage == 1,
-                onClick = { coroutineScope.launch { pager.animateScrollToPage(1) } },
-                text = { Text(stringResource(R.string.settings_tab_appearances)) }
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+            ),
+            spacing = 12.dp
+        ) { page ->
             when (page) {
                 0 -> PreferencesSettingsView(
                     contentPadding = pagePadding,
@@ -450,9 +344,6 @@ fun AppSettings(
                     onPersistSelectedModelChange = onPersistSelectedModelChange,
                     onAutoScrollChange = onAutoScrollChange,
                     onEnableVibrationChange = onEnableVibrationChange,
-                    onDebugModeChange = onDebugModeChange,
-                    onDebugLogCategoriesChange = onDebugLogCategoriesChange,
-                    onOpenLauncherDragTest = onOpenLauncherDragTest,
                     onLatexModeChange = onLatexModeChange,
                     onTtsReadCodeBlocksChange = onTtsReadCodeBlocksChange,
                     onToolRoundLimitEnabledChange = onToolRoundLimitEnabledChange,
@@ -464,7 +355,8 @@ fun AppSettings(
                     onAppLanguageChange = onAppLanguageChange,
                     onAutoSummaryEnabledChange = onAutoSummaryEnabledChange,
                     onSummarySuggestionEnabledChange = onSummarySuggestionEnabledChange,
-                    onAutoSummaryPercentChange = onAutoSummaryPercentChange
+                    onAutoSummaryPercentChange = onAutoSummaryPercentChange,
+                    onOpenDeveloperOptions = onOpenDeveloperOptions
                 )
                 else -> AppearanceSettingsView(
                     contentPadding = pagePadding,

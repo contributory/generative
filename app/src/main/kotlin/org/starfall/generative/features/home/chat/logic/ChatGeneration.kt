@@ -107,6 +107,7 @@ internal class ChatGeneration(
             var activeMessageId = messageId
             var generationInterrupted = false
             var generationErrorMessage: String? = null
+            var generationFailure: Throwable? = null
             val streamDisplay = ChatStreamDisplay(
                 conversationId = conversation.id,
                 initialMessageId = messageId,
@@ -185,7 +186,10 @@ internal class ChatGeneration(
             }
 
             val startedAtMs = System.currentTimeMillis()
-            DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
+            val generationLogId = DebugLog.beginOperation(DebugLogCategory.SYSTEM,
+                "Generation", "Generation started",
+                "id=$generationId, conversation=${conversation.id}, resume=$resume, temporary=${conversation.isTemporary}")
+            DebugLog.log(DebugLogCategory.SYSTEM, "Generation") {
                 val history = snapshot?.messages.orEmpty()
                 "Context ≈ ${history.sumOf { estimateMessageTokens(it, true) }} tokens in ${history.size} messages (estimate)"
             }
@@ -321,7 +325,7 @@ internal class ChatGeneration(
                 }
                 if (stopSession.isRequested()) generationInterrupted = true
                 else streamDisplay.finish(ChatStreamStatus.COMPLETED)
-                DebugLog.log(DebugLogCategory.TOKENS, "Generation") {
+                DebugLog.log(DebugLogCategory.SYSTEM, "Generation") {
                     val ms = System.currentTimeMillis() - startedAtMs
                     val answer = estimateTextTokens(output.toString())
                     val reasoning = estimateTextTokens(reasoningOutput.toString())
@@ -344,7 +348,7 @@ internal class ChatGeneration(
                 if (!stopSession.isRequested()) streamDisplay.finish(ChatStreamStatus.CANCELLED)
                 throw e
             } catch (e: Exception) {
-                DebugLog.error(DebugLogCategory.ERRORS, "Generation", "Generation failed", e)
+                generationFailure = e
                 generationErrorMessage = e.localizedMessage ?: "Generation failed"
                 _error.value = generationErrorMessage
                 streamDisplay.finish(ChatStreamStatus.FAILED)
@@ -399,6 +403,7 @@ internal class ChatGeneration(
                         savedSuccessfully = true
                     }
                 } catch (e: Exception) {
+                    generationFailure = e
                     _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
                 } finally {
                     if (!stopSession.isRequested()) publishStream(conversation.id, null)
@@ -409,6 +414,16 @@ internal class ChatGeneration(
                     _conversationId.value = null
                     _waitingForTool.value = false
                     _busy.value = false
+                    DebugLog.finishOperation(generationLogId,
+                        when {
+                            !savedSuccessfully -> "Generation finalization failed"
+                            generationErrorMessage != null -> "Generation failed"
+                            generationInterrupted -> "Generation stopped"
+                            else -> "Generation completed"
+                        }, failed = !savedSuccessfully || generationErrorMessage != null,
+                        details = "elapsed=${System.currentTimeMillis() - startedAtMs}ms, " +
+                            "textCharacters=${output.length}, reasoningCharacters=${reasoningOutput.length}, " +
+                            "persisted=$savedSuccessfully", error = generationFailure)
                 }
             }
         }
@@ -451,12 +466,11 @@ private fun logToolActivity(activity: org.starfall.generative.shared.model.ToolA
         buildString {
             append(activity.name).append(" [").append(activity.status).append(']')
             if (activity.summary.isNotBlank()) append(' ').append(activity.summary)
-            if (activity.arguments.isNotBlank()) append("\narguments: ").append(activity.arguments.take(1200))
-            if (activity.response.isNotBlank()) append("\nresponse: ").append(activity.response.take(1200))
+            append(" (argumentCharacters=").append(activity.arguments.length)
+                .append(", responseCharacters=").append(activity.response.length).append(')')
         }
     }
-    DebugLog.log(DebugLogCategory.TOOLS, "Tool", level, message)
-    if (failed) DebugLog.log(DebugLogCategory.ERRORS, "Tool", level, message)
+    DebugLog.log(DebugLogCategory.SYSTEM, "Tool", level, message)
 }
 
 private fun visibleResponseContent(output: String): String {

@@ -33,7 +33,7 @@ class ChatMessageListStateTest {
     }
 
     @Test fun bottomGapIsDeclarativeAndCappedByUsableViewport() {
-        assertEquals(240f, chatBottomGap(800.dp, 600.dp).value, 0.001f)
+        assertEquals(168f, chatBottomGap(800.dp, 600.dp).value, 0.001f)
         assertEquals(180f, chatBottomGap(1000.dp, 180.dp).value, 0.001f)
         assertEquals(0f, chatBottomGap(800.dp, (-1).dp).value, 0.001f)
     }

@@ -78,6 +78,21 @@ URL-encode values. The link creates a new provider and may expose credentials; s
 
 </details>
 
+<details>
+<summary>Open screens or send a message via deep link</summary>
+
+```text
+generative://providers
+generative://mcp
+generative://mcp?name=Example&url=https%3A%2F%2Fexample.com%2Fmcp
+generative://chat?text=Hello%20world
+generative://chat?text=Hello%20world&temp=true
+```
+
+For MCP links, supply both `name` and `url`; an existing name is updated, otherwise a new connector is created. Updating its endpoint clears the old endpoint's credentials and cached tools. Chat links create a new conversation, immediately send `text`, and default to a persistent conversation unless `temp=true`. URL-encode query parameter values, especially URLs containing `?` or `&`. Only open import/chat links you trust.
+
+</details>
+
 ## Build from source
 
 Requires JDK 17 and Android SDK (`sdk.dir` in `local.properties`):

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.features.speech.logic.requestSpeechEngineIcons
 import java.util.UUID
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -96,19 +97,7 @@ fun SpeechServicesScreen(
                     TopAppBar(
                         colors = edgeToEdgeTopAppBarColors(),
                         title = {
-                            Column {
-                                Text(
-                                    stringResource(R.string.speech_services_title),
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                                Text(
-                                    stringResource(R.string.speech_services_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
+                            FixedAppBarTitle(stringResource(R.string.app_menu_speech_services))
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {

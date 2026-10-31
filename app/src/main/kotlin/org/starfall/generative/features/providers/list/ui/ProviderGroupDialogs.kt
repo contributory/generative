@@ -109,6 +109,7 @@ internal fun ProviderGroupNameDialog(
                 )
             }
         },
+        confirmAtRight = true,
         confirmButton = {
             TextButton(
                 enabled = trimmed.isNotEmpty() && !iconImporting,
@@ -118,7 +119,7 @@ internal fun ProviderGroupNameDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }
@@ -154,7 +155,7 @@ internal fun ProviderGroupPickerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) } }
     )
 }
 
@@ -224,7 +225,7 @@ internal fun ProviderDeleteGroupDialog(onDismiss: () -> Unit, onConfirm: () -> U
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             }
         }
     )
@@ -247,7 +248,7 @@ internal fun ProviderDeleteDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) 
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             }
         }
     )

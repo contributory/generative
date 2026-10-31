@@ -203,6 +203,28 @@ class ModelPickerToggleTest {
         assertHeaderAboveList()
     }
 
+    @Test fun longModelListOpensFullyBelowStatusBarWithoutDragging() {
+        val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
+            config = ProviderConfiguration(modelIds = (0 until 30).map { "model-$it" }))
+        compose.setContent {
+            MaterialTheme {
+                ModelPickerSheet(
+                    providers = listOf(provider), selectedProviderId = "p", selectedModelId = "model-15",
+                    conversationReasoningEffort = null, onSelectModel = { _, _ -> },
+                    onSetReasoningEffort = {}, onDismiss = {}
+                )
+            }
+        }
+        compose.waitForIdle()
+        val top = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().top
+        val statusInset = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+            ?.getInsets(WindowInsetsCompat.Type.statusBars())?.top ?: 0
+        val topPx = with(compose.density) { top.toPx() }
+        assertTrue("Long picker should open at the expanded anchor", topPx <= statusInset + 4f)
+        assertTrue("The sheet must not cover the status bar", topPx >= statusInset - 4f)
+        compose.onNodeWithTag("model-picker-model_p_model-15").assertIsDisplayed()
+    }
+
     @Test fun shortModelListUsesContentHeightRatherThanFillingTheDisplay() {
         val provider = ModelProvider("p", "Primary", ModelApiType.OPENAI, baseUrl = "",
             config = ProviderConfiguration(modelIds = listOf("alpha")))

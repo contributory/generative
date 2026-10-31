@@ -17,6 +17,7 @@ import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.ReasoningEffortOption
 import org.starfall.generative.shared.ui.model.reasoningEffortTier
+import org.starfall.generative.shared.ui.model.nearestReasoningEffortIndex
 
 class ReasoningEffortControlTest {
     private fun efforts(options: List<org.starfall.generative.shared.ui.model.ReasoningEffortOption>) = options.map { it.effort }
@@ -101,4 +102,12 @@ class ReasoningEffortControlTest {
     @Test fun maximumEffectsLastLongerThanRegularLevels() {
         assertTrue(reasoningEffortBurstDuration(6) > reasoningEffortBurstDuration(4))
     }
+    @Test fun smoothSliderSnapsToNearestValidDetentOnRelease() {
+        assertEquals(0, nearestReasoningEffortIndex(-0.4f, 5))
+        assertEquals(2, nearestReasoningEffortIndex(2.49f, 5))
+        assertEquals(3, nearestReasoningEffortIndex(2.51f, 5))
+        assertEquals(4, nearestReasoningEffortIndex(4.6f, 5))
+        assertEquals(0, nearestReasoningEffortIndex(0f, 1))
+    }
+
 }

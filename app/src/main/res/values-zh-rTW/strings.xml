@@ -89,6 +89,7 @@
     <string name="common_copy">複製</string>
     <string name="common_name">名稱</string>
     <string name="common_type">類型</string>
+    <string name="provider_api_type">API 類型</string>
     <string name="common_key">金鑰</string>
     <string name="common_value">值</string>
     <string name="common_auto">自動</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">上下文逐漸填滿時自動摘要</string>
     <string name="settings_auto_summary_threshold">上下文達到 %1$d%% 時自動摘要</string>
     <string name="settings_conversations">對話</string>
-    <string name="settings_continue_last_chat">繼續上一個對話</string>
+    <string name="settings_continue_last_chat">還原上次工作階段</string>
     <string name="settings_continue_last_chat_description">啟動時開啟最近的對話。</string>
     <string name="settings_persist_selected_model">依對話記住模型</string>
     <string name="settings_persist_selected_model_description">返回某個對話時使用該對話所選的模型</string>
@@ -675,7 +676,7 @@
     <string name="mcp_attachments_min_tools">MCP 工具數量下限</string>
     <string name="mcp_attachments_min_tools_hint">預設為 %1$d。設為 0 時會忽略工具數量。</string>
     <string name="mcp_attachments_dynamic_strategy_label">視需要策略</string>
-    <string name="mcp_attachments_strategy_overflow">附加前幾個伺服器，其餘視需要載入</string>
+    <string name="mcp_attachments_strategy_overflow">初始 + 視需要</string>
     <string name="mcp_attachments_strategy_all">所有伺服器都視需要載入</string>
     <string name="mcp_attachments_strategy_overflow_description">溢位模式會將低於下限的 MCP 以一般方式附加，其餘視需要載入。</string>
     <string name="mcp_attachments_strategy_all_description">全部模式會視需要載入每個 MCP。</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">自動算繪辨識到的數學公式，金額仍保留為純文字。</string>
     <string name="settings_latex_disabled">關閉</string>
     <string name="settings_latex_auto_detect">自動辨識</string>
-    <string name="settings_developer">開發者</string>
+    <string name="settings_developer">開發人員選項</string>
     <string name="settings_debug_logs">啟用偵錯記錄</string>
     <string name="settings_debug_logs_description">在偵錯面板中顯示 Token 用量、請求細節與網路活動。</string>
-    <string name="settings_debug_log_scope">記錄範圍</string>
+    <string name="settings_debug_log_scope">記錄來源</string>
     <string name="settings_debug_log_scope_description">選擇偵錯面板要記錄哪些類型的記錄。</string>
     <string name="debug_log_category_network">網路</string>
-    <string name="debug_log_category_payload">有效載荷</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">錯誤</string>
+    <string name="debug_log_category_system">系統</string>
+    <string name="settings_debug_log_level">最低記錄層級</string>
+
     <string name="debug_log_title">偵錯記錄</string>
+    <string name="debug_log_disable">關閉偵錯記錄</string>
     <string name="debug_log_toggle">顯示/隱藏偵錯記錄</string>
     <string name="debug_log_copy_entry">複製這筆記錄</string>
     <string name="debug_log_copy_all">複製所有記錄</string>
@@ -1103,4 +1105,20 @@
     <string name="customization_input_blur">背景模糊</string>
     <string name="customization_input_blur_description">在 Android 12 以上版本模糊輸入區域後方的聊天內容。文字和按鈕保持清晰。</string>
     <string name="settings_website">網站</string>
+    <string name="app_menu_default_options">設定</string>
+    <string name="app_menu_builtin_tools">內建工具</string>
+    <string name="app_menu_language_providers">語言模型供應商</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">語音合成服務</string>
+    <string name="app_menu_remote_servers">遠端服務</string>
+    <string name="app_menu_media_management">媒體管理</string>
+    <string name="app_menu_icons_management">圖示管理</string>
+    <string name="app_menu_settings">設定</string>
+    <string name="app_menu_data">資料</string>
+    <string name="app_menu_about">關於</string>
+    <string name="mcp_attachments_limits">隨選限制</string>
+    <string name="tool_settings_tab_media">媒體</string>
+    <string name="tool_settings_tab_others">其他</string>
+    <string name="media_profile_require_model">需要模型</string>
+    <string name="media_chain_test_no_model_note">測試請求可能產生費用。此處不支援檔案輸入。</string>
 </resources>

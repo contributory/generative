@@ -12,12 +12,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +39,11 @@ import org.starfall.generative.features.tools.ui.ToolsEditor
 import org.starfall.generative.navigation.AppDestination
 import org.starfall.generative.navigation.MediaProfileRoutes
 import org.starfall.generative.shared.model.SystemToolConfig
+import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.model.language.ModelConfiguration
+import org.starfall.generative.shared.model.language.ModelType
+import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.MediaRequestProfile
@@ -188,4 +194,90 @@ class MediaProfileEditorUiTest {
         compose.onNodeWithText("Image Profiles").assertIsDisplayed()
         compose.onNodeWithContentDescription("Add").assertIsEnabled()
     }
+    @Test fun builtInMediaTabAllowsIndependentCustomWithoutModelAndKeepsOtherToolsSeparate() {
+        var saved: SystemToolConfig? = null
+        val standalone = MediaRequestProfile("standalone", "Independent", requiresModel = false)
+        val required = MediaRequestProfile("required", "Bound", requiresModel = true)
+        val config = SystemToolConfig().withMediaProfiles(false,
+            mapOf(standalone.id to standalone, required.id to required))
+        compose.setContent {
+            var settings by remember {
+                mutableStateOf(ToolSettings(system = mapOf("generate_image" to config)))
+            }
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ToolsEditor(providers = emptyList(), settings = settings, onSave = { key, update ->
+                    settings = settings.copy(system = settings.system + (key to update))
+                    if (key == "generate_image") saved = update
+                }, onBack = {})
+            }
+        }
+        compose.onNodeWithTag("built-in-tools-media-tab").assertIsDisplayed()
+        compose.onNodeWithTag("built-in-tools-others-tab").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Search Tools").assertIsDisplayed()
+        compose.onNodeWithText("Image Generation").assertDoesNotExist()
+        compose.onNodeWithTag("built-in-tools-media-tab").performClick()
+        compose.onNodeWithTag("media_profile_picker_generate_image").assertIsEnabled().performClick()
+        compose.onNodeWithText("Independent · Custom").performClick()
+        compose.runOnIdle {
+            assertEquals("", saved?.modelId)
+            assertEquals("", saved?.providerId)
+            assertEquals(standalone.id, saved?.activeImageRequestProfileId)
+        }
+        compose.onNodeWithTag("media_profile_picker_generate_image").performClick()
+        compose.onNodeWithText("Bound · Custom").assertDoesNotExist()
+    }
+
+    @Test fun profileEditorExposesRequireModelSwitchOnlyForCustom() {
+        val custom = MediaRequestProfile("custom", "Custom preset", mode = MediaGenerationMode.CUSTOM)
+        var savedConfig: SystemToolConfig? = null
+        compose.setContent {
+            ProfileTestNavigation(
+                ToolSettings(system = mapOf("generate_image" to SystemToolConfig(
+                    imageRequestProfiles = mapOf(custom.id to custom)
+                ))),
+                onSaved = { savedConfig = it }
+            )
+        }
+        compose.onNodeWithTag("media_profile_library_generate_image").performClick()
+        compose.onNodeWithTag("media-profile-item_custom").performClick()
+        compose.onNodeWithTag("media-profile-require-model").performScrollTo().assertIsEnabled().performClick()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.runOnIdle {
+            assertEquals(false, savedConfig?.imageRequestProfiles?.get("custom")?.requiresModel)
+        }
+    }
+
+    @Test fun choosingIndependentProfileDeselectsExistingModelWithoutWritingMetadata() {
+        val independent = MediaRequestProfile("standalone", "Independent", requiresModel = false)
+        val provider = ModelProvider("p", "Provider", ModelApiType.OPENAI,
+            baseUrl = "https://example.test/v1", config = ProviderConfiguration(
+                modelConfigs = mapOf("image-model" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION))
+            ))
+        var metadataWrites = 0
+        var saved: SystemToolConfig? = null
+        val starting = SystemToolConfig(providerId = provider.id, modelId = "image-model")
+            .withMediaProfiles(false, mapOf(independent.id to independent))
+        compose.setContent {
+            var settings by remember {
+                mutableStateOf(ToolSettings(system = mapOf("generate_image" to starting)))
+            }
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ToolsEditor(providers = listOf(provider), settings = settings,
+                    onSave = { key, update ->
+                        settings = settings.copy(system = settings.system + (key to update))
+                        if (key == "generate_image") saved = update
+                    },
+                    onSaveModelConfiguration = { _, _, _ -> metadataWrites++ }, onBack = {})
+            }
+        }
+        compose.onNodeWithTag("media_profile_picker_generate_image").performClick()
+        compose.onNodeWithText("Independent · Custom").performClick()
+        compose.runOnIdle {
+            assertEquals("", saved?.providerId)
+            assertEquals("", saved?.modelId)
+            assertEquals(independent.id, saved?.activeImageRequestProfileId)
+            assertEquals(0, metadataWrites)
+        }
+    }
+
 }

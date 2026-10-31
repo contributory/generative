@@ -93,7 +93,7 @@ class PlatformTextSelectionTest {
             .single { it.title == "Share" }
         assertTrue(view.callback.onActionItemClicked(view.actionMode, share))
         val chooser = shadowOf(activity).nextStartedActivity
-        val intent = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+        val intent = androidx.core.content.IntentCompat.getParcelableExtra(chooser, Intent.EXTRA_INTENT, Intent::class.java)!!
         assertEquals(Intent.ACTION_SEND, intent.action)
         assertEquals("Only the selected words", intent.getStringExtra(Intent.EXTRA_TEXT))
         assertEquals("Existing clipboard", clipboard.content.text)

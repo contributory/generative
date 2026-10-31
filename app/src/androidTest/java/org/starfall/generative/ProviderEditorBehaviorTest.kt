@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -50,7 +50,7 @@ class ProviderEditorBehaviorTest {
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle {
             assertEquals(raw, saved!!.modelJson)
-            assertEquals(32000, saved!!.contextWindowTokens)
+            assertEquals(32000, saved.contextWindowTokens)
         }
     }
 
@@ -146,7 +146,9 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
                 onDismiss = {}, onSave = {})
         } }
 
-        compose.onNodeWithTag("provider-type-selector").performClick()
+        compose.onNodeWithText("API Type").assertIsDisplayed()
+        compose.onNodeWithTag("provider-type-selector").assertHasClickAction().performClick()
+        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
         compose.onNodeWithText("Chat Completions").performClick()
         compose.onNode(hasSetTextAction() and hasText("OpenAI")).assertExists()
         compose.onNode(hasSetTextAction() and hasText("Base URL"))
@@ -263,8 +265,8 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle {
             assertTrue(saved!!.config.multipleApiKeys)
-            assertEquals(1, saved!!.config.apiKeys.size)
-            assertEquals("sk-existing-0123456789", saved!!.auth.token)
+            assertEquals(1, saved.config.apiKeys.size)
+            assertEquals("sk-existing-0123456789", saved.auth.token)
         }
     }
 

@@ -39,7 +39,7 @@
         <item quantity="other">%d개 TTS 모델</item>
     </plurals>
     <string name="customization_title">사용자 지정</string>
-    <string name="customization_enable">사용자 지정 활성화</string>
+    <string name="customization_enable">활성화</string>
     <string name="customization_description">색상, 구성요소 투명도, 프로필 사진 및 배경</string>
     <string name="customization_backgrounds_title">배경 이미지</string>
     <string name="user_profile_background_preview_sample">배경 이미지가 있는 샘플 콘텐츠</string>

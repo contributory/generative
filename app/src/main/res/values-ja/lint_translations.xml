@@ -39,7 +39,7 @@
         <item quantity="other">%d 個の TTS モデル</item>
     </plurals>
     <string name="customization_title">カスタマイズ</string>
-    <string name="customization_enable">カスタマイズを有効にする</string>
+    <string name="customization_enable">有効にする</string>
     <string name="customization_description">色、コンポーネントの透明度、プロフィール写真、背景</string>
     <string name="customization_backgrounds_title">背景画像</string>
     <string name="user_profile_background_preview_sample">背景画像付きのサンプルコンテンツ</string>

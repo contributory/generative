@@ -186,7 +186,7 @@ internal fun CustomPaletteDialog(
             }
         },
         buttons = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
             Button(
                 onClick = { onSave(draft) },
                 enabled = parsePaletteHex(hexDraft) != null,

@@ -294,7 +294,9 @@ class AiService(
             // These transports already log the actual HTTP request and response together.
             usesModelLog = requestProvider.type !in setOf(ModelApiType.ANTIGRAVITY, ModelApiType.GOOGLE, ModelApiType.OLLAMA)
             if (usesModelLog)
-                modelLogId = logModelRequest(requestProvider, modelName, requestMessages, systemPrompt, maxTokens, temperature, topP, topK)
+                modelLogId = DebugLog.beginRequest("Model",
+                    "${requestProvider.type.displayName} · ${requestProvider.name} · $modelName " +
+                        "(stream=${requestProvider.config.supportStream}, messages=${requestMessages.size})")
             val accountAdapter = accountAdapters.get(resolved.type)
             if (accountAdapter != null) {
                 emitAll(accountAdapter.streamEvents(
@@ -323,37 +325,10 @@ class AiService(
             throw error
         } catch (error: Exception) {
             if (usesModelLog) DebugLog.finishRequest(modelLogId, "Model",
-                "✗ ${provider.name} · $modelName: ${error.message}", true)
+                "✗ ${provider.name} · $modelName: ${error.message}", true, error = error)
             else if (!(provider.type == ModelApiType.ANTIGRAVITY && error.message?.startsWith("HTTP ") == true))
-                DebugLog.error(DebugLogCategory.ERRORS, "Model", "Request to ${provider.name} / $modelName failed", error)
+                DebugLog.error(DebugLogCategory.NETWORK, "Model", "Request to ${provider.name} / $modelName failed", error)
             throw error
-        }
-    }
-
-    /** Summarize SDK requests whose transports do not expose HTTP logging. */
-    private fun logModelRequest(
-        provider: ModelProvider,
-        modelName: String,
-        messages: List<StoredMessage>,
-        systemPrompt: String,
-        maxTokens: Int,
-        temperature: Double?,
-        topP: Double?,
-        topK: Int?
-    ): Long? {
-        val label = "${provider.type.displayName} · ${provider.name} · $modelName " +
-            "(stream=${provider.config.supportStream}, ${messages.size} messages)"
-        return DebugLog.beginRequest("Model", label) {
-            buildString {
-                append("model=").append(modelName).append(" maxTokens=").append(maxTokens)
-                append(" temperature=").append(temperature).append(" topP=").append(topP).append(" topK=").append(topK).append('\n')
-                if (systemPrompt.isNotBlank()) append("[system] ").append(systemPrompt).append('\n')
-                messages.forEach { message ->
-                    append('[').append(message.role.name.lowercase()).append("] ").append(message.content)
-                    if (message.files.isNotEmpty()) append(" (+").append(message.files.size).append(" files)")
-                    append('\n')
-                }
-            }
         }
     }
 

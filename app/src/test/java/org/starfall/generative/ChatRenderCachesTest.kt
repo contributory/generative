@@ -53,6 +53,7 @@ class ChatRenderCachesTest {
         assertFalse(cache.contains(10))
     }
 
+    @Suppress("DEPRECATION") // Test the legacy memory-pressure callback value explicitly.
     @Test fun parsedMarkdownIsReusedUntilMemoryRunsLow() {
         val text = "# Title\n\nSome **bold** text."
         MarkdownParseCache.put(text, parse(text))

@@ -21,7 +21,7 @@ internal fun RegenerateResponseDialog(onConfirm: () -> Unit, onDismiss: () -> Un
         title = { Text(stringResource(R.string.regenerate_title)) },
         text = { Text(stringResource(R.string.regenerate_message)) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.message_regenerate)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) } }
     )
 }
 
@@ -76,7 +76,7 @@ internal fun DeleteMessageDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             }
         }
     )
