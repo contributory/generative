@@ -69,7 +69,7 @@ fun ServerListScreen(
                 }
             }, navigationIcon = { IconButton(onClick = onBack) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
-                    ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
+                    ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
                     IconButton(onClick = {
                         onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                             url = null, headers = emptyMap()), true)
