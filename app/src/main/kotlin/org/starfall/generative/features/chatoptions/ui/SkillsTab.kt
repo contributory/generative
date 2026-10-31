@@ -144,7 +144,7 @@ internal fun SkillsTab(
             },
             dismissButton = {
                 TextButton(onClick = { skillPendingDelete = null }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )

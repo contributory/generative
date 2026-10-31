@@ -32,7 +32,7 @@ class TemporaryChatIsolationTest {
                 permanent.save("private photo".byteInputStream(), "text/plain")
             }
             val temporaryFile = permanent.resolve(name)!!
-            assertEquals(File(cache, "session-1").canonicalFile, temporaryFile.parentFile.canonicalFile)
+            assertEquals(File(cache, "session-1").canonicalFile, requireNotNull(temporaryFile.parentFile).canonicalFile)
             assertEquals(name, permanent.nameOf(temporaryFile.absolutePath))
             assertTrue(permanent.list().isEmpty())
             val permanentName = permanent.save("regular chat".byteInputStream(), "text/plain")

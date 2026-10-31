@@ -2,7 +2,7 @@ package org.starfall.generative
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -62,6 +62,37 @@ class ModelEditorMediaProfileTest {
         }
     }
 
+    @Test fun modelMetadataCannotSelectModelIndependentCustomProfile() {
+        val standalone = MediaRequestProfile("standalone", "Independent", requiresModel = false)
+        var saved: ModelConfiguration? = null
+        val provider = ModelProvider(
+            id = "provider", name = "Provider", type = ModelApiType.OPENAI,
+            baseUrl = "https://example.test/v1",
+            config = ProviderConfiguration(modelConfigs = mapOf(
+                "image-model" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION,
+                    mediaApiType = MediaGenerationMode.CUSTOM,
+                    mediaRequestProfileId = standalone.id)
+            ))
+        )
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ModelEditor(provider = provider, initialModelId = "image-model",
+                    existingModelIds = setOf("image-model"),
+                    customImageMediaProfiles = mapOf(standalone.id to standalone),
+                    onSave = { _, config -> saved = config }, onBack = {})
+            }
+        }
+        compose.onNodeWithTag("media-profile-selector").performScrollTo().performClick()
+        compose.onNodeWithText("Independent · Custom").assertDoesNotExist()
+        compose.onNodeWithText("Default · Default").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Save").performClick()
+        compose.runOnIdle {
+            assertNotNull(saved)
+            assertEquals("imagegen-default", saved?.mediaRequestProfileId)
+            assertEquals(MediaGenerationMode.DEFAULT, saved?.mediaApiType)
+        }
+    }
+
     @Test fun videoModelLabelsItsSingleProfileSelectorCorrectly() {
         val provider = ModelProvider(
             id = "video-provider", name = "Provider", type = ModelApiType.OPENAI,
@@ -82,4 +113,35 @@ class ModelEditorMediaProfileTest {
         compose.onNodeWithText("Video Profile").assertIsDisplayed()
         compose.onNodeWithText("API Type").assertDoesNotExist()
     }
+    @Test fun switchingBetweenImageAndVideoTypeClearsOldMediaProfile() {
+        val customImage = MediaRequestProfile("image-custom", "Image gateway", mode = MediaGenerationMode.CUSTOM)
+        val provider = ModelProvider(
+            id = "provider", name = "Provider", type = ModelApiType.OPENAI,
+            baseUrl = "https://example.test/v1",
+            config = ProviderConfiguration(modelConfigs = mapOf(
+                "media-model" to ModelConfiguration(modelType = ModelType.IMAGE_GENERATION,
+                    mediaRequestProfileId = customImage.id, mediaApiType = MediaGenerationMode.CUSTOM)
+            ))
+        )
+        var saved: ModelConfiguration? = null
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ModelEditor(provider = provider, initialModelId = "media-model",
+                    existingModelIds = setOf("media-model"),
+                    customImageMediaProfiles = mapOf(customImage.id to customImage),
+                    onSave = { _, config -> saved = config }, onBack = {})
+            }
+        }
+        compose.onNodeWithTag("model-type-selector").performScrollTo().performClick()
+        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
+        compose.onNodeWithTag("model-type-video_generation").performClick()
+        compose.onNodeWithTag("media-profile-selector").assertExists()
+        compose.onNodeWithText("Save").performClick()
+        compose.runOnIdle {
+            assertEquals(ModelType.VIDEO_GENERATION, saved?.modelType)
+            assertEquals(MediaGenerationMode.DEFAULT, saved?.mediaApiType)
+            assertEquals("videogen-default", saved?.mediaRequestProfileId)
+        }
+    }
+
 }

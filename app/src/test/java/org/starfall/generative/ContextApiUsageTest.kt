@@ -140,8 +140,8 @@ class ContextApiUsageTest {
         }, usageContextKey = contextUsageKey(initial, prompt, config))
         withTimeout(5_000) { runner.busy.first { !it } }
         assertEquals("Before toolAfter tool", saved!!.messages.last().content)
-        assertEquals(830L, status(saved!!).usedTokens)
-        assertEquals(TokenUsage(800, 30), status(saved!!).apiUsage)
+        assertEquals(830L, status(saved).usedTokens)
+        assertEquals(TokenUsage(800, 30), status(saved).apiUsage)
     }
 
     @Test fun contentAddedAfterUsageDoesNotMasqueradeAsExactApiUsage() = runBlocking {
@@ -155,6 +155,6 @@ class ContextApiUsageTest {
         }, usageContextKey = contextUsageKey(initial, prompt, config))
         withTimeout(5_000) { runner.busy.first { !it } }
         assertNull(status(saved!!).apiUsage)
-        assertTrue(status(saved!!).isEstimated)
+        assertTrue(status(saved).isEstimated)
     }
 }

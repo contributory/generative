@@ -89,6 +89,7 @@
     <string name="common_copy">Copia</string>
     <string name="common_name">Nome</string>
     <string name="common_type">Tipo</string>
+    <string name="provider_api_type">Tipo di API</string>
     <string name="common_key">Chiave</string>
     <string name="common_value">Valore</string>
     <string name="common_auto">Automatico</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">Questo provider di modelli ha già un modello con questo ID.</string>
     <string name="model_options_title">Opzioni del modello</string>
     <string name="model_tools_hint">Strumenti integrati supportati da questo modello di lingua, inviati nella richiesta API del modello.</string>
-    <string name="send_thinking_content_back_hint">Auto reinvia il ragionamento precedente solo nelle chat con chiamate di strumenti. On lo reinvia sempre; Off mai.</string>
+    <string name="send_thinking_content_back_hint">Auto reinvia il ragionamento precedente solo nelle chat con chiamate di strumenti. On lo reinvia sempre. Off mai.</string>
     <string name="common_default">Predefinito</string>
     <string name="mcp_required_parameter_default_needed">Imposta un valore predefinito prima di disattivare questo parametro obbligatorio.</string>
     <string name="model_tools_editor_hint">Scegli gli strumenti predefiniti, aggiungi nomi personalizzati e attiva o disattiva gli strumenti.</string>
@@ -443,7 +444,7 @@
     <string name="new_provider_group">Nuovo gruppo di provider di modelli</string>
     <string name="provider_group_name">Nome del gruppo</string>
     <string name="provider_group_name_required">Il nome del gruppo è obbligatorio.</string>
-    <string name="delete_provider_group_message">Eliminare questo gruppo di provider di modelli? I suoi provider torneranno alla radice dei provider di modelli; non verranno eliminati.</string>
+    <string name="delete_provider_group_message">Eliminare questo gruppo di provider di modelli? I suoi provider torneranno alla radice dei provider di modelli. Non verranno eliminati.</string>
     <string name="move_to_group">Sposta nel gruppo</string>
     <string name="ungrouped">Nessun gruppo</string>
     <string name="provider_count">%1$d provider di modelli</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Riepiloga automaticamente quando il contesto si riempie</string>
     <string name="settings_auto_summary_threshold">Riepiloga automaticamente al %1$d%% del contesto</string>
     <string name="settings_conversations">Conversazioni</string>
-    <string name="settings_continue_last_chat">Riprendi l\'ultima conversazione</string>
+    <string name="settings_continue_last_chat">Ripristina l\'ultima sessione</string>
     <string name="settings_continue_last_chat_description">Apri la conversazione più recente all\'avvio dell\'app.</string>
     <string name="settings_persist_selected_model">Ricorda il modello per ogni conversazione</string>
     <string name="settings_persist_selected_model_description">Ripristina il modello selezionato l\'ultima volta in ogni conversazione quando la riapri.</string>
@@ -669,15 +670,15 @@
     <string name="mcp_attachments_classic_description">Invia ogni strumento MCP attivato con ogni richiesta.</string>
     <string name="mcp_attachments_include_description">Includi le descrizioni degli strumenti</string>
     <string name="mcp_attachments_include_description_summary">Off: le descrizioni sono omesse per gli strumenti MCP allegati in precedenza, riducendo le dimensioni della richiesta. Il parametro dettagliato di connect_mcps controlla le descrizioni per gli MCP su richiesta.</string>
-    <string name="mcp_attachments_dynamic_description">Il modello riceve list_mcps e connect_mcps e collega i server MCP solo quando servono. La modalità dinamica si applica quando sono raggiunti entrambi i minimi indicati; fino ad allora gli MCP vengono inviati classicamente. L\'inclusione delle descrizioni si applica agli MCP allegati classicamente; per gli MCP su richiesta, connect_mcps usa il suo parametro dettagliato.</string>
+    <string name="mcp_attachments_dynamic_description">Il modello riceve list_mcps e connect_mcps e collega i server MCP solo quando servono. La modalità dinamica si applica quando sono raggiunti entrambi i minimi indicati. Fino ad allora gli MCP vengono inviati classicamente. L\'inclusione delle descrizioni si applica agli MCP allegati classicamente. Per gli MCP su richiesta, connect_mcps usa il suo parametro dettagliato.</string>
     <string name="mcp_attachments_min_mcps">Numero minimo di server MCP</string>
     <string name="mcp_attachments_min_mcps_hint">Il predefinito è %1$d. 0 applica la modalità dinamica a qualsiasi numero di MCP.</string>
     <string name="mcp_attachments_min_tools">Numero minimo di strumenti MCP</string>
     <string name="mcp_attachments_min_tools_hint">Il predefinito è %1$d. 0 ignora il numero di strumenti.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Strategia su richiesta</string>
-    <string name="mcp_attachments_strategy_overflow">Allega i server iniziali; carica gli altri su richiesta</string>
+    <string name="mcp_attachments_strategy_overflow">Iniziali + su richiesta</string>
     <string name="mcp_attachments_strategy_all">Carica tutti i server su richiesta</string>
-    <string name="mcp_attachments_strategy_overflow_description">La modalità overflow mantiene allegati classicamente i pochi MCP sotto il minimo; gli altri vengono caricati su richiesta.</string>
+    <string name="mcp_attachments_strategy_overflow_description">La modalità overflow mantiene allegati classicamente i pochi MCP sotto il minimo. Gli altri vengono caricati su richiesta.</string>
     <string name="mcp_attachments_strategy_all_description">La modalità all carica ogni MCP su richiesta.</string>
     <string name="mcp_attachments_list_limit">Numero massimo di server restituiti da list_mcps</string>
     <string name="mcp_attachments_load_limit">Numero massimo di server MCP mantenuti collegati</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">Rende automaticamente le formule matematiche rilevate, lasciando gli importi in valuta come testo semplice.</string>
     <string name="settings_latex_disabled">Disattivato</string>
     <string name="settings_latex_auto_detect">Rilevamento automatico</string>
-    <string name="settings_developer">Sviluppatore</string>
+    <string name="settings_developer">Opzioni sviluppatore</string>
     <string name="settings_debug_logs">Abilita i log di debug</string>
     <string name="settings_debug_logs_description">Mostra uso dei token, dettagli delle richieste e attività di rete nel pannello di debug.</string>
-    <string name="settings_debug_log_scope">Categorie di log</string>
+    <string name="settings_debug_log_scope">Origini dei log</string>
     <string name="settings_debug_log_scope_description">Scegli quali tipi di log il pannello di debug registra.</string>
     <string name="debug_log_category_network">Rete</string>
-    <string name="debug_log_category_payload">Payload</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">Errori</string>
+    <string name="debug_log_category_system">Sistema</string>
+    <string name="settings_debug_log_level">Livello minimo di log</string>
+
     <string name="debug_log_title">Log di debug</string>
+    <string name="debug_log_disable">Disattiva i log di debug</string>
     <string name="debug_log_toggle">Mostra o nascondi i log di debug</string>
     <string name="debug_log_copy_entry">Copia questo log</string>
     <string name="debug_log_copy_all">Copia tutti i log</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Informazioni di base</string>
     <string name="remote_machine_connection_section">Connessione</string>
     <string name="remote_machine_sftp_section_help">L\'azione File nel menu di questa macchina esplora questa cartella tramite SFTP. La sessione si avvia solo quando serve.</string>
-    <string name="remote_machine_sftp_directory_help">Cartella radice per File. Predefinita: $HOME; sono supportati anche ~ e i percorsi assoluti.</string>
+    <string name="remote_machine_sftp_directory_help">Cartella radice per File. Predefinita: $HOME. Sono supportati anche ~ e i percorsi assoluti.</string>
     <string name="remote_machine_start_port_forward">Avvia inoltro di porta</string>
     <string name="remote_machine_port_forward_started">Inoltro di porta avviato. I terminali aperti riutilizzano questa connessione.</string>
     <string name="remote_machine_type_label">Tipo di macchina</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Percorso della chiave privata, oppure il nome di una chiave caricata nelle impostazioni remote. La chiave non viene mai memorizzata sulla macchina. Lascia vuoto se non serve.</string>
     <string name="remote_machine_no_uploaded_keys">Nessuna chiave caricata</string>
     <string name="remote_machine_ssh_keys">Chiavi SSH</string>
-    <string name="remote_machine_ssh_keys_help">Carica una chiave privata una volta e riutilizzala su più macchine tramite IdentityFile. Google Cloud Shell richiede anche la chiave pubblica corrispondente (.pub); caricala con il pulsante su ogni chiave.</string>
+    <string name="remote_machine_ssh_keys_help">Carica una chiave privata una volta e riutilizzala su più macchine tramite IdentityFile. Google Cloud Shell richiede anche la chiave pubblica corrispondente (.pub). Caricala con il pulsante su ogni chiave.</string>
     <string name="remote_machine_upload_ssh_key">Carica un file di chiave SSH</string>
     <string name="remote_machine_upload_public_key">Carica la chiave pubblica</string>
     <string name="remote_machine_public_key_uploaded">Chiave pubblica caricata</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Modifica il passaggio %1$d</string>
     <string name="media_chain_endpoint_help">Percorso relativo al provider o URL HTTP(S). Supporta {{model}} e i valori dei passaggi precedenti.</string>
     <string name="media_chain_headers_json_invalid">Inserisci un oggetto JSON valido con valori di intestazione di tipo stringa.</string>
-    <string name="media_chain_headers_help">Oggetto JSON. Supporta le variabili; l\'autorizzazione configurata del provider viene usata automaticamente.</string>
+    <string name="media_chain_headers_help">Oggetto JSON. Supporta le variabili. L\'autorizzazione configurata del provider viene usata automaticamente.</string>
     <string name="media_chain_custom_content_type_help">Sovrascrittura facoltativa del tipo MIME. Lascia vuoto per la selezione automatica.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">File</string>
@@ -1104,4 +1106,20 @@
     <string name="customization_input_blur">Sfocatura dello sfondo</string>
     <string name="customization_input_blur_description">Sfoca la chat dietro l’area di inserimento su Android 12 e versioni successive. Testo e pulsanti rimangono nitidi.</string>
     <string name="settings_website">Sito web</string>
+    <string name="app_menu_default_options">Configurazione</string>
+    <string name="app_menu_builtin_tools">Strumenti integrati</string>
+    <string name="app_menu_language_providers">Fornitori di modelli linguistici</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Servizi di sintesi vocale</string>
+    <string name="app_menu_remote_servers">Servizi remoti</string>
+    <string name="app_menu_media_management">Gestione dei media</string>
+    <string name="app_menu_icons_management">Gestione delle icone</string>
+    <string name="app_menu_settings">Impostazioni</string>
+    <string name="app_menu_data">Dati</string>
+    <string name="app_menu_about">Informazioni</string>
+    <string name="mcp_attachments_limits">Limiti su richiesta</string>
+    <string name="tool_settings_tab_media">Media</string>
+    <string name="tool_settings_tab_others">Altro</string>
+    <string name="media_profile_require_model">Richiede un modello</string>
+    <string name="media_chain_test_no_model_note">Le prove possono comportare costi. Qui non sono supportati file in ingresso.</string>
 </resources>

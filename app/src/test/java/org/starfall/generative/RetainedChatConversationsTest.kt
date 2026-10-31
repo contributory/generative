@@ -17,7 +17,7 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsNotDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -101,11 +101,11 @@ class RetainedChatConversationsTest {
         compose.runOnIdle { originallyOpen.openModelPicker() }
         compose.runOnIdle { assertEquals(ModelSheetPage.MODEL_PICKER, originallyOpen.modelSheetPage); current = b }
         compose.onNodeWithTag("b").assertIsDisplayed()
-        compose.runOnIdle { assertEquals(null, activeSheets!!.modelSheetPage); current = a }
+        compose.runOnIdle { assertEquals(null, activeSheets.modelSheetPage); current = a }
         compose.onNodeWithTag("a").assertIsDisplayed()
         compose.runOnIdle {
             assertNotSame(originallyOpen, activeSheets)
-            assertEquals(null, activeSheets!!.modelSheetPage)
+            assertEquals(null, activeSheets.modelSheetPage)
         }
     }
 

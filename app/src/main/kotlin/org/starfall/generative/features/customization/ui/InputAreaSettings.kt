@@ -1,7 +1,6 @@
 package org.starfall.generative.features.customization.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -13,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
 import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -30,34 +28,31 @@ internal fun InputAreaSettings(
     }
     val transparencyLabel = stringResource(R.string.customization_input_transparency)
     val blurLabel = stringResource(R.string.customization_input_blur)
-    Surface(shape = RoundedCornerShape(28.dp), color = prominentContainerColor()) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.customization_input_title), style = MaterialTheme.typography.titleMedium)
-            Text("$transparencyLabel · ${(transparency * 100).roundToInt()}%")
-            ControlledSlider(
-                value = transparency, onValueChange = { transparency = it },
-                onValueChangeFinished = { onTransparencyChange(transparency) },
-                modifier = Modifier.testTag("input-area-transparency-slider")
-                    .semantics { contentDescription = transparencyLabel }
-            )
-            Text("$blurLabel · ${blur.roundToInt()} dp")
-            ControlledSlider(
-                value = blur, onValueChange = { blur = it }, valueRange = 0f..32f,
-                onValueChangeFinished = { onBlurChange(blur) },
-                modifier = Modifier.testTag("input-area-blur-slider")
-                    .semantics { contentDescription = blurLabel }
-            )
-            Text(stringResource(R.string.customization_input_blur_description),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = {
-                val defaults = AppPreferences()
-                transparency = defaults.inputAreaTransparency
-                blur = defaults.inputAreaBlur
-                onTransparencyChange(transparency)
-                onBlurChange(blur)
-            }, modifier = Modifier.testTag("input-area-appearance-reset")) {
-                Text(stringResource(R.string.common_reset))
-            }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("$transparencyLabel · ${(transparency * 100).roundToInt()}%")
+        ControlledSlider(
+            value = transparency, onValueChange = { transparency = it },
+            onValueChangeFinished = { onTransparencyChange(transparency) },
+            modifier = Modifier.testTag("input-area-transparency-slider")
+                .semantics { contentDescription = transparencyLabel }
+        )
+        Text("$blurLabel · ${blur.roundToInt()} dp")
+        ControlledSlider(
+            value = blur, onValueChange = { blur = it }, valueRange = 0f..32f,
+            onValueChangeFinished = { onBlurChange(blur) },
+            modifier = Modifier.testTag("input-area-blur-slider")
+                .semantics { contentDescription = blurLabel }
+        )
+        Text(stringResource(R.string.customization_input_blur_description),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = {
+            val defaults = AppPreferences()
+            transparency = defaults.inputAreaTransparency
+            blur = defaults.inputAreaBlur
+            onTransparencyChange(transparency)
+            onBlurChange(blur)
+        }, modifier = Modifier.testTag("input-area-appearance-reset")) {
+            Text(stringResource(R.string.common_reset))
         }
     }
 }

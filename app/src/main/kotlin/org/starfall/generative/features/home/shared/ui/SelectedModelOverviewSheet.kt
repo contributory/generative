@@ -3,9 +3,6 @@ package org.starfall.generative.features.home.shared.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.clickable
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
@@ -28,17 +26,17 @@ import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 import org.starfall.generative.shared.ui.model.reasoningEffortTier
 import org.starfall.generative.shared.model.language.ModelConfiguration
+import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
-import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.ui.model.modelInitial
 import org.starfall.generative.shared.ui.model.ModelPickerCard
+import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 /** Sheet background that follows the reasoning tier: the maximum effort tier gets a red brush. */
 internal class SelectedModelSheetStyle(
@@ -75,15 +73,14 @@ internal fun rememberPreviewTier(config: ModelConfiguration, conversationReasoni
 /** Standalone sheet; the chat uses [SelectedModelOverviewContent] as a page of a shared model sheet instead. */
 @Composable
 internal fun SelectedModelOverviewSheet(
-    provider: ModelProvider?,
-    folderName: String?,
+    provider: ModelProvider? = null,
+    folderName: String? = null,
     modelId: String,
     config: ModelConfiguration,
     conversationReasoningEffort: String?,
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
     onSetModelTools: ((List<String>) -> Unit)? = null,
-    onEditModel: (() -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -118,7 +115,6 @@ internal fun SelectedModelOverviewSheet(
             onSetReasoningEffort = onSetReasoningEffort,
             onSetThinkingPassback = onSetThinkingPassback,
             onSetModelTools = onSetModelTools,
-            onEditModel = onEditModel,
             onOpenModelPicker = onOpenModelPicker
         )
     }
@@ -126,8 +122,8 @@ internal fun SelectedModelOverviewSheet(
 
 @Composable
 internal fun SelectedModelOverviewContent(
-    provider: ModelProvider?,
-    folderName: String?,
+    provider: ModelProvider? = null,
+    folderName: String? = null,
     modelId: String,
     config: ModelConfiguration,
     conversationReasoningEffort: String?,
@@ -136,237 +132,178 @@ internal fun SelectedModelOverviewContent(
     onSetReasoningEffort: (String?) -> Unit,
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
     onSetModelTools: ((List<String>) -> Unit)? = null,
-    onEditModel: (() -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
-    /** Horizontal context indicator shown above the model card; the host owns what it displays. */
     contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
-    /** Shows a Summarize button beside Change language model when set. */
     onSummarize: (() -> Unit)? = null
 ) {
-    var modelOptionsExpanded by remember(modelId) { mutableStateOf(false) }
-    val visibleModelTools = remember(config.supportedModelTools, provider?.type) {
-        // supportedModelTools already comes from this model's catalog/editor configuration.
-        // Do not silently hide valid configured entries behind a second hard-coded allowlist.
+    val visibleModelTools = remember(config.supportedModelTools) {
         config.supportedModelTools.distinct()
     }
     val screenBurst = LocalThinkingScreenBurst.current
+    val reasoningLabels = localizedReasoningEffortLabels()
+    val effortOptions = remember(config.supportedReasoningEfforts, reasoningLabels) {
+        reasoningEffortOptions(config.supportedReasoningEfforts, reasoningLabels)
+    }
+    var previewValue by remember(effortOptions) {
+        mutableFloatStateOf(reasoningEffortIndex(conversationReasoningEffort, effortOptions).toFloat())
+    }
     LaunchedEffect(previewTier, screenBurst) {
-        // A max-effort burst is started only by crossing into the red tier on the slider.
-        // Reopening this sheet at an already-selected max tier should not replay it.
         when {
             previewTier != 6 && screenBurst?.keepAfterCompletion == true && !screenBurst.isRetracting -> screenBurst.hide()
             previewTier == 6 && config.supportsThinking && screenBurst != null && !screenBurst.keepAfterCompletion ->
                 screenBurst.restoreSettled()
         }
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Expanded Model Options can exceed the sheet's max height; scroll instead of overlapping.
-            .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        val maxEffortSheet = previewTier == 6 && config.supportsThinking
-        val changeModelButton: @Composable (Modifier) -> Unit = { buttonModifier ->
-            FilledTonalButton(
-                onClick = {
-                    screenBurst?.hide()
-                    onOpenModelPicker()
-                },
-                contentPadding = PaddingValues(start = 16.dp, end = 12.dp),
-                modifier = buttonModifier.testTag("open-model-picker-button")
-            ) {
-                Text(
-                    stringResource(R.string.change_model),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Spacer(Modifier.width(6.dp))
-                SharedIcon(
-                    Icons.Outlined.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = if (onSummarize != null) Arrangement.SpaceBetween else Arrangement.End
+
+    val maxEffortSheet = previewTier == 6 && config.supportsThinking
+    val contentColor = if (maxEffortSheet) Color.White else MaterialTheme.colorScheme.onSurface
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (onSummarize != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (onSummarize != null) Arrangement.SpaceBetween else Arrangement.End
+            ) {
+                if (onSummarize != null) {
+                    FilledTonalButton(
+                        onClick = {
+                            screenBurst?.hide()
+                            onSummarize()
+                        },
+                        contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
+                        modifier = Modifier.testTag("summarize-conversation-button")
+                    ) {
+                        SharedIcon(Icons.Outlined.Summarize, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.summarize_now), maxLines = 1)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
                 FilledTonalButton(
                     onClick = {
                         screenBurst?.hide()
-                        onSummarize()
+                        onOpenModelPicker()
                     },
-                    contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
-                    modifier = Modifier.testTag("summarize-conversation-button")
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp),
+                    modifier = Modifier.weight(1f, fill = false).testTag("open-model-picker-button")
                 ) {
-                    SharedIcon(
-                        Icons.Outlined.Summarize,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                    EntityIcon(
+                        image = config.icon,
+                        modifier = Modifier.size(24.dp).testTag("selected-model-button-icon"),
+                        text = modelInitial(modelId),
+                        matchName = config.displayName.ifBlank { modelId },
+                        fallbackMatchName = modelId,
+                        model = true
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.summarize_now), maxLines = 1)
+                    Text(stringResource(R.string.provider_models),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false))
                 }
-                Spacer(Modifier.width(8.dp))
             }
-            changeModelButton(Modifier.weight(1f, fill = false))
-        }
-        contextWindowContent?.invoke(maxEffortSheet)
-        ModelPickerCard(
-            modelId = modelId,
-            config = config,
-            isSelected = true,
-            providerName = provider?.name,
-            folderName = folderName,
-            conversationReasoningEffort = conversationReasoningEffort,
-             onSetReasoningEffort = onSetReasoningEffort,
-             showReasoningEffort = true,
-             onLongClick = {
-                 screenBurst?.hide()
-                 onEditModel?.invoke()
-             },
-              embedded = true,
-              drawBackground = false,
-             onPreviewTierChange = onPreviewTierChange
-        )
-        // Show the dropdown only when this model has at least one configurable option.
-        // Keep optional model controls tucked away until the user opens Model Options.
-        if (visibleModelTools.isNotEmpty() || config.supportsThinking) {
-            val burstActive = previewTier == 6 && config.supportsThinking
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = if (burstActive) {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.2f)
-                } else {
-                    prominentContainerColor()
-                },
-                border = if (burstActive) null else prominentContainerBorder(),
-                modifier = Modifier.fillMaxWidth().testTag("model-options-dropdown")
-            ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { modelOptionsExpanded = !modelOptionsExpanded }
-                        .testTag("model-options-toggle")
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.model_options_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    SharedIcon(
-                        imageVector = if (modelOptionsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+
+            contextWindowContent?.invoke(maxEffortSheet)
+
+            if (config.supportsThinking) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.reasoning_effort_title),
+                        style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    Text(effortOptions[previewValue.roundToInt().coerceIn(effortOptions.indices)].label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (maxEffortSheet) Color.White.copy(alpha = 0.8f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (modelOptionsExpanded) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        if (config.supportsThinking) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                            val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
-                            val labels = listOf(
-                                stringResource(R.string.common_auto),
-                                stringResource(R.string.common_on),
-                                stringResource(R.string.common_off)
+                ReasoningEffortControl(
+                    effort = conversationReasoningEffort,
+                    onEffortChange = onSetReasoningEffort,
+                    onPreviewValueChange = {
+                        previewValue = it
+                        onPreviewTierChange(reasoningEffortTier(it.roundToInt(), effortOptions))
+                    },
+                    options = effortOptions,
+                    onColorBurst = { origin, tier ->
+                        if (tier == 6) {
+                            screenBurst?.start(
+                                origin = origin,
+                                color = Color(0xFFDC2626),
+                                durationMillis = 6500,
+                                keepAfterCompletion = true,
+                                starCount = 180
                             )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                SharedIcon(
-                                    Icons.Outlined.Psychology,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    stringResource(R.string.send_thinking_content_back),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
-                                modes.forEachIndexed { index, mode ->
-                                    SegmentedButton(
-                                        selected = config.passbackMode == mode,
-                                        onClick = { onSetThinkingPassback?.invoke(mode) },
-                                        enabled = onSetThinkingPassback != null,
-                                        shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-                                        modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
-                                    ) {
-                                        Text(labels[index], maxLines = 1)
-                                    }
-                                }
-                            }
-                            Text(
-                                stringResource(R.string.send_thinking_content_back_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        } else {
+                            screenBurst?.retract(origin)
                         }
-                        if (visibleModelTools.isNotEmpty()) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                            Text(
-                                stringResource(R.string.model_tools_title),
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                stringResource(R.string.model_tools_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            visibleModelTools.distinct().forEach { tool ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().testTag("model-tool-$tool"),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        modelToolDisplayName(tool),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Switch(
-                                        checked = tool in config.enabledModelTools,
-                                        onCheckedChange = { enabled ->
-                                            val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
-                                            val updated = if (enabled) current + tool else current - tool
-                                            onSetModelTools?.invoke(updated.toList())
-                                        },
-                                        enabled = onSetModelTools != null,
-                                        modifier = Modifier.testTag("model-tool-switch-$tool")
-                                    )
-                                }
-                            }
+                    }
+                )
+            }
+
+            Box(Modifier.fillMaxWidth().testTag("selected-model-card")) {
+                ModelPickerCard(
+                    modelId = modelId,
+                    config = config,
+                    isSelected = true,
+                    providerName = provider?.name,
+                    folderName = folderName,
+                    conversationReasoningEffort = conversationReasoningEffort,
+                    onSetReasoningEffort = onSetReasoningEffort,
+                    showReasoningEffort = false,
+                    embedded = true,
+                    drawBackground = false
+                )
+            }
+
+            if (config.supportsThinking) {
+                Text(stringResource(R.string.send_thinking_content_back), style = MaterialTheme.typography.titleSmall)
+                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
+                val labels = listOf(
+                    stringResource(R.string.common_auto),
+                    stringResource(R.string.common_on),
+                    stringResource(R.string.common_off)
+                )
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
+                    modes.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = config.passbackMode == mode,
+                            onClick = { onSetThinkingPassback?.invoke(mode) },
+                            enabled = onSetThinkingPassback != null,
+                            shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                            modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
+                        ) {
+                            Text(labels[index], maxLines = 1)
                         }
                     }
                 }
             }
-        }
+
+            if (visibleModelTools.isNotEmpty()) {
+                Text(stringResource(R.string.model_tools_title), style = MaterialTheme.typography.titleSmall)
+                visibleModelTools.forEach { tool ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("model-tool-$tool"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(modelToolDisplayName(tool),
+                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = tool in config.enabledModelTools,
+                            onCheckedChange = { enabled ->
+                                val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
+                                onSetModelTools?.invoke((if (enabled) current + tool else current - tool).toList())
+                            },
+                            enabled = onSetModelTools != null,
+                            modifier = Modifier.testTag("model-tool-switch-$tool")
+                        )
+                    }
+                }
+            }
         }
     }
-
 }
-
 
 @Composable
 private fun modelToolDisplayName(tool: String): String = when (tool.lowercase()) {

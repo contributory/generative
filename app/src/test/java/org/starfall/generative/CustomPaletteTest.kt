@@ -86,8 +86,8 @@ class CustomPaletteTest {
             assertEquals(defaults.itemTransparency, inactive.itemTransparency)
             assertEquals(defaults.inputAreaTransparency, inactive.inputAreaTransparency)
             assertEquals(defaults.inputAreaBlur, inactive.inputAreaBlur)
-            assertEquals(defaults.userProfile, inactive.userProfile)
-            assertNull(inactive.featuresLogoImage)
+            assertEquals(defaults.userProfile.copy(photo = profile.photo), inactive.userProfile)
+            assertEquals(profile.photo, inactive.featuresLogoImage)
 
             // Backup must retain saved appearance while it is not used for rendering.
             val backup = repository.backupSnapshot()
@@ -96,6 +96,13 @@ class CustomPaletteTest {
             assertEquals(palette, backup.customPalette)
             assertEquals("DARK", backup.themeMode)
             assertEquals(profile.photo, repository.storedFeaturesLogoImage())
+            repository.updateUserProfile { it.copy(photo = "new-profile-image") }
+            val inactiveWithUpdatedPhoto = AppPreferencesRepository(ApplicationProvider.getApplicationContext())
+                .appPreferencesFlow.first()
+            assertEquals("new-profile-image", inactiveWithUpdatedPhoto.userProfile.photo)
+            assertEquals(defaults.userProfile.copy(photo = "new-profile-image"), inactiveWithUpdatedPhoto.userProfile)
+            assertEquals("new-profile-image", inactiveWithUpdatedPhoto.featuresLogoImage)
+            assertEquals("new-profile-image", repository.storedFeaturesLogoImage())
             repository.setCustomizationEnabled(true)
             val restored = AppPreferencesRepository(ApplicationProvider.getApplicationContext())
                 .appPreferencesFlow.first()
@@ -107,7 +114,7 @@ class CustomPaletteTest {
             assertEquals(customized.itemTransparency, restored.itemTransparency)
             assertEquals(customized.inputAreaTransparency, restored.inputAreaTransparency)
             assertEquals(customized.inputAreaBlur, restored.inputAreaBlur)
-            assertEquals(profile, restored.userProfile)
+            assertEquals(profile.copy(photo = "new-profile-image"), restored.userProfile)
         } finally {
             repository.replace(AppPreferences())
         }

@@ -23,6 +23,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.*
@@ -41,7 +45,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusProperties
@@ -85,6 +88,7 @@ import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.features.home.chat.logic.input.MAX_CLIPBOARD_IMAGE_BYTES
+import org.starfall.generative.features.home.chat.logic.input.clipboardImageUris
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.features.home.chat.logic.input.canSendChatInput
 import org.starfall.generative.features.home.chat.logic.input.directMediaHint
@@ -98,6 +102,7 @@ import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.LocalChatForeground
+import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable
@@ -134,17 +139,20 @@ internal fun UserInputArea(
     onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
     attachments: List<String> = emptyList(),
     onAttachmentsChange: (List<String>) -> Unit = {},
+    // Append to the owner's latest state; asynchronous clipboard imports must not overwrite other attachments.
+    onAddClipboardImages: (List<String>) -> Unit = { images -> onAttachmentsChange((attachments + images).distinct()) },
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
     chatModeRequest: Int = 0,
     temporaryChatId: String? = null,
+    clipboardSessionKey: String? = null,
     modifier: Modifier = Modifier,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
     onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
     onOpenSkillsSettings: (() -> Unit)? = null,
     onModelSheetOpen: () -> Unit = {}
 ) {
-    var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
+    val textFieldState = rememberTextFieldState()
     // Picker provenance controls activation; the composer shows only /skill-name.
     var selectedSkillId by remember { mutableStateOf<String?>(null) }
     val selectedSkill = agentSkills.firstOrNull { it.id == selectedSkillId }
@@ -152,50 +160,69 @@ internal fun UserInputArea(
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
     // move it into the only focusable item here and pop the keyboard up.
     var inputFocusAllowed by remember { mutableStateOf(false) }
-    val textState = textFieldValue.text
+    val textState = textFieldState.text.toString()
     val context = LocalContext.current
     val localizedResources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
+    val externalSelection = LocalChatAttachmentSelection.current
+    val externalText = externalSelection?.pendingExternalText
+    LaunchedEffect(externalSelection, externalText) {
+        val incoming = externalSelection?.takeExternalText() ?: return@LaunchedEffect
+        val combined = listOf(textFieldState.text.toString().takeIf { it.isNotEmpty() }, incoming)
+            .filterNotNull().joinToString("\n\n")
+        selectedSkillId = null
+        textFieldState.setTextAndPlaceCursorAtEnd(combined)
+    }
     val toolFiles = remember(context) { ToolFiles(context) }
-    val latestAttachments by rememberUpdatedState(attachments)
-    val latestOnAttachmentsChange by rememberUpdatedState(onAttachmentsChange)
+    val latestOnAddClipboardImages by rememberUpdatedState(onAddClipboardImages)
+    val latestOnSubmissionFailed by rememberUpdatedState(onSubmissionFailed)
     val latestTemporaryChatId by rememberUpdatedState(temporaryChatId)
+    val latestClipboardSessionKey by rememberUpdatedState(clipboardSessionKey)
     val clipboardContentListener = remember(context, toolFiles, coroutineScope) {
         ReceiveContentListener { content ->
-            val clipData = content.clipEntry.clipData
-            val imageItems = (0 until clipData.itemCount)
-                .map { clipData.getItemAt(it) }
-                .filter { item ->
-                    val uri = item.uri ?: return@filter false
-                    val mimeType = context.contentResolver.getType(uri)
-                    mimeType?.startsWith("image/") == true ||
-                        clipData.description.hasMimeType("image/*")
-                }
-
-            if (imageItems.isEmpty()) {
-                content
+            val clip = content.clipEntry.clipData
+            val images = clipboardImageUris(clip) { uri -> context.contentResolver.getType(uri) }
+            if (images.isEmpty()) {
+                content // Let Compose handle ordinary text pastes.
             } else {
-                imageItems.forEach { item ->
-                    val uri = item.uri ?: return@forEach
-                    coroutineScope.launch {
-                        val sessionId = latestTemporaryChatId
-                        val fileContext = sessionId?.let { org.starfall.generative.shared.files.TemporaryChatFiles(it) }
-                            ?: kotlin.coroutines.EmptyCoroutineContext
-                        val reference = withContext(Dispatchers.IO + fileContext) {
-                            runCatching {
-                                val mimeType = context.contentResolver.getType(uri)
+                val sessionId = latestTemporaryChatId
+                val sessionKey = latestClipboardSessionKey
+                // Clipboard URI grants are temporary, so copy the bytes into app-private storage.
+                coroutineScope.launch {
+                    val fileContext = sessionId?.let { org.starfall.generative.shared.files.TemporaryChatFiles(it) }
+                        ?: kotlin.coroutines.EmptyCoroutineContext
+                    val (saved, failures) = withContext(Dispatchers.IO + fileContext) {
+                        val saved = mutableListOf<String>()
+                        var failures = 0
+                        images.forEach { uri ->
+                            val reference = try {
+                                val mime = context.contentResolver.getType(uri)
+                                    ?: (0 until clip.description.mimeTypeCount)
+                                        .map { clip.description.getMimeType(it) }
+                                        .firstOrNull { it.startsWith("image/") }
                                 context.contentResolver.openInputStream(uri)?.use { input ->
-                                    val name = toolFiles.save(input, mimeType, MAX_CLIPBOARD_IMAGE_BYTES)
-                                    toolFiles.resolve(name)?.absolutePath
-                                }
-                            }.getOrNull()
+                                    toolFiles.save(input, mime, MAX_CLIPBOARD_IMAGE_BYTES)
+                                }?.let { name -> toolFiles.resolve(name)?.absolutePath }
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (reference != null) saved += reference else failures++
                         }
-                        reference?.takeIf { latestTemporaryChatId == sessionId }?.let {
-                            latestOnAttachmentsChange((latestAttachments + it).distinct())
+                        saved to failures
+                    }
+                    if (latestTemporaryChatId == sessionId && latestClipboardSessionKey == sessionKey) {
+                        if (saved.isNotEmpty()) latestOnAddClipboardImages(saved.distinct())
+                        if (failures > 0) {
+                            latestOnSubmissionFailed(
+                                context.getString(R.string.media_image_open_failed)
+                            )
                         }
                     }
                 }
-                content.consume { item -> item.uri != null && imageItems.any { it.uri == item.uri } }
+                // Only consume image URIs; text and unrelated items still reach the text field.
+                content.consume { item -> item.uri != null && item.uri in images }
             }
         }
     }
@@ -273,7 +300,11 @@ internal fun UserInputArea(
     var skillsMenuOpen by remember(foreground) { mutableStateOf(false) }
     var inputBoxWidthPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(textState) {
-        skillsMenuOpen = textState.startsWith("/") && selectedSkill == null
+        if (selectedSkill != null && !textState.hasSelectedSkillInvocation(selectedSkill.id)) {
+            selectedSkillId = null
+        }
+        skillsMenuOpen = textState.startsWith("/") &&
+            (selectedSkill == null || !textState.hasSelectedSkillInvocation(selectedSkill.id))
     }
     val dynamicModelsMap = remember { mutableStateMapOf<String, List<String>>() }
     val dynamicModelEndpoints = remember { mutableMapOf<String, String>() }
@@ -311,7 +342,7 @@ internal fun UserInputArea(
         editDraft?.let {
             mediaKind = null
             selectedSkillId = null
-            textFieldValue = TextFieldValue(it.text, TextRange(it.text.length))
+            textFieldState.setTextAndPlaceCursorAtEnd(it.text)
             onAttachmentsChange(it.attachments)
         }
     }
@@ -417,7 +448,7 @@ internal fun UserInputArea(
                         TextButton(
                             onClick = {
                                 onCancelEdit()
-                                textFieldValue = TextFieldValue()
+                                textFieldState.clearText()
                                 selectedSkillId = null
                                 onAttachmentsChange(emptyList())
                             }
@@ -537,7 +568,7 @@ internal fun UserInputArea(
                                         )
                                         if (submitted) {
                                             focusManager.clearFocus(force = true)
-                                            textFieldValue = TextFieldValue()
+                                            textFieldState.clearText()
                                             selectedSkillId = null
                                             onAttachmentsChange(emptyList())
                                             if (editDraft != null) onCancelEdit()
@@ -587,13 +618,7 @@ internal fun UserInputArea(
                     if (!buttonsBelow) addButton()
 
                     BasicTextField(
-                        value = textFieldValue,
-                        onValueChange = { next ->
-                            if (selectedSkill != null && !next.text.hasSelectedSkillInvocation(selectedSkill.id)) {
-                                selectedSkillId = null
-                            }
-                            textFieldValue = next
-                        },
+                        state = textFieldState,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         textStyle = inputTextStyle,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -613,13 +638,11 @@ internal fun UserInputArea(
                                 if (!it.isFocused) inputFocusAllowed = false
                             }
                             .selectAllOnTripleClick {
-                                textFieldValue = textFieldValue.copy(
-                                    selection = TextRange(0, textFieldValue.text.length)
-                                )
+                                textFieldState.edit { selection = TextRange(0, length) }
                             }
                             .contentReceiver(clipboardContentListener),
-                        maxLines = Int.MAX_VALUE,
-                        decorationBox = { innerTextField ->
+                        lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = Int.MAX_VALUE),
+                        decorator = { innerTextField ->
                             Column {
                                 Box(contentAlignment = Alignment.CenterStart) {
                                 if (textState.isEmpty()) {
@@ -681,7 +704,7 @@ internal fun UserInputArea(
                     },
                     onSelect = { skill ->
                         val nextText = textState.withSelectedSkillInvocation(skill.id)
-                        textFieldValue = TextFieldValue(nextText, TextRange(nextText.length))
+                        textFieldState.setTextAndPlaceCursorAtEnd(nextText)
                         selectedSkillId = skill.id
                         skillsMenuOpen = false
                     },

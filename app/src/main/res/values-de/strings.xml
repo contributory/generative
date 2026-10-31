@@ -89,6 +89,7 @@
     <string name="common_copy">Kopieren</string>
     <string name="common_name">Name</string>
     <string name="common_type">Typ</string>
+    <string name="provider_api_type">API-Typ</string>
     <string name="common_key">Schlüssel</string>
     <string name="common_value">Wert</string>
     <string name="common_auto">Automatisch</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">Dieser Modellanbieter hat bereits ein Modell mit dieser ID.</string>
     <string name="model_options_title">Modelloptionen</string>
     <string name="model_tools_hint">Integrierte Tools, die dieses Sprachmodell unterstützt, werden in der Modell-API-Anfrage mitgesendet.</string>
-    <string name="send_thinking_content_back_hint">Automatisch sendet früheres Denken nur in Chats mit Tool-Aufrufen zurück. An sendet es immer zurück; Aus niemals.</string>
+    <string name="send_thinking_content_back_hint">Automatisch sendet früheres Denken nur in Chats mit Tool-Aufrufen zurück. An sendet es immer zurück. Aus niemals.</string>
     <string name="common_default">Standard</string>
     <string name="mcp_required_parameter_default_needed">Lege einen Standardwert fest, bevor du dieses erforderliche Parameter deaktivierst.</string>
     <string name="model_tools_editor_hint">Wähle Standardtools aus, füge eigene Toolnamen hinzu und aktiviere oder deaktiviere einzelne Tools.</string>
@@ -443,7 +444,7 @@
     <string name="new_provider_group">Neue Modellanbieter-Gruppe</string>
     <string name="provider_group_name">Gruppenname</string>
     <string name="provider_group_name_required">Der Gruppenname ist erforderlich.</string>
-    <string name="delete_provider_group_message">Diese Modellanbieter-Gruppe löschen? Ihre Modellanbieter wandern zurück zum Stamm der Modellanbieter; sie werden nicht gelöscht.</string>
+    <string name="delete_provider_group_message">Diese Modellanbieter-Gruppe löschen? Ihre Modellanbieter wandern zurück zum Stamm der Modellanbieter. Sie werden nicht gelöscht.</string>
     <string name="move_to_group">In Gruppe verschieben</string>
     <string name="ungrouped">Keine Gruppe</string>
     <string name="provider_count">%1$d Modellanbieter</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Automatisch zusammenfassen, wenn der Kontext sich füllt</string>
     <string name="settings_auto_summary_threshold">Automatisch bei %1$d%% des Kontexts zusammenfassen</string>
     <string name="settings_conversations">Unterhaltungen</string>
-    <string name="settings_continue_last_chat">Letzte Unterhaltung fortsetzen</string>
+    <string name="settings_continue_last_chat">Letzte Sitzung wiederherstellen</string>
     <string name="settings_continue_last_chat_description">Beim Start die letzte Unterhaltung öffnen.</string>
     <string name="settings_persist_selected_model">Modell pro Unterhaltung merken</string>
     <string name="settings_persist_selected_model_description">Beim Zurückkehren das ausgewählte Modell des jeweiligen Chats verwenden</string>
@@ -669,15 +670,15 @@
     <string name="mcp_attachments_classic_description">Sendet jeden aktivierten MCP-Tool mit jeder Anfrage.</string>
     <string name="mcp_attachments_include_description">Tool-Beschreibungen einschließen</string>
     <string name="mcp_attachments_include_description_summary">Aus: Beschreibungen werden bei vorher angehängten MCP-Tools weggelassen, das verkleinert die Anfrage. Der detaillierte Parameter von connect_mcps steuert die Beschreibungen für Bedarf-MCPs.</string>
-    <string name="mcp_attachments_dynamic_description">Das Modell erhält list_mcps und connect_mcps und verbindet MCP-Server nur, wenn es sie braucht. Dynamisch gilt, sobald beide Mindestwerte unten erreicht sind; bis dahin werden MCPs klassisch gesendet. Das Einschließen von Tool-Beschreibungen gilt für klassisch angehängte MCPs; für Bedarf-MCPs nutzt connect_mcps seinen detaillierten Parameter.</string>
+    <string name="mcp_attachments_dynamic_description">Das Modell erhält list_mcps und connect_mcps und verbindet MCP-Server nur, wenn es sie braucht. Dynamisch gilt, sobald beide Mindestwerte unten erreicht sind. Bis dahin werden MCPs klassisch gesendet. Das Einschließen von Tool-Beschreibungen gilt für klassisch angehängte MCPs. Für Bedarf-MCPs nutzt connect_mcps seinen detaillierten Parameter.</string>
     <string name="mcp_attachments_min_mcps">Mindestanzahl an MCP-Servern</string>
     <string name="mcp_attachments_min_mcps_hint">Standard ist %1$d. 0 wendet Dynamisch auf jede Anzahl von MCPs an.</string>
     <string name="mcp_attachments_min_tools">Mindestanzahl an MCP-Tools</string>
     <string name="mcp_attachments_min_tools_hint">Standard ist %1$d. 0 ignoriert die Anzahl der Tools.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Strategie bei Bedarf</string>
-    <string name="mcp_attachments_strategy_overflow">Erste Server anhängen; den Rest bei Bedarf laden</string>
+    <string name="mcp_attachments_strategy_overflow">Anfangs + bei Bedarf</string>
     <string name="mcp_attachments_strategy_all">Alle Server bei Bedarf laden</string>
-    <string name="mcp_attachments_strategy_overflow_description">Der Overflow-Modus behält die wenigen MCPs unter dem Mindestwert klassisch angehängt; der Rest wird bei Bedarf geladen.</string>
+    <string name="mcp_attachments_strategy_overflow_description">Der Overflow-Modus behält die wenigen MCPs unter dem Mindestwert klassisch angehängt. Der Rest wird bei Bedarf geladen.</string>
     <string name="mcp_attachments_strategy_all_description">Der Modus All lädt jeden MCP bei Bedarf.</string>
     <string name="mcp_attachments_list_limit">Maximale Anzahl der von list_mcps zurückgegebenen Server</string>
     <string name="mcp_attachments_load_limit">Maximale Anzahl der verbundenen MCP-Server</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">Erkannte mathematische Formeln automatisch darstellen, während Beträge als einfacher Text bleiben.</string>
     <string name="settings_latex_disabled">Deaktiviert</string>
     <string name="settings_latex_auto_detect">Automatisch erkennen</string>
-    <string name="settings_developer">Entwickler</string>
+    <string name="settings_developer">Entwickleroptionen</string>
     <string name="settings_debug_logs">Debug-Protokollierung aktivieren</string>
     <string name="settings_debug_logs_description">Tokenverbrauch, Anfragedetails und Netzwerkaktivität im Debug-Panel anzeigen.</string>
-    <string name="settings_debug_log_scope">Protokollkategorien</string>
+    <string name="settings_debug_log_scope">Logquellen</string>
     <string name="settings_debug_log_scope_description">Wähle, welche Protokollarten das Debug-Panel aufzeichnet.</string>
     <string name="debug_log_category_network">Netzwerk</string>
-    <string name="debug_log_category_payload">Nutzdaten</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">Fehler</string>
+    <string name="debug_log_category_system">System</string>
+    <string name="settings_debug_log_level">Minimale Protokollstufe</string>
+
     <string name="debug_log_title">Debug-Protokolle</string>
+    <string name="debug_log_disable">Debug-Protokolle deaktivieren</string>
     <string name="debug_log_toggle">Debug-Protokolle ein- oder ausblenden</string>
     <string name="debug_log_copy_entry">Dieses Protokoll kopieren</string>
     <string name="debug_log_copy_all">Alle Protokolle kopieren</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Grundinformationen</string>
     <string name="remote_machine_connection_section">Verbindung</string>
     <string name="remote_machine_sftp_section_help">Die Aktion Dateien im Menü dieser Maschine durchsucht diesen Ordner über SFTP. Die Sitzung startet erst bei Bedarf.</string>
-    <string name="remote_machine_sftp_directory_help">Stammordner für Dateien. Standard ist $HOME; ~ und absolute Pfade werden ebenfalls unterstützt.</string>
+    <string name="remote_machine_sftp_directory_help">Stammordner für Dateien. Standard ist $HOME. ~ und absolute Pfade werden ebenfalls unterstützt.</string>
     <string name="remote_machine_start_port_forward">Portweiterleitung starten</string>
     <string name="remote_machine_port_forward_started">Portweiterleitung gestartet. Offene Terminals verwenden diese Verbindung erneut.</string>
     <string name="remote_machine_type_label">Maschinentyp</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Pfad zum privaten Schlüssel oder Name eines in den Remote-Einstellungen hochgeladenen Schlüssels. Der Schlüssel selbst wird nie in der Maschine gespeichert. Leer lassen, wenn keiner benötigt wird.</string>
     <string name="remote_machine_no_uploaded_keys">Noch keine Schlüssel hochgeladen</string>
     <string name="remote_machine_ssh_keys">SSH-Schlüssel</string>
-    <string name="remote_machine_ssh_keys_help">Lade einen privaten Schlüssel einmal hoch und verwende ihn über IdentityFile für mehrere Maschinen. Google Cloud Shell benötigt außerdem den passenden öffentlichen Schlüssel (.pub); lade ihn über die Schaltfläche bei jedem Schlüssel hoch.</string>
+    <string name="remote_machine_ssh_keys_help">Lade einen privaten Schlüssel einmal hoch und verwende ihn über IdentityFile für mehrere Maschinen. Google Cloud Shell benötigt außerdem den passenden öffentlichen Schlüssel (.pub). Lade ihn über die Schaltfläche bei jedem Schlüssel hoch.</string>
     <string name="remote_machine_upload_ssh_key">SSH-Schlüsseldatei hochladen</string>
     <string name="remote_machine_upload_public_key">Öffentlichen Schlüssel hochladen</string>
     <string name="remote_machine_public_key_uploaded">Öffentlicher Schlüssel hochgeladen</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Schritt %1$d bearbeiten</string>
     <string name="media_chain_endpoint_help">Anbieterrelativer Pfad oder HTTP(S)-URL. Unterstützt {{model}} und Werte früherer Schritte.</string>
     <string name="media_chain_headers_json_invalid">Gib ein gültiges JSON-Objekt mit Textwerten für die Header ein.</string>
-    <string name="media_chain_headers_help">JSON-Objekt. Unterstützt Variablen; die konfigurierte Anbieterauthentifizierung wird automatisch verwendet.</string>
+    <string name="media_chain_headers_help">JSON-Objekt. Unterstützt Variablen. Die konfigurierte Anbieterauthentifizierung wird automatisch verwendet.</string>
     <string name="media_chain_custom_content_type_help">Optionale MIME-Typ-Überschreibung. Leer lassen für die automatische Auswahl.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">Datei</string>
@@ -964,7 +966,7 @@
     <string name="speech_voice_instructions_help">Ton, Akzent, Emotion%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini liefert PCM-Audio, das zur Wiedergabe in WAV umgewandelt wird.</string>
     <string name="speech_json_invalid_hint">Gib ein gültiges JSON-Objekt ein.</string>
-    <string name="speech_provider_parameters_help">Anbieterspezifische Parameter; Modell, Text und Stimme verwenden die obigen Felder.</string>
+    <string name="speech_provider_parameters_help">Anbieterspezifische Parameter. Modell, Text und Stimme verwenden die obigen Felder.</string>
     <string name="speech_api_key_help">Leer lassen, um die Authentifizierung des Anbieters zu verwenden.</string>
     <string name="model_stream_settings_description">Leer lassen, um API-Standards zu verwenden. Diese Einstellungen gelten nur für dieses Modell bei diesem Anbieter.</string>
     <string name="model_temperature_invalid">Gib eine Zahl von 0 bis %1$s ein oder lasse das Feld leer.</string>
@@ -1104,4 +1106,20 @@
     <string name="customization_input_blur">Hintergrundunschärfe</string>
     <string name="customization_input_blur_description">Den Chat hinter dem Eingabebereich ab Android 12 weichzeichnen. Text und Schaltflächen bleiben scharf.</string>
     <string name="settings_website">Website</string>
+    <string name="app_menu_default_options">Konfiguration</string>
+    <string name="app_menu_builtin_tools">Integrierte Werkzeuge</string>
+    <string name="app_menu_language_providers">Anbieter von Sprachmodellen</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Sprachsynthesedienste</string>
+    <string name="app_menu_remote_servers">Remote-Dienste</string>
+    <string name="app_menu_media_management">Medienverwaltung</string>
+    <string name="app_menu_icons_management">Symbolverwaltung</string>
+    <string name="app_menu_settings">Einstellungen</string>
+    <string name="app_menu_data">Daten</string>
+    <string name="app_menu_about">Über die App</string>
+    <string name="mcp_attachments_limits">On-Demand-Grenzwerte</string>
+    <string name="tool_settings_tab_media">Medien</string>
+    <string name="tool_settings_tab_others">Andere</string>
+    <string name="media_profile_require_model">Modell erforderlich</string>
+    <string name="media_chain_test_no_model_note">Testanfragen können Kosten verursachen. Dateieingaben sind hier nicht verfügbar.</string>
 </resources>

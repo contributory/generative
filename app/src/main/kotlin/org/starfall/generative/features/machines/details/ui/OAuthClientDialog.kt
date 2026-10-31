@@ -54,6 +54,7 @@ internal fun OAuthClientDialog(
                 }
             }
         },
+        confirmAtRight = true,
         confirmButton = {
             Button(
                 enabled = name.isNotBlank() && clientId.isNotBlank(),
@@ -62,6 +63,6 @@ internal fun OAuthClientDialog(
                 Text(stringResource(R.string.common_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) } }
     )
 }

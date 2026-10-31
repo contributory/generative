@@ -61,7 +61,7 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
             contentEnd.boundsInRoot.bottom.toFloat() - viewport.boundsInRoot.bottom
         } else {
             // LazyColumn cannot measure virtualized history exactly. Use its native estimate,
-            // excluding trailing list padding (including the 30% gap). The readable viewport
+            // excluding trailing list padding (including the 21% gap). The readable viewport
             // ends above the composer.
             val indicator = listState.scrollIndicatorState ?: return@derivedStateOf false
             val composerInset = screenHeight - layout.beforeContentPadding - viewport.height
@@ -141,7 +141,7 @@ internal fun chatMessageTurns(messages: List<StoredMessage>): List<List<StoredMe
 
 /** Declarative allowance, independent of child content, streaming status and renderer readiness. */
 internal fun chatBottomGap(screenHeight: Dp, usableHeight: Dp): Dp =
-    (screenHeight.coerceAtLeast(0.dp) * 0.30f).coerceAtMost(usableHeight.coerceAtLeast(0.dp))
+    (screenHeight.coerceAtLeast(0.dp) * 0.21f).coerceAtMost(usableHeight.coerceAtLeast(0.dp))
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

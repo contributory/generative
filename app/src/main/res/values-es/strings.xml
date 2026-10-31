@@ -89,6 +89,7 @@
     <string name="common_copy">Copiar</string>
     <string name="common_name">Nombre</string>
     <string name="common_type">Tipo</string>
+    <string name="provider_api_type">Tipo de API</string>
     <string name="common_key">Clave</string>
     <string name="common_value">Valor</string>
     <string name="common_auto">Automático</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">Este proveedor de modelos ya tiene un modelo con ese ID.</string>
     <string name="model_options_title">Opciones del modelo</string>
     <string name="model_tools_hint">Las herramientas integradas compatibles con este modelo de lenguaje se envían con la petición a la API del modelo.</string>
-    <string name="send_thinking_content_back_hint">Automático solo reenvía el razonamiento anterior en chats con llamadas a herramientas. Siempre lo reenvía siempre; Nunca no lo reenvía nunca.</string>
+    <string name="send_thinking_content_back_hint">Automático solo reenvía el razonamiento anterior en chats con llamadas a herramientas. Siempre lo reenvía siempre. Nunca no lo reenvía nunca.</string>
     <string name="common_default">Predeterminado</string>
     <string name="mcp_required_parameter_default_needed">Define un valor predeterminado antes de desactivar este parámetro obligatorio.</string>
     <string name="model_tools_editor_hint">Selecciona las herramientas predeterminadas, añade nombres de herramientas personalizadas y activa o desactiva herramientas individuales.</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Resumir automáticamente cuando se llene el contexto</string>
     <string name="settings_auto_summary_threshold">Resumir automáticamente al %1$d%% del contexto</string>
     <string name="settings_conversations">Conversaciones</string>
-    <string name="settings_continue_last_chat">Continuar la última conversación</string>
+    <string name="settings_continue_last_chat">Restaurar la última sesión</string>
     <string name="settings_continue_last_chat_description">Abrir la conversación más reciente al iniciar.</string>
     <string name="settings_persist_selected_model">Recordar el modelo por conversación</string>
     <string name="settings_persist_selected_model_description">Usar el modelo seleccionado de cada conversación al volver a ella</string>
@@ -669,13 +670,13 @@
     <string name="mcp_attachments_classic_description">Envía cada herramienta MCP activada en cada petición.</string>
     <string name="mcp_attachments_include_description">Incluir las descripciones de las herramientas</string>
     <string name="mcp_attachments_include_description_summary">Desactivado: se omiten las descripciones de los MCP adjuntos anteriormente, lo que reduce la petición. El parámetro detallado de connect_mcps controla las descripciones de los MCP bajo demanda.</string>
-    <string name="mcp_attachments_dynamic_description">El modelo recibe list_mcps y connect_mcps, y solo conecta servidores MCP cuando los necesita. El modo bajo demanda se aplica en cuanto se alcanzan los dos mínimos indicados; hasta entonces, los MCP se envían de forma clásica. Incluir descripciones de herramientas se aplica a los MCP adjuntos de forma clásica; para los MCP bajo demanda, connect_mcps usa su parámetro detallado.</string>
+    <string name="mcp_attachments_dynamic_description">El modelo recibe list_mcps y connect_mcps, y solo conecta servidores MCP cuando los necesita. El modo bajo demanda se aplica en cuanto se alcanzan los dos mínimos indicados. Hasta entonces, los MCP se envían de forma clásica. Incluir descripciones de herramientas se aplica a los MCP adjuntos de forma clásica. Para los MCP bajo demanda, connect_mcps usa su parámetro detallado.</string>
     <string name="mcp_attachments_min_mcps">Número mínimo de servidores MCP</string>
     <string name="mcp_attachments_min_mcps_hint">El valor predeterminado es %1$d. 0 aplica el modo bajo demanda a cualquier número de MCP.</string>
     <string name="mcp_attachments_min_tools">Número mínimo de herramientas MCP</string>
     <string name="mcp_attachments_min_tools_hint">El valor predeterminado es %1$d. 0 ignora el número de herramientas.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Estrategia bajo demanda</string>
-    <string name="mcp_attachments_strategy_overflow">Adjuntar los primeros servidores; cargar el resto bajo demanda</string>
+    <string name="mcp_attachments_strategy_overflow">Iniciales + bajo demanda</string>
     <string name="mcp_attachments_strategy_all">Cargar todos los servidores bajo demanda</string>
     <string name="mcp_attachments_strategy_overflow_description">El modo de desbordamiento mantiene adjuntos de forma clásica los MCP que están por debajo del mínimo y carga el resto bajo demanda.</string>
     <string name="mcp_attachments_strategy_all_description">El modo de todos carga cada MCP bajo demanda.</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">Representar automáticamente las fórmulas matemáticas detectadas, dejando los importes como texto simple.</string>
     <string name="settings_latex_disabled">Desactivado</string>
     <string name="settings_latex_auto_detect">Detección automática</string>
-    <string name="settings_developer">Desarrollador</string>
+    <string name="settings_developer">Opciones de desarrollador</string>
     <string name="settings_debug_logs">Activar el registro de depuración</string>
     <string name="settings_debug_logs_description">Mostrar el consumo de tokens, los detalles de las peticiones y la actividad de red en el panel de depuración.</string>
-    <string name="settings_debug_log_scope">Categorías del registro</string>
+    <string name="settings_debug_log_scope">Fuentes de registro</string>
     <string name="settings_debug_log_scope_description">Elige qué tipos de registro guarda el panel de depuración.</string>
     <string name="debug_log_category_network">Red</string>
-    <string name="debug_log_category_payload">Carga útil</string>
-    <string name="debug_log_category_tokens">Tokens</string>
-    <string name="debug_log_category_errors">Errores</string>
+    <string name="debug_log_category_system">Sistema</string>
+    <string name="settings_debug_log_level">Nivel mínimo de registro</string>
+
     <string name="debug_log_title">Registros de depuración</string>
+    <string name="debug_log_disable">Desactivar registros de depuración</string>
     <string name="debug_log_toggle">Mostrar u ocultar los registros de depuración</string>
     <string name="debug_log_copy_entry">Copiar este registro</string>
     <string name="debug_log_copy_all">Copiar todos los registros</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Información general</string>
     <string name="remote_machine_connection_section">Conexión</string>
     <string name="remote_machine_sftp_section_help">La acción Buscar archivos del menú de esta máquina explora esa carpeta mediante SFTP. La sesión solo se inicia cuando hace falta.</string>
-    <string name="remote_machine_sftp_directory_help">Carpeta raíz de los archivos. El valor predeterminado es $HOME; ~ y las rutas absolutas también son compatibles.</string>
+    <string name="remote_machine_sftp_directory_help">Carpeta raíz de los archivos. El valor predeterminado es $HOME. ~ y las rutas absolutas también son compatibles.</string>
     <string name="remote_machine_start_port_forward">Iniciar la redirección de puertos</string>
     <string name="remote_machine_port_forward_started">Redirección de puertos iniciada. Los terminales abiertos reutilizan esta conexión.</string>
     <string name="remote_machine_type_label">Tipo de máquina</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Ruta de la clave privada o nombre de una clave subida en los ajustes remotos. La clave nunca se guarda en la máquina. Déjalo vacío si no hace falta ninguna clave.</string>
     <string name="remote_machine_no_uploaded_keys">No hay claves subidas</string>
     <string name="remote_machine_ssh_keys">Claves SSH</string>
-    <string name="remote_machine_ssh_keys_help">Sube una clave privada una vez y reutilízala mediante IdentityFile en varias máquinas. Google Cloud Shell también necesita la clave pública correspondiente (.pub); súbela con el botón de cada clave.</string>
+    <string name="remote_machine_ssh_keys_help">Sube una clave privada una vez y reutilízala mediante IdentityFile en varias máquinas. Google Cloud Shell también necesita la clave pública correspondiente (.pub). Súbela con el botón de cada clave.</string>
     <string name="remote_machine_upload_ssh_key">Subir un archivo de clave SSH</string>
     <string name="remote_machine_upload_public_key">Subir la clave pública</string>
     <string name="remote_machine_public_key_uploaded">Clave pública subida</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Editar el paso %1$d</string>
     <string name="media_chain_endpoint_help">Ruta relativa al proveedor o URL HTTP(S). Admite {{model}} y valores de pasos anteriores.</string>
     <string name="media_chain_headers_json_invalid">Introduce un objeto JSON válido con valores de texto para las cabeceras.</string>
-    <string name="media_chain_headers_help">Objeto JSON. Admite variables; la autenticación configurada del proveedor se usa automáticamente.</string>
+    <string name="media_chain_headers_help">Objeto JSON. Admite variables. La autenticación configurada del proveedor se usa automáticamente.</string>
     <string name="media_chain_custom_content_type_help">Sustitución opcional del tipo MIME. Déjalo vacío para la selección automática.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">Archivo</string>
@@ -964,7 +966,7 @@
     <string name="speech_voice_instructions_help">Tono, acento, emoción%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini devuelve audio PCM que se convierte a WAV para la reproducción.</string>
     <string name="speech_json_invalid_hint">Introduce un objeto JSON válido.</string>
-    <string name="speech_provider_parameters_help">Parámetros específicos del proveedor; el modelo, el texto y la voz usan los campos anteriores.</string>
+    <string name="speech_provider_parameters_help">Parámetros específicos del proveedor. El modelo, el texto y la voz usan los campos anteriores.</string>
     <string name="speech_api_key_help">Déjalo vacío para usar la autenticación del proveedor.</string>
     <string name="model_stream_settings_description">Déjalo vacío para usar los valores predeterminados de la API. Estos ajustes solo se aplican a este modelo en este proveedor.</string>
     <string name="model_temperature_invalid">Introduce un número entre 0 y %1$s, o deja el campo vacío.</string>
@@ -1104,4 +1106,20 @@
     <string name="customization_input_blur">Desenfoque del fondo</string>
     <string name="customization_input_blur_description">Desenfoca el chat detrás del área de entrada en Android 12 y versiones posteriores. El texto y los botones se mantienen nítidos.</string>
     <string name="settings_website">Sitio web</string>
+    <string name="app_menu_default_options">Configuración</string>
+    <string name="app_menu_builtin_tools">Herramientas integradas</string>
+    <string name="app_menu_language_providers">Proveedores de modelos de lenguaje</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Servicios de síntesis de voz</string>
+    <string name="app_menu_remote_servers">Servicios remotos</string>
+    <string name="app_menu_media_management">Gestión de medios</string>
+    <string name="app_menu_icons_management">Gestión de iconos</string>
+    <string name="app_menu_settings">Ajustes</string>
+    <string name="app_menu_data">Datos</string>
+    <string name="app_menu_about">Acerca de</string>
+    <string name="mcp_attachments_limits">Límites bajo demanda</string>
+    <string name="tool_settings_tab_media">Medios</string>
+    <string name="tool_settings_tab_others">Otros</string>
+    <string name="media_profile_require_model">Requiere modelo</string>
+    <string name="media_chain_test_no_model_note">Las pruebas pueden generar cargos. Aquí no se admiten archivos de entrada.</string>
 </resources>

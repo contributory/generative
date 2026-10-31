@@ -75,7 +75,6 @@ fun AboutScreen(modifier: Modifier = Modifier, contentPadding: PaddingValues = P
                     Text(stringResource(R.string.settings_version, versionName, versionCode), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(stringResource(R.string.settings_universal_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         UpdateSection()
         AboutNavigationItem(stringResource(R.string.settings_website), "starfall-org.github.io/generative", Icons.Outlined.Language) {

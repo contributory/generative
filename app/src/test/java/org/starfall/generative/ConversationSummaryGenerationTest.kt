@@ -108,7 +108,7 @@ class ConversationSummaryGenerationTest {
         var call: Call? = null
         generateConversationSummary(conversation, model, "", ConversationSummaryRequest(10_000),
             complete = { messages, prompt, output -> call = Call(messages, prompt, output); "summary" })
-        val exactWindow = (call!!.inputTokens + call!!.output).toInt()
+        val exactWindow = (call!!.inputTokens + call.output).toInt()
         var completions = 0
         generateConversationSummary(conversation, model.copy(contextWindowTokens = exactWindow), "",
             ConversationSummaryRequest(10_000), complete = { _, _, _ -> completions++; "summary" })

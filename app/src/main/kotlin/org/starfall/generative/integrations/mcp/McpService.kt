@@ -46,6 +46,8 @@ import org.starfall.generative.shared.model.auth.CredentialLoadState
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.resolvedUrl
 import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.model.logging.DebugLogCategory
 
 /** MCP client backed by the official Model Context Protocol Kotlin SDK. */
 class McpService(
@@ -116,6 +118,8 @@ class McpSession(
     }
 
     private suspend fun connect(legacy: Boolean) {
+        val logId = DebugLog.beginOperation(DebugLogCategory.NETWORK, "MCP",
+            "Connecting to ${info.name}", "transport=${if (legacy) "SSE" else "Streamable HTTP"}")
         val ktor = HttpClient(CIO) {
             install(SSE)
             install(org.starfall.generative.shared.logging.DebugLogKtorPlugin)
@@ -145,7 +149,10 @@ class McpSession(
             mcpClient.connect(negotiatedTransport)
             httpClient = ktor
             client = mcpClient
+            DebugLog.finishOperation(logId, "Connected to ${info.name}")
         } catch (error: Throwable) {
+            DebugLog.finishOperation(logId, "MCP connection failed", failed = true,
+                details = error::class.java.simpleName, error = error)
             runCatching { mcpClient.close() }
             ktor.close()
             throw error
@@ -200,6 +207,9 @@ class McpSession(
             cursor = page.nextCursor
             check(cursor == null || seen.add(cursor)) { "MCP repeated a tools page" }
         } while (!cursor.isNullOrEmpty())
+        DebugLog.log(DebugLogCategory.NETWORK, "MCP tools") {
+            "${info.name}: discovered ${result.size} tools"
+        }
         return result
     }
 
@@ -215,24 +225,36 @@ class McpSession(
     }
 
     suspend fun call(name: String, arguments: JsonObject): JsonObject {
-        if (needsReconnect) {
-            close()
-            initialize()
-        }
-        val mcp = client ?: error("MCP session is not connected")
-        val result = try {
-            mcp.callTool(name, arguments.mapValues { it.value.toAny() })
+        val logId = DebugLog.beginOperation(DebugLogCategory.NETWORK, "MCP tool",
+            "${info.name} / $name", "argumentFields=${arguments.size}")
+        try {
+            if (needsReconnect) {
+                close()
+                initialize()
+            }
+            val mcp = client ?: error("MCP session is not connected")
+            val result = try {
+                mcp.callTool(name, arguments.mapValues { it.value.toAny() })
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                // Never replay an action which may already have produced side effects.
+                needsReconnect = generateSequence<Throwable>(error) { it.cause }
+                    .filterIsInstance<StreamableHttpError>().any { it.code == 404 }
+                throw error
+            }
+            val raw = Json.encodeToString(CallToolResult.serializer(), result)
+            val sanitized = http.files?.sanitize(StringReader(raw)) ?: raw
+            val value = Json.parseToJsonElement(sanitized).jsonObject
+            DebugLog.finishOperation(logId, "MCP tool completed", details = "responseCharacters=${sanitized.length}")
+            return value
         } catch (error: Exception) {
-            if (error is CancellationException) throw error
-            // A missing HTTP session requires a new handshake for the next call.
-            // Never replay the failed tool: it may already have produced side effects.
-            needsReconnect = generateSequence<Throwable>(error) { it.cause }
-                .filterIsInstance<StreamableHttpError>().any { it.code == 404 }
+            DebugLog.finishOperation(logId,
+                if (error is CancellationException) "MCP tool canceled" else "MCP tool failed",
+                failed = error !is CancellationException,
+                details = error::class.java.simpleName,
+                error = error.takeUnless { it is CancellationException })
             throw error
         }
-        val raw = Json.encodeToString(CallToolResult.serializer(), result)
-        val sanitized = http.files?.sanitize(StringReader(raw)) ?: raw
-        return Json.parseToJsonElement(sanitized).jsonObject
     }
 
     suspend fun close() = withContext(NonCancellable) {

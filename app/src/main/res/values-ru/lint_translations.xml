@@ -41,7 +41,7 @@
         <item quantity="other">%d модели TTS</item>
     </plurals>
     <string name="customization_title">Персонализация</string>
-    <string name="customization_enable">Включить персонализацию</string>
+    <string name="customization_enable">Включить</string>
     <string name="customization_description">Цвета, прозрачность элементов, фото профиля и фоновые изображения</string>
     <string name="customization_backgrounds_title">Фоновые изображения</string>
     <string name="user_profile_background_preview_sample">Пример содержимого с фоновым изображением</string>

@@ -3,6 +3,7 @@ package org.starfall.generative.features.home.chat.logic.tool
 import org.starfall.generative.shared.model.resolveMediaProfile
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
 import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.features.home.shared.logic.prepareToolResult
 import org.starfall.generative.features.home.shared.logic.ToolSummary
 
@@ -96,12 +97,12 @@ internal fun imageToolPreviewRatio(
     val args = runCatching { Json.parseToJsonElement(rawArguments) as? JsonObject }.getOrNull() ?: obj()
     val config = toolSettings.system["generate_image"] ?: return imagePreviewAspectRatio(args)
     val provider = providers.firstOrNull { it.id == config.providerId }
-        ?: return imagePreviewAspectRatio(args)
-    val profile = toolSettings.resolveMediaProfile(false, provider.config.modelConfigs[config.modelId])
+    val profile = toolSettings.resolveMediaProfile(false, provider?.config?.modelConfigs?.get(config.modelId))
+    if (provider == null && !profile.modelIndependent) return imagePreviewAspectRatio(args)
     val defaults = if (profile.id == org.starfall.generative.shared.model.media.DEFAULT_IMAGE_GEN_PROFILE_ID &&
         profile.options.isEmpty()) config.imageOptions else profile.options
     val effective = if (profile.mode == MediaGenerationMode.DEFAULT) {
-        configuredMediaOptions("generate_image", provider, config.modelId, defaults, args,
+        configuredMediaOptions("generate_image", requireNotNull(provider), config.modelId, defaults, args,
             effectiveMediaDisabledParams(profile, "generate_image", config.disabledParams))
     } else defaults
     return imagePreviewAspectRatio(effective) ?: if (profile.mode == MediaGenerationMode.CUSTOM) {
@@ -644,20 +645,22 @@ class ToolChatViewModel internal constructor(
                         } else {
                             val cfg = settings().system[name] ?: error("System tool is not configured")
                             check(cfg.enabled) { "System tool disabled" }
-                            val mediaProvider = aiService.resolveProvider(providers.find { it.id == cfg.providerId }
-                                ?: error("Select a provider for this system tool"))
-                             val kind = if (name == "generate_image") {
-                                ModelType.IMAGE_GENERATION
-                            } else {
-                                ModelType.VIDEO_GENERATION
+                            val configuredProvider = providers.find { it.id == cfg.providerId }
+                            val mediaModel = configuredProvider?.config?.modelConfigs?.get(cfg.modelId)
+                            val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
+                            val independent = profile.modelIndependent
+                            val mediaProvider = if (independent) null else aiService.resolveProvider(
+                                configuredProvider ?: error("Select a provider for this system tool")
+                            )
+                            val kind = if (name == "generate_image") ModelType.IMAGE_GENERATION
+                                else ModelType.VIDEO_GENERATION
+                            if (!independent) {
+                                val selected = requireNotNull(mediaProvider)
+                                check(selected.config.modelConfigs[cfg.modelId]?.modelType == kind &&
+                                    selected.config.modelIds?.contains(cfg.modelId) != false
+                                ) { "Select an available media model in Feature Tools" }
                             }
-                             check(
-                                mediaProvider.config.modelConfigs[cfg.modelId]?.modelType == kind &&
-                                    mediaProvider.config.modelIds?.contains(cfg.modelId) != false
-                             ) { "Select an available media model in Feature Tools" }
-                             val mediaModel = mediaProvider.config.modelConfigs[cfg.modelId]
-                             val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
-                             val generationMode = profile.mode
+                            val generationMode = profile.mode
                              val builtIn = profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id
                              val effectiveDisabled = org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams(
                                  profile, name, cfg.disabledParams
@@ -665,15 +668,21 @@ class ToolChatViewModel internal constructor(
                              val effectiveOptions = if (builtIn && profile.options.isEmpty()) {
                                  if (name == "generate_image") cfg.imageOptions else cfg.videoOptions
                              } else profile.options
-                             mediaGeneration.executeConfiguredTool(
+                            mediaGeneration.executeConfiguredTool(
                                 name = name,
                                 provider = mediaProvider,
-                                model = cfg.modelId,
+                                model = if (independent) "" else cfg.modelId,
                                 prompt = args.text("prompt"),
-                                imageOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, if (name == "generate_image") effectiveOptions else cfg.imageOptions, args, effectiveDisabled),
+                                imageOptions = if (independent) effectiveOptions else configuredMediaOptions(
+                                    name, requireNotNull(mediaProvider), cfg.modelId,
+                                    if (name == "generate_image") effectiveOptions else cfg.imageOptions, args, effectiveDisabled
+                                ),
                                 inputImage = if ("input_image" in effectiveDisabled) null else mediaInputImageArgument(args),
                                 inputImages = if ("input_images" in effectiveDisabled) emptyList() else mediaInputImagesArgument(args),
-                                videoOptions = configuredMediaOptions(name, mediaProvider, cfg.modelId, if (name == "generate_video") effectiveOptions else cfg.videoOptions, args, effectiveDisabled),
+                                videoOptions = if (independent) effectiveOptions else configuredMediaOptions(
+                                    name, requireNotNull(mediaProvider), cfg.modelId,
+                                    if (name == "generate_video") effectiveOptions else cfg.videoOptions, args, effectiveDisabled
+                                ),
                                 inputImageUrl = if ("input_image_url" in effectiveDisabled) null else mediaInputImageUrlArgument(args),
                                 inputVideo = if ("input_video" in effectiveDisabled) null else mediaInputVideoArgument(args),
                                 inputVideoUrl = if ("input_video_url" in effectiveDisabled) null else mediaInputVideoUrlArgument(args),

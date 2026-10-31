@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -241,10 +243,12 @@ internal fun WebSocketProxyDialog(
         buttons = {
             if (initial != null) {
                 TextButton(onClick = { onSave(null) }) {
+                    SharedIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error)
                 }
             }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
             Button(onClick = {
                 runCatching {
                     val headers = headersText.lineSequence().mapNotNull { line ->

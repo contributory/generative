@@ -51,4 +51,51 @@ class MediaGenProfileSelectionTest {
         assertEquals(MediaGenerationMode.CUSTOM,
             Json.decodeFromString<MediaRequestProfile>("""{"id":"legacy","name":"Old"}""").mode)
     }
+    @Test fun independentCustomSelectionClearsModelAndNeverOverridesModelMetadata() {
+        for (video in listOf(false, true)) {
+            val custom = MediaRequestProfile("standalone", "Standalone", requiresModel = false)
+            val required = MediaRequestProfile("bound", "Bound")
+            val configured = SystemToolConfig(providerId = "provider", modelId = "media-model")
+                .withMediaProfiles(video, mapOf(custom.id to custom, required.id to required))
+            val standalone = configured.selectMediaProfile(video, custom)
+            assertEquals("", standalone.providerId)
+            assertEquals("", standalone.modelId)
+            assertEquals(custom.id, standalone.selectedMediaProfile(video, null).id)
+            assertEquals(MediaGenerationMode.CUSTOM, standalone.selectedMediaProfile(video, null).mode)
+            val settings = ToolSettings(system = mapOf(
+                (if (video) "generate_video" else "generate_image") to standalone
+            ))
+            assertEquals(custom.id, settings.resolveMediaProfile(video, null).id)
+            assertEquals(DEFAULT_IMAGE_GEN_PROFILE_ID.takeUnless { video } ?: DEFAULT_VIDEO_GEN_PROFILE_ID,
+                settings.resolveMediaProfile(video, ModelConfiguration(mediaRequestProfileId = custom.id)).id)
+            assertEquals(required.id,
+                settings.resolveMediaProfile(video, ModelConfiguration(mediaRequestProfileId = required.id)).id)
+            val roundTrip = Json.decodeFromString<SystemToolConfig>(Json.encodeToString(standalone))
+            assertEquals(custom, roundTrip.mediaProfile(video, custom.id))
+            assertEquals("", roundTrip.modelId)
+            val pickedModel = standalone.selectMediaModel(video, "another", "another-model")
+            assertEquals("another", pickedModel.providerId)
+            assertEquals("another-model", pickedModel.modelId)
+            assertEquals(MediaGenerationMode.DEFAULT, pickedModel.selectedMediaProfile(video, null).mode)
+            assertEquals(if (video) DEFAULT_VIDEO_GEN_PROFILE_ID else DEFAULT_IMAGE_GEN_PROFILE_ID,
+                if (video) pickedModel.activeVideoRequestProfileId else pickedModel.activeImageRequestProfileId)
+        }
+    }
+
+    @Test fun modelBoundSelectionRequiresModelAndLegacyProfilesRemainBound() {
+        val required = MediaRequestProfile("required", "Required")
+        val independent = required.copy(id = "standalone", requiresModel = false)
+        val empty = SystemToolConfig().withMediaProfiles(false, mapOf(required.id to required, independent.id to independent))
+        assertTrue(required.requiresModel)
+        assertFalse(independent.requiresModel)
+        assertThrows(IllegalArgumentException::class.java) { empty.selectMediaProfile(false, required) }
+        val configured = empty.selectMediaModel(false, "p", "image-model")
+        assertEquals(required.id, configured.selectMediaProfile(false, required).activeImageRequestProfileId)
+        val standalone = configured.selectMediaProfile(false, independent)
+        assertEquals(DEFAULT_IMAGE_GEN_PROFILE_ID,
+            standalone.withMediaProfiles(false, standalone.mediaProfiles(false) +
+                (independent.id to independent.copy(requiresModel = true))).activeImageRequestProfileId)
+        assertTrue(Json.decodeFromString<MediaRequestProfile>("""{"id":"old","name":"Old"}""").requiresModel)
+    }
+
 }

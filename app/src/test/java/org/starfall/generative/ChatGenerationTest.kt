@@ -162,7 +162,7 @@ class ChatGenerationTest {
         runner.awaitCompletion()
 
         assertEquals("Renamed while streaming", saved!!.title)
-        assertEquals("partial\nanswer", saved!!.messages.last().content)
+        assertEquals("partial\nanswer", saved.messages.last().content)
     }
 
     @Test fun streamCommitsAllAvailableCharactersInOneRenderWindow() = runBlocking {
@@ -302,7 +302,7 @@ class ChatGenerationTest {
         runner.stopAndJoin()
 
         assertEquals("visible", saved!!.messages.last().activeVersion.content)
-        assertTrue(saved!!.messages.last().activeVersion.generationInterrupted)
+        assertTrue(saved.messages.last().activeVersion.generationInterrupted)
     }
 
     @Test fun terminalFlushPublishesFinalShortCharacterChunkOnce() = runBlocking {
@@ -357,12 +357,12 @@ class ChatGenerationTest {
         assertFalse(runner.start(conversation().copy(id = "b"), "a1", flowOf("wrong")))
         runner.stopAndJoin()
         assertEquals("a", saved!!.id)
-        assertEquals("partial", saved!!.messages.last().content)
+        assertEquals("partial", saved.messages.last().content)
         assertNull(runner.error.value)
         assertFalse(runner.busy.value)
         assertTrue(runner.start(conversation().copy(id = "b"), "a1", flowOf("next")))
         runner.awaitCompletion()
-        assertEquals("next", saved!!.messages.last().content)
+        assertEquals("next", saved.messages.last().content)
     }
 
     @Test fun busyRemainsSetUntilCancelledResponseIsSaved() = runBlocking {
@@ -438,8 +438,8 @@ class ChatGenerationTest {
 
         runner.start(conversation(), "a1", flow { error("offline") })
         runner.awaitCompletion()
-        assertEquals(listOf("u1", "a1"), saved!!.messages.map { it.id })
-        assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
+        assertEquals(listOf("u1", "a1"), saved.messages.map { it.id })
+        assertEquals("offline", saved.messages.last().activeVersion.generationError)
     }
 
     @Test fun reasoningSurvivesStopAndCompletion() {
@@ -522,10 +522,10 @@ class ChatGenerationTest {
         runner.awaitCompletion()
 
         assertEquals(listOf("u1", "a1", "u2"), saved!!.messages.dropLast(1).map { it.id })
-        assertEquals(ChatRole.USER, saved!!.messages[2].role)
-        assertEquals("New answer", saved!!.messages.last().content)
-        assertEquals(1L, saved!!.structuralRevision)
-        assertTrue(saved!!.messages[1].activeVersion.processingFinishedAt != null)
+        assertEquals(ChatRole.USER, saved.messages[2].role)
+        assertEquals("New answer", saved.messages.last().content)
+        assertEquals(1L, saved.structuralRevision)
+        assertTrue(saved.messages[1].activeVersion.processingFinishedAt != null)
     }
 
     @Test fun failureRetainsPartialResponseAndReleasesBusyState() = runBlocking {
@@ -534,7 +534,7 @@ class ChatGenerationTest {
         runner.start(conversation(), "a1", flow { emit("partial"); error("offline") })
         runner.awaitCompletion()
         assertTrue(saved!!.messages.last().content.startsWith("partial"))
-        assertEquals("offline", saved!!.messages.last().activeVersion.generationError)
+        assertEquals("offline", saved.messages.last().activeVersion.generationError)
         assertEquals("offline", runner.error.value)
         assertFalse(runner.busy.value)
     }

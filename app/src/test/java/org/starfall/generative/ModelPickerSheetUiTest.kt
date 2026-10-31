@@ -56,4 +56,26 @@ class ModelPickerSheetUiTest {
         compose.onNodeWithTag("model-picker-search").performTextClearance()
         compose.onNodeWithTag("model-picker-model_p_beta").assertIsDisplayed()
     }
+    @Test fun longPressModelOpensEditorWithoutSelectingIt() {
+        var edited: Pair<String, String>? = null
+        var selected: Pair<String, String>? = null
+        var dismissals = 0
+        compose.setContent { MaterialTheme {
+            ModelPickerSheet(
+                providers = listOf(provider), selectedProviderId = "", selectedModelId = "",
+                conversationReasoningEffort = null,
+                onSelectModel = { id, model -> selected = id to model },
+                onEditModel = { id, model -> edited = id to model },
+                onSetReasoningEffort = {}, onDismiss = { dismissals++ }
+            )
+        } }
+        compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
+            .performTouchInput { longClick() }
+        compose.runOnIdle {
+            assertEquals("p" to "alpha", edited)
+            assertEquals(null, selected)
+            assertEquals(1, dismissals)
+        }
+    }
+
 }

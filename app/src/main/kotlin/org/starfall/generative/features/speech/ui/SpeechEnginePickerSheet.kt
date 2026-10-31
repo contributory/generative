@@ -59,7 +59,6 @@ internal fun SpeechEnginePickerSheet(
             item(key = "system") {
                 SpeechPlatformCard(
                     title = stringResource(R.string.speech_system_tts),
-                    subtitle = stringResource(R.string.speech_engine_android_description),
                     iconName = null,
                     iconImage = null,
                     selected = engine == SpeechEngine.SYSTEM,
@@ -99,7 +98,7 @@ internal fun SpeechEnginePickerSheet(
 @Composable
 private fun SpeechPlatformCard(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     iconName: String?,
     iconImage: String?,
     selected: Boolean,
@@ -135,7 +134,7 @@ private fun SpeechPlatformCard(
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                if (!subtitle.isNullOrBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!detail.isNullOrBlank()) Text(detail, style = MaterialTheme.typography.labelSmall,

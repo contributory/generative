@@ -93,7 +93,7 @@ class DefaultDataInitializer(
             // Do not block the rest of startup. Since failed discovery leaves the cache null,
             // the app retries automatically the next time it starts.
             DebugLog.error(
-                DebugLogCategory.ERRORS,
+                DebugLogCategory.SYSTEM,
                 "DefaultDataInitializer",
                 "Could not preload bundled Content API tools; will retry on a future startup",
                 error

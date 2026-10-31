@@ -12,7 +12,8 @@ private val RequestLogId = AttributeKey<Long>("debug-request-log-id")
 val DebugLogKtorPlugin = createClientPlugin("GenerativeDebugLog") {
     onRequest { request, _ ->
         val label = "${request.method.value} ${request.url.buildString()}"
-        DebugLog.beginRequest(TAG, label)?.let { request.attributes.put(RequestLogId, it) }
+        DebugLog.beginRequest(TAG, label, method = request.method.value,
+            endpoint = request.url.buildString())?.let { request.attributes.put(RequestLogId, it) }
     }
     on(Send) { request ->
         try {
@@ -23,7 +24,8 @@ val DebugLogKtorPlugin = createClientPlugin("GenerativeDebugLog") {
             throw error
         } catch (error: Exception) {
             DebugLog.finishRequest(request.attributes.getOrNull(RequestLogId), TAG,
-                "✗ ${request.method.value} ${request.url.buildString()} (${error::class.java.simpleName}: ${error.message})", true)
+                "✗ ${request.method.value} ${request.url.buildString()} (${error::class.java.simpleName}: ${error.message})",
+                true, error = error)
             throw error
         }
     }
@@ -33,6 +35,6 @@ val DebugLogKtorPlugin = createClientPlugin("GenerativeDebugLog") {
         val ok = response.status.value < 400
         val label = "${call.method.value} ${DebugLogRedactor.redact(call.url.toString())}"
         DebugLog.finishRequest(call.attributes.getOrNull(RequestLogId), TAG,
-            "← ${response.status.value} $label ($ms ms)", !ok)
+            "← ${response.status.value} $label ($ms ms)", !ok, statusCode = response.status.value)
     }
 }

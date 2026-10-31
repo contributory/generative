@@ -2,13 +2,14 @@ package org.starfall.generative
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -37,7 +38,8 @@ class ProviderFolderContainerTest {
 
     private fun showFolder(
         source: List<ModelProvider> = providers,
-        writes: MutableList<ProviderPlacement> = mutableListOf()
+        writes: MutableList<ProviderPlacement> = mutableListOf(),
+        groups: List<ProviderGroup> = listOf(group)
     ) {
         compose.setContent {
             MaterialTheme {
@@ -48,7 +50,7 @@ class ProviderFolderContainerTest {
                 } else {
                     ProvidersScreen(
                         providers = source,
-                        providerGroups = listOf(group),
+                        providerGroups = groups,
                         isGridView = gridView,
                         onToggleGridView = { gridView = it },
                         onOpenProviderEditor = { _, _ -> editorOpened = true },
@@ -89,6 +91,11 @@ class ProviderFolderContainerTest {
         compose.onNodeWithTag("provider_folder_header_icon_g", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("provider_folder_header_name_g", useUnmergedTree = true).assertTextEquals("Folder")
         compose.onNodeWithTag("provider_folder_toolbar_g", useUnmergedTree = true).assertExists()
+        val menuLeft = compose.onNodeWithContentDescription("More options", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot.left
+        val addLeft = compose.onNodeWithTag("add_folder_provider", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot.left
+        assertTrue("Folder menu must be left of Add", menuLeft < addLeft)
         compose.onNodeWithContentDescription("Close").assertDoesNotExist()
         val headerBottom = compose.onNodeWithTag("provider_folder_header_g").fetchSemanticsNode().boundsInRoot.bottom
         val gridTop = compose.onNodeWithTag("provider_folder_grid_g").fetchSemanticsNode().boundsInRoot.top
@@ -98,9 +105,9 @@ class ProviderFolderContainerTest {
     @Test
     fun searchShowsMatchingMembersDirectlyWithoutFolders() {
         showFolder()
-        compose.onNodeWithContentDescription("Search model providers").performClick()
-        compose.onNodeWithTag("provider_group_g").assertDoesNotExist()
+        compose.onNodeWithTag("provider_search_expand").performClick()
         compose.onNodeWithTag("provider_search").performTextInput("Member")
+        compose.onNodeWithTag("provider_group_g").assertDoesNotExist()
         compose.onNodeWithTag("provider_member-a").assertExists()
         compose.onNodeWithTag("provider_member-b").assertExists()
         compose.onNodeWithTag("provider_root").assertDoesNotExist()
@@ -149,4 +156,28 @@ class ProviderFolderContainerTest {
         assertEquals(listOf("member", "source"), writes.single().groupOrders.getValue("g"))
         compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertDoesNotExist()
     }
+    @Test
+    fun nextFolderOpensBeforePreviousFolderCloseAnimationFinishes() {
+        val sibling = ProviderGroup("sibling", "Sibling", sortOrder = 3)
+        showFolder(groups = listOf(group, sibling))
+        val siblingCenter = compose.onNodeWithTag("provider_group_sibling")
+            .fetchSemanticsNode().boundsInRoot.center
+
+        compose.onNodeWithTag("provider_group_g").performClick()
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            click(Offset(rootBounds.width / 2f, rootBounds.height - 48f))
+        }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onRoot().performTouchInput { click(siblingCenter) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithTag("provider_folder_screen_sibling", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertExists()
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("provider_folder_screen_sibling", useUnmergedTree = true).assertExists()
+    }
+
 }

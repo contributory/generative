@@ -2,6 +2,8 @@ package org.starfall.generative.features.machines.list.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
@@ -111,7 +115,6 @@ internal fun PortForwardDialog(
             }
         },
         buttons = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
             Button(
                 enabled = hasPorts,
                 onClick = {
@@ -141,7 +144,12 @@ internal fun PortForwardDialog(
                         .onSuccess { config -> onSaveAndStart(machine.copy(portForwarding = config)) }
                         .onFailure { failure -> error = failure.message }
                 }
-            ) { Text(stringResource(R.string.remote_machine_start_port_forward)) }
+            ) {
+                SharedIcon(Icons.Default.PlayArrow, null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.remote_machine_start_port_forward))
+            }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }

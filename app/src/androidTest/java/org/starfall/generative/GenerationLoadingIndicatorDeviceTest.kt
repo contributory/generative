@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -46,7 +46,14 @@ class GenerationLoadingIndicatorDeviceTest {
             .fetchSemanticsNode().boundsInRoot
         val indicatorBounds = compose.onNodeWithTag("generation-loading-indicator", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
-        assertEquals("Logo and indicator must share exactly the same drawing area", indicatorBounds, initialLogoBounds)
+        val containerBounds = compose.onNodeWithTag("generation-indicator-container", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val fallbackBounds = compose.onNodeWithTag("generation-logo-fallback", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        assertEquals("Contained indicator must fill its outer container", containerBounds, indicatorBounds)
+        assertEquals("Logo and fallback must stay aligned", fallbackBounds, initialLogoBounds)
+        assertTrue("The contained variant must add space outside the logo", containerBounds.width > initialLogoBounds.width)
+        assertTrue("The contained variant must add space outside the logo", containerBounds.height > initialLogoBounds.height)
 
         compose.mainClock.advanceTimeBy(2_800)
         val hidden = centerRed()
@@ -72,5 +79,6 @@ class GenerationLoadingIndicatorDeviceTest {
         compose.onNodeWithTag("generation-model-logo", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("generation-logo-fallback", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("generation-loading-indicator", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("generation-indicator-container", useUnmergedTree = true).assertDoesNotExist()
     }
 }

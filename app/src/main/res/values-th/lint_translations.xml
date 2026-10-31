@@ -39,7 +39,7 @@
         <item quantity="other">%d โมเดล TTS</item>
     </plurals>
     <string name="customization_title">การปรับแต่ง</string>
-    <string name="customization_enable">เปิดใช้การปรับแต่ง</string>
+    <string name="customization_enable">เปิดใช้งาน</string>
     <string name="customization_description">สี ความโปร่งใสของส่วนประกอบ รูปโปรไฟล์ และพื้นหลัง</string>
     <string name="customization_backgrounds_title">ภาพพื้นหลัง</string>
     <string name="user_profile_background_preview_sample">เนื้อหาตัวอย่างพร้อมภาพพื้นหลัง</string>

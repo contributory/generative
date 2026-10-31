@@ -89,6 +89,7 @@
     <string name="common_copy">คัดลอก</string>
     <string name="common_name">ชื่อ</string>
     <string name="common_type">ประเภท</string>
+    <string name="provider_api_type">ประเภท API</string>
     <string name="common_key">คีย์</string>
     <string name="common_value">ค่า</string>
     <string name="common_auto">อัตโนมัติ</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">สรุปอัตโนมัติเมื่อบริบทเต็ม</string>
     <string name="settings_auto_summary_threshold">สรุปอัตโนมัติที่ %1$d%% ของบริบท</string>
     <string name="settings_conversations">การสนทนา</string>
-    <string name="settings_continue_last_chat">สนทนาต่อจากครั้งก่อน</string>
+    <string name="settings_continue_last_chat">กู้คืนเซสชันล่าสุด</string>
     <string name="settings_continue_last_chat_description">เปิดการสนทนาที่ใช้ล่าสุดเมื่อเปิดแอป</string>
     <string name="settings_persist_selected_model">จดจำโมเดลของแต่ละการสนทนา</string>
     <string name="settings_persist_selected_model_description">กลับมาใช้โมเดลที่เลือกล่าสุดในแต่ละการสนทนาเมื่อกลับมาเปิดอีกครั้ง</string>
@@ -675,7 +676,7 @@
     <string name="mcp_attachments_min_tools">จำนวนเครื่องมือ MCP ขั้นต่ำ</string>
     <string name="mcp_attachments_min_tools_hint">ค่าเริ่มต้นคือ %1$d ค่า 0 จะไม่นับจำนวนเครื่องมือ</string>
     <string name="mcp_attachments_dynamic_strategy_label">กลยุทธ์ตามต้องการ</string>
-    <string name="mcp_attachments_strategy_overflow">แนบเซิร์ฟเวอร์ชุดแรก แล้วโหลดที่เหลือตามต้องการ</string>
+    <string name="mcp_attachments_strategy_overflow">เริ่มต้น + ตามต้องการ</string>
     <string name="mcp_attachments_strategy_all">โหลดทุกเซิร์ฟเวอร์ตามต้องการ</string>
     <string name="mcp_attachments_strategy_overflow_description">โหมด overflow จะแนบ MCP ที่เหลือไม่กี่รายซึ่งต่ำกว่าค่าขั้นต่ำแบบคลาสสิกไว้ ส่วนที่เหลือจะถูกโหลดตามต้องการ</string>
     <string name="mcp_attachments_strategy_all_description">โหมด all จะโหลดทุก MCP ตามต้องการ</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">แสดงสูตรทางคณิตศาสตร์ที่ตรวจพบโดยอัตโนมัติ ขณะคงจำนวนเงินไว้เป็นข้อความธรรมดา</string>
     <string name="settings_latex_disabled">ปิด</string>
     <string name="settings_latex_auto_detect">ตรวจจับอัตโนมัติ</string>
-    <string name="settings_developer">นักพัฒนา</string>
+    <string name="settings_developer">ตัวเลือกสำหรับนักพัฒนา</string>
     <string name="settings_debug_logs">เปิดบันทึกดีบัก</string>
     <string name="settings_debug_logs_description">แสดงการใช้โทเคน รายละเอียดคำขอ และกิจกรรมเครือข่ายในแผงดีบัก</string>
-    <string name="settings_debug_log_scope">หมวดหมู่บันทึก</string>
+    <string name="settings_debug_log_scope">แหล่งบันทึก</string>
     <string name="settings_debug_log_scope_description">เลือกว่าแผงดีบักจะบันทึกบันทึกประเภทใดบ้าง</string>
     <string name="debug_log_category_network">เครือข่าย</string>
-    <string name="debug_log_category_payload">เนื้อหาคำขอและคำตอบ</string>
-    <string name="debug_log_category_tokens">โทเคน</string>
-    <string name="debug_log_category_errors">ข้อผิดพลาด</string>
+    <string name="debug_log_category_system">ระบบ</string>
+    <string name="settings_debug_log_level">ระดับบันทึกขั้นต่ำ</string>
+
     <string name="debug_log_title">บันทึกดีบัก</string>
+    <string name="debug_log_disable">ปิดบันทึกการดีบัก</string>
     <string name="debug_log_toggle">แสดงหรือซ่อนบันทึกดีบัก</string>
     <string name="debug_log_copy_entry">คัดลอกบันทึกนี้</string>
     <string name="debug_log_copy_all">คัดลอกบันทึกทั้งหมด</string>
@@ -1103,4 +1105,20 @@
     <string name="customization_input_blur">ความเบลอของพื้นหลัง</string>
     <string name="customization_input_blur_description">เบลอแชทด้านหลังพื้นที่ป้อนข้อความบน Android 12 ขึ้นไป โดยข้อความและปุ่มยังคงคมชัด</string>
     <string name="settings_website">เว็บไซต์</string>
+    <string name="app_menu_default_options">การกำหนดค่า</string>
+    <string name="app_menu_builtin_tools">เครื่องมือในตัว</string>
+    <string name="app_menu_language_providers">ผู้ให้บริการโมเดลภาษา</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">บริการสังเคราะห์เสียง</string>
+    <string name="app_menu_remote_servers">บริการระยะไกล</string>
+    <string name="app_menu_media_management">จัดการสื่อ</string>
+    <string name="app_menu_icons_management">จัดการไอคอน</string>
+    <string name="app_menu_settings">การตั้งค่า</string>
+    <string name="app_menu_data">ข้อมูล</string>
+    <string name="app_menu_about">เกี่ยวกับ</string>
+    <string name="mcp_attachments_limits">ขีดจำกัดแบบตามคำขอ</string>
+    <string name="tool_settings_tab_media">สื่อ</string>
+    <string name="tool_settings_tab_others">อื่น ๆ</string>
+    <string name="media_profile_require_model">ต้องใช้โมเดล</string>
+    <string name="media_chain_test_no_model_note">การทดสอบอาจมีค่าใช้จ่าย และไม่รองรับไฟล์ขาเข้าในหน้านี้</string>
 </resources>

@@ -89,7 +89,7 @@ internal fun RemoteTerminalSecretDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             }
         }
     )

@@ -33,8 +33,6 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.starfall.generative.shared.ui.layout.appTabRowColor
-import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
@@ -45,6 +43,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LazyCodeBlock
 import org.starfall.generative.features.home.shared.ui.ToolSheetState
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -62,7 +61,7 @@ internal fun ToolDetailsSheet(
     activity: ToolActivity,
     onDismiss: () -> Unit
 ) {
-    var argsTab by remember(activity.id) { mutableStateOf(0) }
+    val argsPager = key(activity.id) { androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 }) }
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
     val responseText = remember(activity.response, activity.summary) {
@@ -111,29 +110,17 @@ internal fun ToolDetailsSheet(
             )
             Spacer(Modifier.height(10.dp))
 
-            PrimaryTabRow(
-                selectedTabIndex = argsTab,
-                containerColor = appTabRowColor(),
-                modifier = appTabRowBorder(),
-                divider = {}
-            ) {
-                Tab(
-                    selected = argsTab == 0,
-                    onClick = { argsTab = 0 },
-                    text = { Text(stringResource(R.string.tool_details_pretty)) }
-                )
-                Tab(
-                    selected = argsTab == 1,
-                    onClick = { argsTab = 1 },
-                    text = { Text(stringResource(R.string.common_raw)) }
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-            if (argsTab == 0) {
-                PrettyArguments(activity.arguments)
-            } else {
-                RawValueBlock(activity.arguments.ifBlank { "{}" })
+            AppSwipeTabs(
+                tabs = listOf(stringResource(R.string.tool_details_pretty), stringResource(R.string.common_raw)),
+                pagerState = argsPager,
+                modifier = Modifier.fillMaxWidth().height(240.dp),
+                showDivider = false,
+                spacing = 10.dp
+            ) { page ->
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    if (page == 0) PrettyArguments(activity.arguments)
+                    else RawValueBlock(activity.arguments.ifBlank { "{}" })
+                }
             }
 
             Spacer(Modifier.height(26.dp))

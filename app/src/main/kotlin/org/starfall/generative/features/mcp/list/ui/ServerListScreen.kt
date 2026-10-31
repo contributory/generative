@@ -5,7 +5,6 @@ import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,9 +23,9 @@ import org.starfall.generative.extensions.launcher.Launcher
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import java.util.UUID
 import org.starfall.generative.features.mcp.shared.ui.McpUnifiedCard
@@ -63,10 +62,7 @@ fun ServerListScreen(
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
             title = {
-                Column {
-                    Text(stringResource(R.string.mcp_servers_title), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
-                    Text(stringResource(R.string.mcp_servers_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                }
+                FixedAppBarTitle(stringResource(R.string.app_menu_model_context_protocol))
             }, navigationIcon = { IconButton(onClick = onBack) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
                     ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
@@ -82,7 +78,6 @@ fun ServerListScreen(
                         SharedIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.no_mcp_servers_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                     }
                 } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
                     val gridState = rememberLazyGridState()
@@ -143,7 +138,7 @@ fun ServerListScreen(
         text = { Text(stringResource(R.string.delete_mcp_server_message)) },
         confirmButton = { Button(onClick = { deletingServerId?.let(onDeleteMcpServer); deletingServerId = null },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.common_delete)) } },
-        dismissButton = { TextButton(onClick = { deletingServerId = null }) { Text(stringResource(R.string.common_cancel)) } })
+        dismissButton = { TextButton(onClick = { deletingServerId = null }) { Text(stringResource(R.string.common_close)) } })
     selectedToolError?.let { (serverName, error) ->
         AlertDialog(onDismissRequest = { selectedToolError = null }, title = { Text(stringResource(R.string.mcp_tool_discovery_error_title, serverName)) },
             scrollableContent = false,

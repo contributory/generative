@@ -89,6 +89,7 @@
     <string name="common_copy">복사</string>
     <string name="common_name">이름</string>
     <string name="common_type">유형</string>
+    <string name="provider_api_type">API 유형</string>
     <string name="common_key">키</string>
     <string name="common_value">값</string>
     <string name="common_auto">자동</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">컨텍스트가 찰수록 자동으로 요약합니다</string>
     <string name="settings_auto_summary_threshold">컨텍스트 %1$d%%에서 자동 요약</string>
     <string name="settings_conversations">대화</string>
-    <string name="settings_continue_last_chat">마지막 대화 계속하기</string>
+    <string name="settings_continue_last_chat">마지막 세션 복원</string>
     <string name="settings_continue_last_chat_description">시작할 때 가장 최근 대화를 엽니다.</string>
     <string name="settings_persist_selected_model">대화별 모델 기억</string>
     <string name="settings_persist_selected_model_description">각 대화로 돌아올 때 그 대화에서 선택한 모델을 사용합니다</string>
@@ -675,7 +676,7 @@
     <string name="mcp_attachments_min_tools">최소 MCP 도구 수</string>
     <string name="mcp_attachments_min_tools_hint">기본값은 %1$d입니다. 0으로 설정하면 도구 수를 무시합니다.</string>
     <string name="mcp_attachments_dynamic_strategy_label">필요 시 전략</string>
-    <string name="mcp_attachments_strategy_overflow">앞의 서버는 첨부하고 나머지는 필요 시 불러오기</string>
+    <string name="mcp_attachments_strategy_overflow">초기 + 필요 시</string>
     <string name="mcp_attachments_strategy_all">모든 서버를 필요 시 불러오기</string>
     <string name="mcp_attachments_strategy_overflow_description">오버플로 방식은 최소값보다 적은 MCP를 기존 방식으로 첨부하고 나머지는 필요 시 불러옵니다.</string>
     <string name="mcp_attachments_strategy_all_description">전체 방식은 모든 MCP를 필요 시 불러옵니다.</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">인식된 수식은 자동으로 렌더링하고 금액은 일반 텍스트로 남깁니다.</string>
     <string name="settings_latex_disabled">끔</string>
     <string name="settings_latex_auto_detect">자동 감지</string>
-    <string name="settings_developer">개발자</string>
+    <string name="settings_developer">개발자 옵션</string>
     <string name="settings_debug_logs">디버그 로깅 사용</string>
     <string name="settings_debug_logs_description">디버그 패널에 토큰 사용량, 요청 세부 정보, 네트워크 활동을 표시합니다.</string>
-    <string name="settings_debug_log_scope">로그 범주</string>
+    <string name="settings_debug_log_scope">로그 소스</string>
     <string name="settings_debug_log_scope_description">디버그 패널이 기록할 로그 종류를 선택하세요.</string>
     <string name="debug_log_category_network">네트워크</string>
-    <string name="debug_log_category_payload">페이로드</string>
-    <string name="debug_log_category_tokens">토큰</string>
-    <string name="debug_log_category_errors">오류</string>
+    <string name="debug_log_category_system">시스템</string>
+    <string name="settings_debug_log_level">최소 로그 수준</string>
+
     <string name="debug_log_title">디버그 로그</string>
+    <string name="debug_log_disable">디버그 로그 끄기</string>
     <string name="debug_log_toggle">디버그 로그 표시/숨기기</string>
     <string name="debug_log_copy_entry">이 로그 복사</string>
     <string name="debug_log_copy_all">모든 로그 복사</string>
@@ -1103,4 +1105,20 @@
     <string name="customization_input_blur">배경 흐림</string>
     <string name="customization_input_blur_description">Android 12 이상에서 입력 영역 뒤의 채팅을 흐리게 표시합니다. 텍스트와 버튼은 선명하게 유지됩니다.</string>
     <string name="settings_website">웹사이트</string>
+    <string name="app_menu_default_options">구성</string>
+    <string name="app_menu_builtin_tools">내장 도구</string>
+    <string name="app_menu_language_providers">언어 모델 제공업체</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">음성 합성 서비스</string>
+    <string name="app_menu_remote_servers">원격 서비스</string>
+    <string name="app_menu_media_management">미디어 관리</string>
+    <string name="app_menu_icons_management">아이콘 관리</string>
+    <string name="app_menu_settings">설정</string>
+    <string name="app_menu_data">데이터</string>
+    <string name="app_menu_about">정보</string>
+    <string name="mcp_attachments_limits">온디맨드 제한</string>
+    <string name="tool_settings_tab_media">미디어</string>
+    <string name="tool_settings_tab_others">기타</string>
+    <string name="media_profile_require_model">모델 필요</string>
+    <string name="media_chain_test_no_model_note">테스트 요청에 요금이 발생할 수 있습니다. 파일 입력은 사용할 수 없습니다.</string>
 </resources>

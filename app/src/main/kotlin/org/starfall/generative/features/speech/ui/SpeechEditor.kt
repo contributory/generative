@@ -362,7 +362,6 @@ fun SpeechEditor(
                             placeholder = { Text("vi-VN") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        if (google) Text(stringResource(R.string.speech_gemini_audio_description), style = MaterialTheme.typography.bodySmall)
                     }
                     if (!google) {
                         var formatExpanded by remember { mutableStateOf(false) }

@@ -164,7 +164,7 @@ fun MediaRequestChainSettings(
                 }) { Text(stringResource(R.string.common_remove)) }
             },
             dismissButton = { TextButton(onClick = { deletingProfileId = null }) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             } }
         )
     }

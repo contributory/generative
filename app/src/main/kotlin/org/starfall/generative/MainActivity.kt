@@ -5,6 +5,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import java.util.Locale
 import android.widget.Toast
 import android.os.Bundle
 import android.view.WindowManager
@@ -52,6 +53,12 @@ import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
 import org.starfall.generative.shared.ui.logging.DebugLogOverlay
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.navigation.AppNavigation
+import org.starfall.generative.navigation.AppDeepLinkRequest
+import org.starfall.generative.navigation.ExternalShareRequest
+import org.starfall.generative.navigation.ExternalShare
+import android.net.Uri
+import org.starfall.generative.navigation.parseExternalShare
+import org.starfall.generative.navigation.parseAppDeepLink
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
 import org.starfall.generative.shared.terminal.RemoteTerminalLaunch
@@ -70,6 +77,10 @@ class MainActivity : ComponentActivity() {
     /** Language override this Activity was created with; a different one means the UI must be recreated. */
     private var createdLocaleTag: String? = null
     private var pendingTerminalMachineId by mutableStateOf<String?>(null)
+    private var pendingAppDeepLink by mutableStateOf<AppDeepLinkRequest?>(null)
+    private var nextAppDeepLinkId = 0L
+    private var pendingExternalShare by mutableStateOf<ExternalShareRequest?>(null)
+    private var nextExternalShareId = 0L
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -79,6 +90,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         createdLocaleTag = AppLocale.overrideTag(this)
         pendingTerminalMachineId = savedInstanceState?.getString("pending_terminal_machine_id")
+        if (savedInstanceState?.getBoolean("pending_external_share") == true) {
+            pendingExternalShare = ExternalShareRequest(++nextExternalShareId, ExternalShare(
+                savedInstanceState.getString("external_share_text"),
+                savedInstanceState.getStringArrayList("external_share_uris").orEmpty().map(Uri::parse),
+                savedInstanceState.getString("external_share_mime")
+            ))
+        }
         // A recreated Activity (rotation, locale change, process restore) still carries the original
         // launch intent; only a fresh launch may import its provider link.
         if (savedInstanceState == null) handleIntent(intent)
@@ -169,9 +187,19 @@ class MainActivity : ComponentActivity() {
                         AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
                             container.toolFiles, container.appDataTransfer,
                             pendingTerminalMachineId = pendingTerminalMachineId,
-                            onTerminalLaunchHandled = { pendingTerminalMachineId = null })
+                            onTerminalLaunchHandled = { pendingTerminalMachineId = null },
+                            pendingAppDeepLink = pendingAppDeepLink,
+                            onAppDeepLinkHandled = { id ->
+                                if (pendingAppDeepLink?.id == id) pendingAppDeepLink = null
+                            },
+                            pendingExternalShare = pendingExternalShare,
+                            onExternalShareHandled = { id ->
+                                if (pendingExternalShare?.id == id) pendingExternalShare = null
+                            })
                         // Drawn last so the draggable debug button and log panel float above every screen.
-                        if (appPrefs.debugMode) DebugLogOverlay()
+                        if (appPrefs.debugMode) DebugLogOverlay(
+                            onDisable = { settingsViewModel.setDebugMode(false) }
+                        )
                     }
                 }
                 pendingCrash?.let { report ->
@@ -264,10 +292,29 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("pending_terminal_machine_id", pendingTerminalMachineId)
+        pendingExternalShare?.content?.let { share ->
+            outState.putBoolean("pending_external_share", true)
+            outState.putString("external_share_text", share.text)
+            outState.putStringArrayList("external_share_uris", ArrayList(share.streams.map(Uri::toString)))
+            outState.putString("external_share_mime", share.fallbackMime)
+        }
         super.onSaveInstanceState(outState)
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent != null && intent.action in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_PROCESS_TEXT)) {
+            // Shared extras originate in another app and can contain malformed parcelables.
+            runCatching { parseExternalShare(intent) }
+                .onSuccess { content ->
+                    if (content != null) pendingExternalShare = ExternalShareRequest(++nextExternalShareId, content)
+                }
+                .onFailure {
+                    Toast.makeText(this, R.string.shared_attachment_failed, Toast.LENGTH_LONG).show()
+                }
+            // The pending request now owns the content. Do not reprocess the launch Intent.
+            intent.action = Intent.ACTION_MAIN
+            return
+        }
         RemoteTerminalLaunch.consumeMachineId(intent)?.let { machineId ->
             pendingTerminalMachineId = machineId
             return
@@ -285,7 +332,18 @@ class MainActivity : ComponentActivity() {
                 }
             return
         }
-
+        if (data.scheme.equals("generative", true) &&
+            data.host?.lowercase(Locale.ROOT) in setOf("providers", "mcp", "chat")) {
+            // Consume before navigation to prevent a duplicate action on Activity recreation.
+            intent.data = null
+            runCatching { parseAppDeepLink(data) }
+                .onSuccess { action ->
+                    if (action != null) pendingAppDeepLink = AppDeepLinkRequest(++nextAppDeepLinkId, action)
+                }
+                .onFailure {
+                    Toast.makeText(this, R.string.invalid_app_link, Toast.LENGTH_LONG).show()
+                }
+        }
     }
 }
 

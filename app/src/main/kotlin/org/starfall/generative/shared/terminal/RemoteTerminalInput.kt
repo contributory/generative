@@ -39,7 +39,7 @@ internal class RemoteTerminalInput(
         historyIndex = commandHistory.size
     }
 
-    fun setInputMode(mode: TerminalInputMode) {
+    fun changeInputMode(mode: TerminalInputMode) {
         // A local command is a draft, not a reason to lock input mode. Keep it
         // (and its cursor) untouched until the user returns to Local Input.
         inputMode = mode

@@ -13,6 +13,7 @@ import org.starfall.generative.shared.model.media.ImageGenProfile
 import org.starfall.generative.shared.model.media.VideoGenProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.media.validMusicProfile
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.shared.model.media.hasUnsafeMusicHeaders
 
 @Serializable
@@ -93,19 +94,57 @@ data class SystemToolConfig(
         }
 
     fun selectedMediaProfile(video: Boolean, model: ModelConfiguration?): MediaRequestProfile {
-        val id = model?.mediaRequestProfileId.orEmpty()
-        if (id.isNotBlank()) return mediaProfile(video, id)
-        // Legacy Custom selections stored on the tool itself; new/unconfigured models use Default.
-        if (model?.mediaApiType == MediaGenerationMode.CUSTOM) {
-            val legacyId = if (video) activeVideoRequestProfileId else activeImageRequestProfileId
-            mediaProfiles(video)[legacyId]?.let { return it }
+        val library = mediaProfiles(video)
+        val activeId = if (video) activeVideoRequestProfileId else activeImageRequestProfileId
+        if (model == null) {
+            // Tool-level selection is valid without a model only for independent Custom chains.
+            return library[activeId]?.takeIf { it.modelIndependent } ?: mediaProfile(video, "")
+        }
+        library[model.mediaRequestProfileId]?.takeIf { !it.modelIndependent }?.let { return it }
+        // Legacy model-bound Custom selections on the tool, before per-model metadata existed.
+        if (model.mediaRequestProfileId.isBlank() && model.mediaApiType == MediaGenerationMode.CUSTOM) {
+            library[activeId]?.takeIf { !it.modelIndependent }?.let { return it }
         }
         return mediaProfile(video, "")
     }
 
-    fun withMediaProfiles(video: Boolean, profiles: Map<String, MediaRequestProfile>): SystemToolConfig =
-        if (video) copy(videoRequestProfiles = profiles.withDefaultMediaProfile(true))
-        else copy(imageRequestProfiles = profiles.withDefaultMediaProfile(false))
+    /** Select a profile at the tool level, clearing a model for standalone chains. */
+    fun selectMediaProfile(video: Boolean, profile: MediaRequestProfile): SystemToolConfig {
+        require(mediaProfiles(video)[profile.id] == profile) { "Unknown media profile" }
+        require(profile.modelIndependent || (providerId.isNotBlank() && modelId.isNotBlank())) {
+            "Select a model before choosing this profile"
+        }
+        val updated = if (video) copy(
+            activeVideoRequestProfileId = profile.id, videoGenerationMode = profile.mode
+        ) else copy(activeImageRequestProfileId = profile.id, imageGenerationMode = profile.mode)
+        return if (profile.modelIndependent) updated.copy(providerId = "", modelId = "") else updated
+    }
+
+    /** Switching back to a model must clear an incompatible standalone selection. */
+    fun selectMediaModel(video: Boolean, provider: String, model: String): SystemToolConfig {
+        val current = selectedMediaProfile(video, null)
+        val next = copy(providerId = provider, modelId = model)
+        if (!current.modelIndependent) return next
+        val default = mediaProfile(video, "")
+        return if (video) next.copy(activeVideoRequestProfileId = default.id, videoGenerationMode = default.mode)
+            else next.copy(activeImageRequestProfileId = default.id, imageGenerationMode = default.mode)
+    }
+
+    fun withMediaProfiles(video: Boolean, profiles: Map<String, MediaRequestProfile>): SystemToolConfig {
+        val normalized = profiles.withDefaultMediaProfile(video)
+        val currentId = if (video) activeVideoRequestProfileId else activeImageRequestProfileId
+        val updated = if (video) copy(videoRequestProfiles = normalized)
+            else copy(imageRequestProfiles = normalized)
+        val current = normalized[currentId]
+        if (current?.modelIndependent == true) return updated.copy(providerId = "", modelId = "")
+        if ((providerId.isBlank() || modelId.isBlank()) && currentId.isNotBlank() &&
+            currentId != org.starfall.generative.shared.model.media.defaultMediaProfile(video).id) {
+            val defaultId = org.starfall.generative.shared.model.media.defaultMediaProfile(video).id
+            return if (video) updated.copy(activeVideoRequestProfileId = defaultId, videoGenerationMode = MediaGenerationMode.DEFAULT)
+                else updated.copy(activeImageRequestProfileId = defaultId, imageGenerationMode = MediaGenerationMode.DEFAULT)
+        }
+        return updated
+    }
 
     fun withImageGenerationMode(mode: MediaGenerationMode) = copy(imageGenerationMode = mode)
 
@@ -145,7 +184,7 @@ fun ToolSettings.resolveMediaProfile(video: Boolean, model: ModelConfiguration?)
     if (id.isNotEmpty()) {
         system.values.forEach { config ->
             val match = (if (video) config.videoRequestProfiles else config.imageRequestProfiles)[id]
-            if (match != null) return match
+            if (match != null && !match.modelIndependent) return match
         }
         return configured.mediaProfile(video, "")
     }

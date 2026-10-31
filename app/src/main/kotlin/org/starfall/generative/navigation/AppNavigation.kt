@@ -51,6 +51,7 @@ import org.starfall.generative.features.providers.list.ui.ProvidersScreen
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
+import org.starfall.generative.features.settings.ui.DeveloperOptionsScreen
 import org.starfall.generative.features.settings.ui.LauncherDragTestScreen
 import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
@@ -67,6 +68,7 @@ import org.starfall.generative.features.home.chat.ui.RetainedChatPages
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.files.ToolFiles
+import kotlinx.coroutines.CancellationException
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.RemoteMachine
@@ -74,6 +76,7 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.MediaKind
 import org.starfall.generative.shared.model.media.defaultMediaProfile
@@ -124,6 +127,7 @@ enum class AppDestination(val route: String) {
     REMOTE_MACHINES("remote_machines"),
     MENU("menu"),
     APP_SETTINGS("AppSettings"),
+    DEVELOPER_OPTIONS("developer_options"),
     LAUNCHER_DRAG_TEST("launcher_drag_test"),
     ICONS("Icons"),
     APP_DATA("AppData"),
@@ -135,7 +139,7 @@ private const val DRAWER_CLOSE_WAIT_MS = 700L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigation(
+internal fun AppNavigation(
     viewModel: ChatViewModel,
     configurationViewModel: ConfigurationViewModel,
     settingsViewModel: SettingsViewModel,
@@ -144,6 +148,10 @@ fun AppNavigation(
     appDataTransfer: AppDataTransferService,
     pendingTerminalMachineId: String? = null,
     onTerminalLaunchHandled: () -> Unit = {},
+    pendingAppDeepLink: AppDeepLinkRequest? = null,
+    onAppDeepLinkHandled: (Long) -> Unit = {},
+    pendingExternalShare: ExternalShareRequest? = null,
+    onExternalShareHandled: (Long) -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showMediaSheet by rememberSaveable { mutableStateOf(false) }
@@ -259,7 +267,11 @@ fun AppNavigation(
         // Read the latest config on every write; an editor must never overwrite model or toggle changes.
         val config = toolSettings.system[toolName] ?: SystemToolConfig()
         val profiles = updatedProfiles.withDefaultMediaProfile(video)
-        val selectedId = preferredId.takeIf { it in profiles } ?: defaultMediaProfile(video).id
+        val requestedId = preferredId.takeIf { it in profiles } ?: defaultMediaProfile(video).id
+        val selectedId = requestedId.takeIf {
+            (config.providerId.isNotBlank() && config.modelId.isNotBlank()) ||
+                profiles[it]?.modelIndependent == true
+        } ?: defaultMediaProfile(video).id
         val updated = config.withMediaProfiles(video, profiles)
         val next = if (video) updated.copy(
             activeVideoRequestProfileId = selectedId,
@@ -268,13 +280,15 @@ fun AppNavigation(
             activeImageRequestProfileId = selectedId,
             imageGenerationMode = updated.mediaProfile(false, selectedId).mode
         )
-        viewModel.setSystemTool(toolName, next)
-        // If a profile was deleted, reset only the model references that used it.
+        viewModel.setSystemTool(toolName,
+            if (profiles[selectedId]?.modelIndependent == true) next.copy(providerId = "", modelId = "") else next)
+        // Reset references for deleted profiles and profiles converted to model-independent.
         val kind = if (video) ModelType.VIDEO_GENERATION else ModelType.IMAGE_GENERATION
         providers.forEach { source ->
             source.config.modelConfigs.forEach { (id, model) ->
                 if (model.modelType == kind && model.mediaRequestProfileId.isNotBlank() &&
-                    model.mediaRequestProfileId !in profiles) {
+                    (model.mediaRequestProfileId !in profiles ||
+                        profiles[model.mediaRequestProfileId]?.modelIndependent == true)) {
                     val fallback = next.mediaProfile(video, "")
                     configurationViewModel.saveModelConfiguration(source.id, id, model.copy(
                         mediaRequestProfileId = fallback.id,
@@ -402,7 +416,67 @@ fun AppNavigation(
     LaunchedEffect(chatOnTop) {
         if (!chatOnTop) drawerState.close()
     }
+    LaunchedEffect(pendingAppDeepLink?.id) {
+        val request = pendingAppDeepLink ?: return@LaunchedEffect
+        when (val action = request.action) {
+            AppDeepLink.Providers -> navigate(AppDestination.PROVIDERS)
+            is AppDeepLink.Mcp -> {
+                mcpEditor = null
+                navigate(AppDestination.MCP)
+                if (action.name != null && action.url != null) {
+                    try {
+                        configurationViewModel.importMcpLink(action.name, action.url)
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            is AppDeepLink.Chat -> {
+                if (action.temporary) viewModel.startTemporaryChat() else viewModel.startNewChat()
+                navigate(AppDestination.CHAT)
+                if (!viewModel.sendMessage(action.text)) {
+                    Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        onAppDeepLinkHandled(request.id)
+    }
 
+
+    LaunchedEffect(pendingExternalShare?.id) {
+        val request = pendingExternalShare ?: return@LaunchedEffect
+        // Share to the current chat, without replacing the current draft or sending it.
+        drawerState.close()
+        navigate(AppDestination.CHAT)
+        // If there is no active chat (e.g. first launch), create a stable blank draft
+        // before the asynchronous last-conversation restore can replace the selection.
+        if (viewModel.currentConversation.value == null) viewModel.startNewChat()
+        val destination = viewModel.currentConversation.value
+        val selection = retainedChats.selection(destination?.id)
+        selection.requestChatMode()
+        request.content.text?.let(selection::queueExternalText)
+        val temporaryId = destination?.takeIf { it.isTemporary }?.id
+        var failed = false
+        try {
+            request.content.streams.forEach { uri ->
+                try {
+                    val file = stageSharedAttachment(
+                        context, toolFiles, uri, request.content.fallbackMime, temporaryId
+                    )
+                    selection.addAttachments(listOf(file))
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    failed = true
+                }
+            }
+            if (failed) Toast.makeText(context, R.string.shared_attachment_failed, Toast.LENGTH_LONG).show()
+        } finally {
+            onExternalShareHandled(request.id)
+        }
+    }
 
     CompositionLocalProvider(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
@@ -926,6 +1000,11 @@ fun AppNavigation(
                                     launchSingleTop = true
                                 }
                             },
+                            onEditModel = { providerId, modelId ->
+                                navController.navigate(
+                                    "providers/edit/${Uri.encode(providerId)}?modelId=${Uri.encode(modelId)}"
+                                ) { launchSingleTop = true }
+                            },
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -947,6 +1026,11 @@ fun AppNavigation(
                                 navController.navigate("providers/edit/${Uri.encode(providerId)}") {
                                     launchSingleTop = true
                                 }
+                            },
+                            onEditModel = { providerId, modelId ->
+                                navController.navigate(
+                                    "providers/edit/${Uri.encode(providerId)}?modelId=${Uri.encode(modelId)}"
+                                ) { launchSingleTop = true }
                             },
                             onOpenMusicProfiles = { navController.navigate(MediaProfileRoutes.library(MediaKind.MUSIC)) },
                             onOpenMediaProfiles = { video ->
@@ -1153,11 +1237,7 @@ fun AppNavigation(
                                     onEnableVibrationChange = { value ->
                                         settingsViewModel.setEnableVibration(value)
                                     },
-                                    onDebugModeChange = { value ->
-                                        settingsViewModel.setDebugMode(value)
-                                    },
-                                    onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
-                                    onOpenLauncherDragTest = { openConfiguration(AppDestination.LAUNCHER_DRAG_TEST) },
+                                    onOpenDeveloperOptions = { openConfiguration(AppDestination.DEVELOPER_OPTIONS) },
                                     onLatexModeChange = { mode ->
                                         settingsViewModel.setLatexMode(mode)
                                     },
@@ -1172,6 +1252,17 @@ fun AppNavigation(
                                  )
                             }
                         }
+                    }
+
+                    composable(AppDestination.DEVELOPER_OPTIONS.route) {
+                        DeveloperOptionsScreen(
+                            preferences = appPrefs,
+                            onDebugModeChange = settingsViewModel::setDebugMode,
+                            onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
+                            onDebugLogLevelChange = settingsViewModel::setDebugLogLevel,
+                            onOpenLauncherDragTest = { openConfiguration(AppDestination.LAUNCHER_DRAG_TEST) },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
 
                     composable(AppDestination.LAUNCHER_DRAG_TEST.route) {

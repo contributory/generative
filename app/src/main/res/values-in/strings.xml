@@ -89,6 +89,7 @@
     <string name="common_copy">Salin</string>
     <string name="common_name">Nama</string>
     <string name="common_type">Tipe</string>
+    <string name="provider_api_type">Jenis API</string>
     <string name="common_key">Kunci</string>
     <string name="common_value">Nilai</string>
     <string name="common_auto">Otomatis</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">Penyedia model ini sudah memiliki model dengan ID tersebut.</string>
     <string name="model_options_title">Opsi Model</string>
     <string name="model_tools_hint">Bawaan yang didukung model bahasa ini, dikirim dalam permintaan API model.</string>
-    <string name="send_thinking_content_back_hint">Otomatis hanya mengirim kembali berpikir sebelumnya pada obrolan dengan pemanggilan alat. Aktif selalu mengirimkannya; Nonaktif tidak pernah.</string>
+    <string name="send_thinking_content_back_hint">Otomatis hanya mengirim kembali berpikir sebelumnya pada obrolan dengan pemanggilan alat. Aktif selalu mengirimkannya. Nonaktif tidak pernah.</string>
     <string name="common_default">Default</string>
     <string name="mcp_required_parameter_default_needed">Setel nilai default sebelum menonaktifkan parameter wajib ini.</string>
     <string name="model_tools_editor_hint">Pilih alat default, tambahkan nama alat khusus, dan nyalakan atau matikan alat.</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Ringkas otomatis saat konteks penuh</string>
     <string name="settings_auto_summary_threshold">Ringkas otomatis pada %1$d%% konteks</string>
     <string name="settings_conversations">Percakapan</string>
-    <string name="settings_continue_last_chat">Lanjutkan percakapan terakhir</string>
+    <string name="settings_continue_last_chat">Pulihkan sesi terakhir</string>
     <string name="settings_continue_last_chat_description">Buka percakapan yang terakhir dipakai saat aplikasi dimulai.</string>
     <string name="settings_persist_selected_model">Ingat model untuk tiap percakapan</string>
     <string name="settings_persist_selected_model_description">Pulihkan model yang terakhir dipilih di tiap percakapan saat Anda kembali ke sana.</string>
@@ -669,15 +670,15 @@
     <string name="mcp_attachments_classic_description">Mengirim setiap alat MCP yang aktif bersama setiap permintaan.</string>
     <string name="mcp_attachments_include_description">Sertakan deskripsi alat</string>
     <string name="mcp_attachments_include_description_summary">Nonaktif: deskripsi dilewati untuk alat MCP yang dilampirkan sebelumnya, sehingga permintaan lebih kecil. Parameter connect_mcps yang terperinci mengatur deskripsi untuk MCP sesuai permintaan.</string>
-    <string name="mcp_attachments_dynamic_description">Model memperoleh list_mcps dan connect_mcps serta hanya menyambungkan server MCP saat dibutuhkan. Mode dinamis berlaku setelah kedua minimum di bawah tercapai; sampai saat itu MCP dikirim secara klasik. Penyertaan deskripsi berlaku untuk MCP yang dilampirkan secara klasik; untuk MCP sesuai permintaan, connect_mcps memakai parameter terperincinya.</string>
+    <string name="mcp_attachments_dynamic_description">Model memperoleh list_mcps dan connect_mcps serta hanya menyambungkan server MCP saat dibutuhkan. Mode dinamis berlaku setelah kedua minimum di bawah tercapai. Sampai saat itu MCP dikirim secara klasik. Penyertaan deskripsi berlaku untuk MCP yang dilampirkan secara klasik. Untuk MCP sesuai permintaan, connect_mcps memakai parameter terperincinya.</string>
     <string name="mcp_attachments_min_mcps">Jumlah minimum server MCP</string>
     <string name="mcp_attachments_min_mcps_hint">Defaultnya %1$d. 0 menerapkan mode Dinamis pada jumlah MCP berapa pun.</string>
     <string name="mcp_attachments_min_tools">Jumlah minimum alat MCP</string>
     <string name="mcp_attachments_min_tools_hint">Defaultnya %1$d. 0 mengabaikan jumlah alat.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Strategi sesuai permintaan</string>
-    <string name="mcp_attachments_strategy_overflow">Lampirkan server awal; muat sisanya sesuai permintaan</string>
+    <string name="mcp_attachments_strategy_overflow">Awal + sesuai kebutuhan</string>
     <string name="mcp_attachments_strategy_all">Muat semua server sesuai permintaan</string>
-    <string name="mcp_attachments_strategy_overflow_description">Mode overflow mempertahankan beberapa MCP di bawah minimum tetap terlampir secara klasik; sisanya dimuat sesuai permintaan.</string>
+    <string name="mcp_attachments_strategy_overflow_description">Mode overflow mempertahankan beberapa MCP di bawah minimum tetap terlampir secara klasik. Sisanya dimuat sesuai permintaan.</string>
     <string name="mcp_attachments_strategy_all_description">Mode all memuat setiap MCP sesuai permintaan.</string>
     <string name="mcp_attachments_list_limit">Jumlah maksimum server yang dikembalikan list_mcps</string>
     <string name="mcp_attachments_load_limit">Jumlah maksimum server MCP yang tetap tersambung</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">Tampilkan rumus matematika yang terdeteksi secara otomatis, sementara jumlah uang tetap ditampilkan sebagai teks biasa.</string>
     <string name="settings_latex_disabled">Nonaktif</string>
     <string name="settings_latex_auto_detect">Deteksi otomatis</string>
-    <string name="settings_developer">pengembang</string>
+    <string name="settings_developer">Opsi pengembang</string>
     <string name="settings_debug_logs">Aktifkan log debug</string>
     <string name="settings_debug_logs_description">Tampilkan pemakaian token, detail permintaan, dan aktivitas jaringan di panel debug.</string>
-    <string name="settings_debug_log_scope">Kategori log</string>
+    <string name="settings_debug_log_scope">Sumber log</string>
     <string name="settings_debug_log_scope_description">Pilih jenis log yang dicatat panel debug.</string>
     <string name="debug_log_category_network">Jaringan</string>
-    <string name="debug_log_category_payload">Muatan</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">Kesalahan</string>
+    <string name="debug_log_category_system">Sistem</string>
+    <string name="settings_debug_log_level">Tingkat log minimum</string>
+
     <string name="debug_log_title">Log debug</string>
+    <string name="debug_log_disable">Nonaktifkan log debug</string>
     <string name="debug_log_toggle">Tampilkan atau sembunyikan log debug</string>
     <string name="debug_log_copy_entry">Salin log ini</string>
     <string name="debug_log_copy_all">Salin semua log</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Informasi dasar</string>
     <string name="remote_machine_connection_section">Koneksi</string>
     <string name="remote_machine_sftp_section_help">Tindakan Berkas pada menu mesin ini menelusuri folder tersebut lewat SFTP. Sesi hanya dimulai saat diperlukan.</string>
-    <string name="remote_machine_sftp_directory_help">Folder akar untuk Berkas. Default $HOME; ~ dan path absolut juga didukung.</string>
+    <string name="remote_machine_sftp_directory_help">Folder akar untuk Berkas. Default $HOME. ~ dan path absolut juga didukung.</string>
     <string name="remote_machine_start_port_forward">Mulai Penerusan Porta</string>
     <string name="remote_machine_port_forward_started">Penerusan porta dimulai. Terminal yang terbuka memakai kembali koneksi ini.</string>
     <string name="remote_machine_type_label">Jenis mesin</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Path ke kunci privat, atau nama kunci yang diunggah di Pengaturan Jarak Jauh. Kunci tidak pernah disimpan di mesin. Kosongkan bila tidak diperlukan.</string>
     <string name="remote_machine_no_uploaded_keys">Belum ada kunci yang diunggah</string>
     <string name="remote_machine_ssh_keys">Kunci SSH</string>
-    <string name="remote_machine_ssh_keys_help">Unggah kunci privat sekali lalu pakai ulang di banyak mesin lewat IdentityFile. Google Cloud Shell juga memerlukan kunci publik yang cocok (.pub); unggah dengan tombol pada tiap kunci.</string>
+    <string name="remote_machine_ssh_keys_help">Unggah kunci privat sekali lalu pakai ulang di banyak mesin lewat IdentityFile. Google Cloud Shell juga memerlukan kunci publik yang cocok (.pub). Unggah dengan tombol pada tiap kunci.</string>
     <string name="remote_machine_upload_ssh_key">Unggah berkas kunci SSH</string>
     <string name="remote_machine_upload_public_key">Unggah kunci publik</string>
     <string name="remote_machine_public_key_uploaded">Kunci publik diunggah</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Ubah langkah %1$d</string>
     <string name="media_chain_endpoint_help">Path relatif penyedia atau URL HTTP(S). Mendukung {{model}} dan nilai langkah sebelumnya.</string>
     <string name="media_chain_headers_json_invalid">Masukkan objek JSON yang valid dengan nilai header berupa teks.</string>
-    <string name="media_chain_headers_help">Objek JSON. Mendukung variabel; otorisasi penyedia yang dikonfigurasi dipakai otomatis.</string>
+    <string name="media_chain_headers_help">Objek JSON. Mendukung variabel. Otorisasi penyedia yang dikonfigurasi dipakai otomatis.</string>
     <string name="media_chain_custom_content_type_help">Override tipe MIME opsional. Biarkan kosong untuk pemilihan otomatis.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">Berkas</string>
@@ -1104,4 +1106,20 @@
     <string name="customization_input_blur">Keburaman latar belakang</string>
     <string name="customization_input_blur_description">Buramkan chat di belakang area input pada Android 12 dan yang lebih baru. Teks dan tombol tetap tajam.</string>
     <string name="settings_website">Situs web</string>
+    <string name="app_menu_default_options">Konfigurasi</string>
+    <string name="app_menu_builtin_tools">Alat bawaan</string>
+    <string name="app_menu_language_providers">Penyedia model bahasa</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Layanan sintesis suara</string>
+    <string name="app_menu_remote_servers">Layanan jarak jauh</string>
+    <string name="app_menu_media_management">Pengelolaan media</string>
+    <string name="app_menu_icons_management">Pengelolaan ikon</string>
+    <string name="app_menu_settings">Pengaturan</string>
+    <string name="app_menu_data">Data</string>
+    <string name="app_menu_about">Tentang</string>
+    <string name="mcp_attachments_limits">Batas sesuai permintaan</string>
+    <string name="tool_settings_tab_media">Media</string>
+    <string name="tool_settings_tab_others">Lainnya</string>
+    <string name="media_profile_require_model">Memerlukan model</string>
+    <string name="media_chain_test_no_model_note">Uji coba dapat dikenai biaya. Masukan file tidak tersedia di sini.</string>
 </resources>

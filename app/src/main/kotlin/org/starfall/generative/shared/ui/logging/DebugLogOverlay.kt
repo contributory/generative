@@ -2,6 +2,7 @@ package org.starfall.generative.shared.ui.logging
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -41,10 +44,10 @@ private val ButtonSize = 52.dp
 
 /**
  * Draggable floating button drawn above the app. Tapping it shows or hides the live [DebugLogPanel].
- * Tapping outside the panel closes it.
+ * Tapping outside the panel closes it; long-pressing the button disables logging.
  */
 @Composable
-fun DebugLogOverlay(modifier: Modifier = Modifier) {
+fun DebugLogOverlay(onDisable: () -> Unit, modifier: Modifier = Modifier) {
     var panelOpen by rememberSaveable { mutableStateOf(false) }
     // NaN means "not dragged yet": the button then sits at its default spot on the right edge.
     var offsetX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
@@ -69,7 +72,6 @@ fun DebugLogOverlay(modifier: Modifier = Modifier) {
             )
         }
         Surface(
-            onClick = { panelOpen = !panelOpen },
             modifier = Modifier
                 .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
                 .size(ButtonSize)
@@ -81,7 +83,14 @@ fun DebugLogOverlay(modifier: Modifier = Modifier) {
                         offsetX = (baseX + drag.x).coerceIn(0f, currentMaxX)
                         offsetY = (baseY + drag.y).coerceIn(0f, currentMaxY)
                     }
-                },
+                }
+                .clip(CircleShape)
+                .combinedClickable(
+                    onClick = { panelOpen = !panelOpen },
+                    onLongClickLabel = stringResource(R.string.debug_log_disable),
+                    onLongClick = onDisable
+                )
+                .testTag("debug-log-fab"),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

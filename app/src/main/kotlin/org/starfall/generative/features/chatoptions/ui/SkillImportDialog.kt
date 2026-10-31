@@ -77,7 +77,7 @@ internal fun SkillImportDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) {
-                Text(stringResource(R.string.common_cancel))
+                Text(stringResource(R.string.common_close))
             }
         }
     )

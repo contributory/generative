@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.activity.compose.BackHandler
@@ -10,13 +10,11 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -34,8 +32,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import org.starfall.generative.shared.ui.layout.appTabRowColor
-import org.starfall.generative.shared.ui.layout.appTabRowBorder
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
@@ -77,7 +73,6 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
@@ -169,7 +164,6 @@ fun ProviderEditor(
     } }
     val memory = remember(context) { ModelConfigurationMemory(context) }
     LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
-    var typeExpanded by remember { mutableStateOf(false) }
     var supportStream by remember { mutableStateOf(initialProvider.config.supportStream) }
     var anthropicPromptCache by remember(initialProvider.id) { mutableStateOf(initialProvider.config.anthropicPromptCache) }
     var codexClientVersion by remember(initialProvider.id) {
@@ -348,11 +342,11 @@ fun ProviderEditor(
                     })
             }) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                    PrimaryTabRow(selectedTabIndex = pager.currentPage, containerColor = appTabRowColor(), modifier = appTabRowBorder()) {
-                        Tab(pager.currentPage == 0, { scope.launch { pager.animateScrollToPage(0) } }, text = { Text(stringResource(R.string.common_configuration)) })
-                        Tab(pager.currentPage == 1, { scope.launch { pager.animateScrollToPage(1) } }, text = { Text(stringResource(R.string.provider_models)) })
-                    }
-                    HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+                    AppSwipeTabs(
+                        tabs = listOf(stringResource(R.string.common_configuration), stringResource(R.string.provider_models)),
+                        pagerState = pager,
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    ) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             IconPickerRow(providerIcon, {
                                 providerIcon = it
@@ -367,24 +361,26 @@ fun ProviderEditor(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            ExposedDropdownMenuBox(typeExpanded, { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth().testTag("provider-type-selector"))
-                                ExposedDropdownMenu(typeExpanded, { typeExpanded = false }) {
-                                    ModelApiType.entries.forEach { next -> DropdownMenuItem(text = { Text(next.displayName) }, onClick = {
-                                        if (next != type) {
-                                            val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl).withEditorApiType(next)
-                                            name = updated.name; baseUrl = updated.baseUrl; type = updated.type
-                                            val auth = next.defaultAuthorization()
-                                            // Keep the entered API key; only drop the "Bearer " prefix the bearer field adds,
-                                            // since the new type may send the key in a different form.
-                                            if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
-                                            authMethod = auth.method; authName = auth.key.orEmpty()
-                                            oauthAuthorized = false; oauthIdentity = null; oauthMarker = ""; oauthAccountId = null; oauthAccounts = emptyList()
-                                            antigravityProjectIds = emptyMap(); oauthAuthError = null
-                                        }
-                                        typeExpanded = false
-                                    }) }
+                            ProviderApiTypeSelector(type) { next ->
+                                if (next != type) {
+                                    val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl)
+                                        .withEditorApiType(next)
+                                    name = updated.name
+                                    baseUrl = updated.baseUrl
+                                    type = updated.type
+                                    val auth = next.defaultAuthorization()
+                                    if (authMethod == AuthMethod.BEARER_TOKEN) {
+                                        apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
+                                    }
+                                    authMethod = auth.method
+                                    authName = auth.key.orEmpty()
+                                    oauthAuthorized = false
+                                    oauthIdentity = null
+                                    oauthMarker = ""
+                                    oauthAccountId = null
+                                    oauthAccounts = emptyList()
+                                    antigravityProjectIds = emptyMap()
+                                    oauthAuthError = null
                                 }
                             }
                             if (!type.isAccountProvider) ProviderBaseUrlField(type, baseUrl, urlValid) { baseUrl = it }

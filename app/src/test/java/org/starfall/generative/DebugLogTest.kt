@@ -1,17 +1,14 @@
 package org.starfall.generative
 
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
+import com.sun.net.httpserver.HttpServer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import kotlinx.coroutines.runBlocking
-import com.sun.net.httpserver.HttpServer
-import java.net.InetSocketAddress
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -23,161 +20,130 @@ import org.starfall.generative.shared.logging.DebugLogRedactor
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogCategory.*
 import org.starfall.generative.shared.model.logging.DebugLogLevel
+import java.net.InetSocketAddress
 
 class DebugLogTest {
     @Before fun reset() = DebugLog.configure(false, emptySet())
-    @After fun cleanUp() = DebugLog.configure(false, emptySet())
+    @After fun tearDown() = DebugLog.configure(false, emptySet())
 
-    @Test fun nothingIsRecordedAndMessagesAreNotBuiltWhileDebugIsOff() {
+    @Test fun categorySelectionAndMinimumLevelControlCapture() {
+        DebugLog.configure(true, setOf(NETWORK), DebugLogLevel.WARN)
         var built = false
-        DebugLog.log(NETWORK, "t") { built = true; "hidden" }
+        DebugLog.log(NETWORK, "HTTP", DebugLogLevel.DEBUG) { built = true; "private payload" }
+        DebugLog.log(SYSTEM, "Logic", DebugLogLevel.ERROR) { "outside scope" }
         assertFalse(built)
         assertTrue(DebugLog.entries.value.isEmpty())
+        DebugLog.error(NETWORK, "HTTP", "Network failed", IllegalStateException("broken"))
+        assertEquals(listOf(NETWORK), DebugLog.entries.value.map { it.category })
+        assertEquals(DebugLogLevel.ERROR, DebugLog.entries.value.single().level)
+        assertTrue(DebugLog.entries.value.single().stackTrace!!.contains("IllegalStateException"))
     }
 
-    @Test fun onlyCategoriesInScopeAreRecorded() {
-        DebugLog.configure(true, setOf(ERRORS, TOOLS))
-        DebugLog.log(NETWORK, "t") { "network" }
-        DebugLog.log(TOOLS, "t") { "tool" }
-        DebugLog.error(ERRORS, "t", "failed", IllegalStateException("boom"))
-        val entries = DebugLog.entries.value
-        assertEquals(listOf(TOOLS, ERRORS), entries.map { it.category })
-        assertEquals(DebugLogLevel.ERROR, entries.last().level)
-        assertTrue(entries.last().message.contains("IllegalStateException: boom"))
-    }
-
-    @Test fun turningDebugOffDropsCapturedLogs() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        DebugLog.log(NETWORK, "t") { "kept until disabled" }
-        assertEquals(1, DebugLog.entries.value.size)
-        DebugLog.configure(false, DebugLogCategory.all)
-        assertTrue(DebugLog.entries.value.isEmpty())
-        assertFalse(DebugLog.isEnabled(NETWORK))
-    }
-
-    @Test fun clearRemovesEveryEntry() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        repeat(3) { DebugLog.log(TOKENS, "t") { "entry $it" } }
-        DebugLog.clear()
-        assertTrue(DebugLog.entries.value.isEmpty())
-    }
-
-    @Test fun bufferKeepsOnlyTheNewestEntriesAndLongMessagesAreTruncated() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        repeat(DebugLog.MAX_ENTRIES + 25) { DebugLog.log(NETWORK, "t") { "entry $it" } }
-        val entries = DebugLog.entries.value
-        assertEquals(DebugLog.MAX_ENTRIES, entries.size)
-        assertEquals("entry ${DebugLog.MAX_ENTRIES + 24}", entries.last().message)
-        assertEquals("entry 25", entries.first().message)
-
-        DebugLog.clear()
-        DebugLog.log(PAYLOAD, "t") { "x".repeat(DebugLog.MAX_MESSAGE_CHARS + 100) }
-        val message = DebugLog.entries.value.single().message
-        assertTrue(message.startsWith("x".repeat(DebugLog.MAX_MESSAGE_CHARS)))
-        assertTrue(message.endsWith("(100 more characters)"))
-    }
-
-    @Test fun copyFormatsCarryTimeCategoryLevelTagAndMessage() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        DebugLog.log(TOOLS, "Tool", DebugLogLevel.WARN) { "line one\nline two" }
-        DebugLog.log(TOKENS, "Generation") { "second" }
-        val entries = DebugLog.entries.value
-        assertTrue(Regex("""\[\d{2}:\d{2}:\d{2}\.\d{3}] \[TOOLS] \[WARN] Tool\nline one\nline two""").matches(entries[0].format()))
-        val all = DebugLog.exportAll()
-        assertTrue(all.indexOf("line two") < all.indexOf("second"))
-        assertTrue(all.contains("\n\n[")) // blocks are separated by a blank line
-    }
-
-    @Test fun exportKeepsTheNewestEntriesThatFitTheClipboardLimit() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        repeat(300) { DebugLog.log(PAYLOAD, "t") { "$it " + "y".repeat(3_000) } }
-        val exported = DebugLog.exportAll()
-        assertTrue(exported.length <= DebugLog.MAX_EXPORT_CHARS + 100)
-        assertTrue(exported.contains("299 yyy"))
-        assertFalse(exported.contains("] t\n0 yyy")) // the oldest entry no longer fits
-    }
-
-    @Test fun credentialsAreMaskedBeforeTheyReachTheLog() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        DebugLog.log(PAYLOAD, "t") {
-            """{"refresh_token":"abc123secret","max_tokens":5} Authorization: Bearer sk-live-1234567890 """ +
-                "https://x.test/v1/models?key=AIzaSecret&alt=sse client_secret=shh&grant_type=refresh_token"
+    @Test fun nativePrioritiesExposeTraceDebugInfoWarnAndError() {
+        assertEquals(android.util.Log.VERBOSE, DebugLogLevel.TRACE.priority)
+        assertEquals(android.util.Log.DEBUG, DebugLogLevel.DEBUG.priority)
+        assertEquals(android.util.Log.INFO, DebugLogLevel.INFO.priority)
+        assertEquals(android.util.Log.WARN, DebugLogLevel.WARN.priority)
+        assertEquals(android.util.Log.ERROR, DebugLogLevel.ERROR.priority)
+        DebugLog.configure(true, DebugLogCategory.all, DebugLogLevel.TRACE)
+        DebugLogLevel.entries.forEach { level ->
+            DebugLog.log(SYSTEM, "Runtime", level) { level.name }
         }
-        val message = DebugLog.entries.value.single().message
-        listOf("abc123secret", "sk-live-1234567890", "AIzaSecret", "shh").forEach { assertFalse(it, message.contains(it)) }
-        assertTrue(message.contains("\"max_tokens\":5"))
-        assertTrue(message.contains("alt=sse"))
-        assertTrue(message.contains("grant_type=refresh_token"))
-        assertTrue(DebugLogRedactor.isSensitiveHeader("X-Api-Key"))
-        assertFalse(DebugLogRedactor.isSensitiveHeader("Content-Type"))
+        assertEquals(DebugLogLevel.entries, DebugLog.entries.value.map { it.level })
+        DebugLog.configure(true, DebugLogCategory.all, DebugLogLevel.ERROR)
+        DebugLog.log(SYSTEM, "Runtime", DebugLogLevel.WARN) { "hidden" }
+        assertTrue(DebugLog.entries.value.isEmpty())
+        DebugLog.log(SYSTEM, "Runtime", DebugLogLevel.ERROR) { "visible error" }
+        assertEquals(listOf(DebugLogLevel.ERROR), DebugLog.entries.value.map { it.level })
     }
 
-    @Test fun storedScopesDefaultToEverythingAndIgnoreUnknownValues() {
+    @Test fun legacySourceSettingsAndBackupEnumsMigrateToTwoSources() {
         assertEquals(DebugLogCategory.all, DebugLogCategory.fromStored(null))
         assertEquals(emptySet<DebugLogCategory>(), DebugLogCategory.fromStored(emptySet()))
-        assertEquals(setOf(NETWORK, ERRORS), DebugLogCategory.fromStored(setOf("network", "errors", "retired")))
+        assertEquals(setOf(NETWORK), DebugLogCategory.fromStored(setOf("payload", "model", "network")))
+        assertEquals(setOf(SYSTEM), DebugLogCategory.fromStored(setOf("tools", "tokens", "storage")))
+        assertEquals(setOf(SYSTEM), DebugLogCategory.fromStored(setOf("system")))
+        assertEquals(DebugLogCategory.all, DebugLogCategory.fromStored(setOf("errors")))
+        assertEquals(DebugLogCategory.all,
+            DebugLogCategory.fromStored(setOf("network", "payload", "tools", "tokens", "errors")))
+        assertEquals(NETWORK, DebugLogCategory.fromValue("speech"))
+        assertEquals(SYSTEM, DebugLogCategory.fromValue("generation"))
+        assertEquals(DebugLogLevel.WARN, DebugLogLevel.fromStored(null))
+        assertEquals(DebugLogLevel.ERROR, DebugLogLevel.fromStored("ERROR"))
+        val serializer = kotlinx.serialization.json.Json
+        val old = serializer.decodeFromString(
+            org.starfall.generative.shared.model.logging.DebugLogCategorySerializer, "\"errors\"")
+        assertEquals(SYSTEM, old)
+        val encoded = serializer.encodeToString(
+            org.starfall.generative.shared.model.logging.DebugLogCategorySerializer, NETWORK)
+        assertEquals("\"network\"", encoded)
     }
 
-    @Test fun interceptorLogsRequestsAndResponsesWithMaskedHeaders() {
-        DebugLog.configure(true, DebugLogCategory.all)
+    @Test fun operationFailureIsVisibleAtErrorThresholdWithoutSuccessNoise() {
+        DebugLog.configure(true, setOf(SYSTEM), DebugLogLevel.ERROR)
+        val start = DebugLog.beginOperation(SYSTEM, "Store", "Writing data", "messageCount=4")
+        DebugLog.finishOperation(start, "Saved")
+        assertTrue(DebugLog.entries.value.isEmpty())
+        val failure = DebugLog.beginOperation(SYSTEM, "Store", "Writing data")
+        DebugLog.finishOperation(failure, "Save failed", failed = true,
+            error = IllegalStateException("storage error"))
+        val entry = DebugLog.entries.value.single()
+        assertEquals(DebugLogLevel.ERROR, entry.level)
+        assertNotNull(entry.durationMillis)
+        assertTrue(entry.format().contains("Stack trace:"))
+        DebugLog.clear()
+        DebugLog.finishOperation(failure, "Late result")
+        assertTrue(DebugLog.entries.value.isEmpty())
+    }
+
+    @Test fun redactionCoversCopiedEntryAndLogcatMessage() {
+        DebugLog.configure(true, DebugLogCategory.all, DebugLogLevel.TRACE)
+        DebugLog.error(NETWORK, "HTTP", "Authorization: Bearer sk-private-token-12345",
+            RuntimeException("Authorization: Bearer sk-secret-key-12345"))
+        val entry = DebugLog.entries.value.single()
+        assertFalse(entry.format().contains("sk-private-token-12345"))
+        assertFalse(entry.format().contains("sk-secret-key-12345"))
+        assertTrue(entry.stackTrace!!.contains("RuntimeException"))
+        assertTrue(DebugLogRedactor.isSensitiveHeader("X-Api-Key"))
+    }
+
+    @Test fun okHttpCapturesStatusAndTimingsNotRequestOrResponseBodies() {
+        DebugLog.configure(true, setOf(NETWORK), DebugLogLevel.INFO)
         MockWebServer().use { server ->
-            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"ok":true}"""))
-            server.enqueue(MockResponse().setResponseCode(500).setHeader("Content-Type", "application/json").setBody("""{"error":"bad"}"""))
+            server.enqueue(MockResponse().setBody("secret response"))
+            server.enqueue(MockResponse().setResponseCode(500).setBody("server secret"))
             val client = OkHttpClient.Builder().addInterceptor(DebugLogInterceptor()).build()
-            val url = server.url("/v1/chat")
-            client.newCall(
-                Request.Builder().url(url).header("Authorization", "Bearer top-secret-token")
-                    .post("""{"prompt":"hi"}""".toRequestBody("application/json".toMediaType())).build()
-            ).execute().use { assertEquals(200, it.code) }
-            client.newCall(Request.Builder().url(url).build()).execute().use { assertEquals(500, it.code) }
+            client.newCall(Request.Builder().url(server.url("/v1?key=private-credential"))
+                .header("Authorization", "Bearer secret").build()).execute().close()
+            client.newCall(Request.Builder().url(server.url("/v1")).build()).execute().close()
         }
         val entries = DebugLog.entries.value
         assertEquals(2, entries.size)
-        assertEquals(DebugLogLevel.INFO, entries[0].level)
-        assertEquals(DebugLogLevel.ERROR, entries[1].level)
-        assertTrue(entries[0].summary!!.startsWith("← 200 POST"))
-        assertTrue(entries[1].summary!!.startsWith("← 500 GET"))
-        val first = entries[0].message
-        assertTrue(first.contains("""{"prompt":"hi"}"""))
-        assertTrue(first.contains("""{"ok":true}"""))
-        assertFalse(first.contains("top-secret-token"))
-        assertTrue(first.contains("Authorization: ***"))
-        assertTrue(entries[1].message.contains("""{"error":"bad"}"""))
+        assertEquals(listOf(DebugLogLevel.INFO, DebugLogLevel.ERROR), entries.map { it.level })
+        assertEquals(200, entries[0].statusCode)
+        assertEquals(500, entries[1].statusCode)
+        assertEquals("GET", entries[0].method)
+        assertNotNull(entries[1].durationMillis)
+        assertFalse(DebugLog.exportAll().contains("private-credential"))
+        assertFalse(DebugLog.exportAll().contains("secret response"))
+        assertFalse(DebugLog.exportAll().contains("server secret"))
     }
 
-    @Test fun concurrentRequestsUpdateTheirOwnEntriesAndClearDoesNotRestoreThem() {
-        DebugLog.configure(true, DebugLogCategory.all)
-        val first = DebugLog.beginRequest("HTTP", "POST https://example.test/first") { "first body" }
-        val second = DebugLog.beginRequest("HTTP", "POST https://example.test/second") { "second body" }
-        DebugLog.finishRequest(second, "HTTP", "← 200 second", false) { "second response" }
-        DebugLog.finishRequest(first, "HTTP", "← 404 first", true) { "first response" }
-        val entries = DebugLog.entries.value
-        assertEquals(2, entries.size)
-        assertEquals(DebugLogLevel.ERROR, entries[0].level)
-        assertTrue(entries[0].message.contains("first response"))
-        assertFalse(entries[0].message.contains("second response"))
-        assertTrue(entries[1].message.contains("second response"))
-        DebugLog.clear()
-        DebugLog.finishRequest(first, "HTTP", "← 200 first", false)
-        assertTrue(DebugLog.entries.value.isEmpty())
+    @Test fun networkErrorStillCapturedWhenInfoIsDisabled() {
+        DebugLog.configure(true, setOf(NETWORK), DebugLogLevel.ERROR)
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("ok"))
+            server.enqueue(MockResponse().setResponseCode(401).setBody("unauthorized"))
+            val client = OkHttpClient.Builder().addInterceptor(DebugLogInterceptor()).build()
+            client.newCall(Request.Builder().url(server.url("/ok")).build()).execute().close()
+            client.newCall(Request.Builder().url(server.url("/bad")).build()).execute().close()
+        }
+        assertEquals(1, DebugLog.entries.value.size)
+        assertEquals(401, DebugLog.entries.value.single().statusCode)
     }
 
-    @Test fun requestPayloadRespectsScopeAndErrorsOnlyRecordsFailures() {
-        DebugLog.configure(true, setOf(NETWORK))
-        val request = DebugLog.beginRequest("HTTP", "GET https://example.test") { "private body" }
-        DebugLog.finishRequest(request, "HTTP", "← 200 GET", false) { "private response" }
-        assertFalse(DebugLog.entries.value.single().message.contains("private"))
-        DebugLog.clear()
-        DebugLog.configure(true, setOf(ERRORS))
-        assertNull(DebugLog.beginRequest("HTTP", "GET https://example.test"))
-        DebugLog.finishRequest(null, "HTTP", "← 200 GET", false)
-        assertTrue(DebugLog.entries.value.isEmpty())
-        DebugLog.finishRequest(null, "HTTP", "← 404 GET", true)
-        assertEquals(DebugLogLevel.ERROR, DebugLog.entries.value.single().level)
-    }
-
-    @Test fun ktorGroupsRequestAndResponseIntoOneEntry() = runBlocking {
-        DebugLog.configure(true, DebugLogCategory.all)
+    @Test fun ktorUsesSameNetworkSourceAndSeverity() = runBlocking {
+        DebugLog.configure(true, setOf(NETWORK), DebugLogLevel.ERROR)
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/") { exchange ->
             exchange.sendResponseHeaders(404, -1)
@@ -188,21 +154,17 @@ class DebugLogTest {
             HttpClient(CIO) { install(DebugLogKtorPlugin) }.use { client ->
                 assertEquals(404, client.get("http://127.0.0.1:${server.address.port}/").status.value)
             }
-            val entry = DebugLog.entries.value.single()
-            assertEquals(DebugLogLevel.ERROR, entry.level)
-            assertTrue(entry.message.contains("→ GET"))
-            assertTrue(entry.message.contains("← 404 GET"))
-        } finally {
-            server.stop(0)
-        }
+            assertEquals(NETWORK, DebugLog.entries.value.single().category)
+            assertEquals(DebugLogLevel.ERROR, DebugLog.entries.value.single().level)
+        } finally { server.stop(0) }
     }
 
-    @Test fun interceptorDoesNothingWhileDebugIsOff() {
-        MockWebServer().use { server ->
-            server.enqueue(MockResponse().setBody("plain"))
-            val client = OkHttpClient.Builder().addInterceptor(DebugLogInterceptor()).build()
-            client.newCall(Request.Builder().url(server.url("/")).build()).execute().use { assertEquals("plain", it.body.string()) }
-        }
+    @Test fun boundedBufferAndDisablingRemoveOnlyInAppViewerEntries() {
+        DebugLog.configure(true, setOf(SYSTEM), DebugLogLevel.TRACE)
+        repeat(DebugLog.MAX_ENTRIES + 4) { DebugLog.log(SYSTEM, "Logic") { "entry $it" } }
+        assertEquals(DebugLog.MAX_ENTRIES, DebugLog.entries.value.size)
+        assertEquals("entry 4", DebugLog.entries.value.first().message)
+        DebugLog.configure(false, DebugLogCategory.all)
         assertTrue(DebugLog.entries.value.isEmpty())
     }
 }

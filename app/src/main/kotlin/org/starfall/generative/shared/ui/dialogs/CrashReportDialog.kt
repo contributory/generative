@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.ErrorContainer
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.CrashReport
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.SharedIcon
 
 @Composable
 internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, onSaveLog: () -> Unit, onDismiss: () -> Unit) {
@@ -37,9 +41,17 @@ internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, o
             }
         },
         buttons = {
+            TextButton(onClick = onCreateIssue) {
+                SharedIcon(Icons.Outlined.OpenInNew, null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.crash_create_issue))
+            }
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
-            TextButton(onClick = onSaveLog) { Text(stringResource(R.string.crash_save_log)) }
-            TextButton(onClick = onCreateIssue) { Text(stringResource(R.string.crash_create_issue)) }
+            TextButton(onClick = onSaveLog) {
+                SharedIcon(Icons.Outlined.Save, null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.crash_save_log))
+            }
         }
     )
 }

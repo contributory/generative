@@ -36,6 +36,7 @@ import org.starfall.generative.shared.networking.ToolHttp
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.defaultMediaProfile
+import org.starfall.generative.shared.model.media.modelIndependent
 import org.starfall.generative.shared.ui.ToolSwitch
 import org.starfall.generative.shared.helpers.media.imageOptionFields
 import org.starfall.generative.shared.helpers.media.videoOptionFields
@@ -110,6 +111,7 @@ fun MediaRequestProfileEditor(
     val saved by rememberUpdatedState(onAutoSave)
     fun normalizedDraft() = draft.copy(name = draft.name.trim(), options = parsedOptions ?: draft.options,
         mode = if (music) MediaGenerationMode.CUSTOM else draft.mode,
+        requiresModel = if (!music && draft.mode == MediaGenerationMode.DEFAULT) true else draft.requiresModel,
         encryptedCredential = draft.encryptedCredential)
     // Debounce typing; flushing on Back prevents losing the last keystroke.
     LaunchedEffect(draft, parsedOptions, optionsError) {
@@ -167,7 +169,10 @@ fun MediaRequestProfileEditor(
                             MediaGenerationMode.entries.forEach { mode ->
                                 DropdownMenuItem(
                                     text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                    onClick = { draft = draft.copy(mode = mode); modeMenu = false }
+                                    onClick = {
+                                        draft = draft.copy(mode = mode, requiresModel = if (mode == MediaGenerationMode.DEFAULT) true else draft.requiresModel)
+                                        modeMenu = false
+                                    }
                                 )
                             }
                         }
@@ -198,6 +203,19 @@ fun MediaRequestProfileEditor(
                     )
                 }
             }
+            if (!music && draft.mode == MediaGenerationMode.CUSTOM) item {
+                SettingsCard {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.media_profile_require_model),
+                            modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Switch(
+                            checked = draft.requiresModel,
+                            onCheckedChange = { draft = draft.copy(requiresModel = it) },
+                            modifier = Modifier.testTag("media-profile-require-model")
+                        )
+                    }
+                }
+            }
             if (music && draft.hasUnsafeMusicHeaders()) item {
                 Text(stringResource(R.string.music_unsafe_headers), color = MaterialTheme.colorScheme.error)
             }
@@ -208,7 +226,6 @@ fun MediaRequestProfileEditor(
             }
             if (draft.mode == MediaGenerationMode.DEFAULT) {
                 item {
-                    Text(stringResource(R.string.image_tool_model_options_description), style = MaterialTheme.typography.bodySmall)
                     if (provider == null || config.modelId.isBlank()) {
                         Text(stringResource(R.string.media_profile_no_model_hint),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -360,7 +377,7 @@ fun MediaRequestProfileEditor(
                         SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove))
                     }
                 }
-                if (music || (provider != null && config.modelId.isNotBlank())) {
+                if (music || draft.modelIndependent || (provider != null && config.modelId.isNotBlank())) {
                     OutlinedTextField(
                         value = testPrompt,
                         onValueChange = { testPrompt = it },
@@ -383,7 +400,9 @@ fun MediaRequestProfileEditor(
                                     val result = withContext(Dispatchers.IO) {
                                         if (music) MusicGenerationClient(ToolHttp()).test(draft.copy(chain = currentChain), currentPrompt, index)
                                         else MediaRequestChainExecutor(ToolHttp()).testThroughStep(
-                                            currentChain, requireNotNull(currentProvider), config.modelId, currentPrompt, index
+                                            currentChain, if (draft.modelIndependent) null else currentProvider,
+                                            if (draft.modelIndependent) "" else config.modelId,
+                                            currentPrompt, index, requiresModel = !draft.modelIndependent
                                         )
                                     }
                                     testOutput = "HTTP ${result.statusCode}\n${result.body}"
@@ -402,7 +421,8 @@ fun MediaRequestProfileEditor(
                         },
                         enabled = !testing
                     ) { Text(stringResource(R.string.media_chain_test_step, index + 1)) }
-                    Text(stringResource(R.string.media_chain_test_file_note),
+                    Text(stringResource(if (draft.modelIndependent) R.string.media_chain_test_no_model_note
+                        else R.string.media_chain_test_file_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (testing) LinearProgressIndicator(Modifier.fillMaxWidth())

@@ -10,40 +10,52 @@ import org.starfall.generative.shared.model.SpeechEngine
 import kotlinx.serialization.json.*
 import java.util.Base64
 import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.model.logging.DebugLogCategory
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
-// Deliberately omit debug logging: synthesis bodies and directory credentials are private.
+// Only counts, sizes, engine and result are logged; text, audio and credentials stay private.
 class StandaloneSpeechClient(private val http: ToolHttp = ToolHttp(client = OkHttpClient.Builder()
     .followRedirects(false).callTimeout(90, TimeUnit.SECONDS).build())) {
     suspend fun synthesize(service: SpeechService, text: String): ByteArray = withContext(Dispatchers.IO) {
         require(text.isNotBlank() && text.length <= 10_000) { "Speech text must contain 1 to 10000 characters." }
-        http.withResponse(adapter(service.engine).synthesis(service, text)) { response ->
-            http.requireSuccess(response)
-            val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
-            val speechify = service.engine == SpeechEngine.SPEECHIFY
-            require(if (speechify) mime == "application/json" else
-                (mime.startsWith("audio/") || mime == "application/octet-stream")) {
-                "Speech API did not return the expected audio response."
-            }
-            val bytes = if (speechify) {
-                decodeSpeechifyAudio(Json.parseToJsonElement(http.readJson(response,
-                    sanitizeMedia = false, maxChars = 46 * 1024 * 1024)))
-            } else response.body.byteStream().use { source ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val count = source.read(buffer)
-                    if (count < 0) break
-                    require(output.size() + count <= 32 * 1024 * 1024) { "Speech audio exceeds 32 MB." }
-                    output.write(buffer, 0, count)
+        val logId = DebugLog.beginOperation(DebugLogCategory.NETWORK, "Speech",
+            "Synthesis via ${service.engine}", "inputCharacters=${text.length}")
+        try {
+            http.withResponse(adapter(service.engine).synthesis(service, text)) { response ->
+                http.requireSuccess(response)
+                val mime = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
+                val speechify = service.engine == SpeechEngine.SPEECHIFY
+                require(if (speechify) mime == "application/json" else
+                    (mime.startsWith("audio/") || mime == "application/octet-stream")) {
+                    "Speech API did not return the expected audio response."
                 }
-                output.toByteArray()
+                val bytes = if (speechify) {
+                    decodeSpeechifyAudio(Json.parseToJsonElement(http.readJson(response,
+                        sanitizeMedia = false, maxChars = 46 * 1024 * 1024)))
+                } else response.body.byteStream().use { source ->
+                    val output = ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val count = source.read(buffer)
+                        if (count < 0) break
+                        require(output.size() + count <= 32 * 1024 * 1024) { "Speech audio exceeds 32 MB." }
+                        output.write(buffer, 0, count)
+                    }
+                    output.toByteArray()
+                }
+                require(bytes.isNotEmpty() && bytes.size <= 32 * 1024 * 1024) { "Speech audio is empty or exceeds 32 MB." }
+                require(org.starfall.generative.shared.media.audioMime(bytes) != null) { "Speech API returned unsupported audio." }
+                bytes
+            }.also { result ->
+                DebugLog.finishOperation(logId, "Speech synthesized", details = "audioBytes=${result.size}")
             }
-            require(bytes.isNotEmpty() && bytes.size <= 32 * 1024 * 1024) { "Speech audio is empty or exceeds 32 MB." }
-            require(org.starfall.generative.shared.media.audioMime(bytes) != null) { "Speech API returned unsupported audio." }
-            bytes
+        } catch (error: Exception) {
+            DebugLog.finishOperation(logId, "Speech synthesis failed", failed = true,
+                details = error::class.java.simpleName, error = error)
+            throw error
         }
     }
     suspend fun models(service: SpeechService): List<SpeechSynthesisModel> = SpeechModelCatalog(http).load(service)

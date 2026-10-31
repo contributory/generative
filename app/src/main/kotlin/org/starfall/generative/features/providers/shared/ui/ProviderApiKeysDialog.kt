@@ -141,6 +141,11 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
         buttons = {
             if (editing) TextButton(onClick = { editing = false },
                 modifier = Modifier.semantics { contentDescription = backLabel }) { Text(backLabel) }
+            if (!editing) TextButton(onClick = { edit(null) }, modifier = Modifier.semantics { contentDescription = addLabel }) {
+                SharedIcon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text(addLabel)
+            }
             TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
                 Text(closeLabel)
             }
@@ -151,10 +156,6 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                             blankError = keyRequiredError, duplicateError = keyDuplicateError)
                     }.onSuccess { editing = false }.onFailure { error = it.message }
                 }) { Text(stringResource(R.string.common_save)) }
-            } else {
-                TextButton(onClick = { edit(null) }, modifier = Modifier.semantics { contentDescription = addLabel }) {
-                    Text(addLabel)
-                }
             }
         }
     )

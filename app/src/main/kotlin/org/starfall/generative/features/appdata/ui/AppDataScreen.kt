@@ -5,7 +5,6 @@ import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.dialogs.Dialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
@@ -55,6 +56,7 @@ fun AppDataScreen(
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
+    var showSensitiveActions by rememberSaveable { mutableStateOf(false) }
     var showExportWarning by rememberSaveable { mutableStateOf(false) }
     val transferBusy = exportInProgress || importInProgress
     // Transfers belong to the application scope, not this screen. Navigation never waits for them.
@@ -89,27 +91,6 @@ fun AppDataScreen(
                         DataStatItem(stringResource(R.string.settings_chats), conversationCount.toString())
                         DataStatItem(stringResource(R.string.providers_title), providerCount.toString())
                     }
-                }
-            }
-            item {
-                DataSection(title = stringResource(R.string.settings_manage_data)) {
-                    Text(
-                        stringResource(R.string.settings_manage_data_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedButton(
-                        onClick = { showClearConfirm = true },
-                        enabled = !transferBusy,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text(stringResource(R.string.settings_clear_all_chat_history)) }
-                    OutlinedButton(
-                        onClick = { showResetConfirm = true },
-                        enabled = !transferBusy,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text(stringResource(R.string.settings_reset_all_application_data)) }
                 }
             }
             item {
@@ -151,7 +132,54 @@ fun AppDataScreen(
                     }
                 }
             }
+            item {
+                DataActionButton(
+                    title = stringResource(R.string.settings_manage_data),
+                    enabled = !transferBusy,
+                    modifier = Modifier.testTag("app-data-manage")
+                ) { showSensitiveActions = true }
+            }
         }
+    }
+
+    if (showSensitiveActions && !transferBusy) {
+        Dialog(
+            onDismissRequest = { showSensitiveActions = false },
+            title = { Text(stringResource(R.string.settings_manage_data)) },
+            content = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            showSensitiveActions = false
+                            showClearConfirm = true
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("app-data-clear-chats")
+                    ) {
+                        SharedIcon(Icons.Outlined.Delete, null)
+                        Spacer(Modifier.size(8.dp))
+                        Text(stringResource(R.string.settings_clear_all_chat_history))
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            showSensitiveActions = false
+                            showResetConfirm = true
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("app-data-reset-all")
+                    ) {
+                        SharedIcon(Icons.Outlined.Delete, null)
+                        Spacer(Modifier.size(8.dp))
+                        Text(stringResource(R.string.settings_reset_all_application_data))
+                    }
+                }
+            },
+            buttons = {
+                TextButton(onClick = { showSensitiveActions = false }) {
+                    Text(stringResource(R.string.common_close))
+                }
+            }
+        )
     }
 
     if (showExportWarning && !transferBusy) {
@@ -167,7 +195,7 @@ fun AppDataScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showExportWarning = false }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )
@@ -186,7 +214,7 @@ fun AppDataScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )
@@ -205,7 +233,7 @@ fun AppDataScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )
@@ -233,12 +261,17 @@ private fun DataStatItem(label: String, count: String) {
 }
 
 @Composable
-private fun DataActionButton(title: String, enabled: Boolean = true, onClick: () -> Unit) {
+private fun DataActionButton(
+    title: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(title)
     }

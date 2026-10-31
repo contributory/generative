@@ -89,6 +89,7 @@
     <string name="common_copy">Копировать</string>
     <string name="common_name">Название</string>
     <string name="common_type">Тип</string>
+    <string name="provider_api_type">Тип API</string>
     <string name="common_key">Ключ</string>
     <string name="common_value">Значение</string>
     <string name="common_auto">Авто</string>
@@ -392,7 +393,7 @@
     <string name="model_id_duplicate">У этого провайдера моделей уже есть модель с таким ID.</string>
     <string name="model_options_title">Параметры модели</string>
     <string name="model_tools_hint">Встроенные инструменты, поддерживаемые этой языковой моделью, отправляются вместе с запросом к API модели.</string>
-    <string name="send_thinking_content_back_hint">Авто отправляет прежнее рассуждение только в чатах с вызовами инструментов. Всегда отправляет его всегда; Никогда не отправляет никогда.</string>
+    <string name="send_thinking_content_back_hint">Авто отправляет прежнее рассуждение только в чатах с вызовами инструментов. Всегда отправляет его всегда. Никогда не отправляет никогда.</string>
     <string name="common_default">По умолчанию</string>
     <string name="mcp_required_parameter_default_needed">Задайте значение по умолчанию, прежде чем отключить этот обязательный параметр.</string>
     <string name="model_tools_editor_hint">Выберите стандартные инструменты, добавьте свои названия и включайте или выключайте отдельные инструменты.</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">Автоматически составлять резюме по мере заполнения контекста</string>
     <string name="settings_auto_summary_threshold">Автоматически составлять резюме при %1$d%% контекста</string>
     <string name="settings_conversations">Беседы</string>
-    <string name="settings_continue_last_chat">Продолжить последнюю беседу</string>
+    <string name="settings_continue_last_chat">Восстановить последнюю сессию</string>
     <string name="settings_continue_last_chat_description">Открывать последнюю беседу при запуске.</string>
     <string name="settings_persist_selected_model">Запоминать модель для каждой беседы</string>
     <string name="settings_persist_selected_model_description">Использовать выбранную модель каждой беседы при возврате в неё</string>
@@ -669,13 +670,13 @@
     <string name="mcp_attachments_classic_description">Отправляет каждый включённый инструмент MCP с каждым запросом.</string>
     <string name="mcp_attachments_include_description">Включать описания инструментов</string>
     <string name="mcp_attachments_include_description_summary">Выключено: описания опускаются для ранее прикреплённых MCP, что уменьшает запрос. Подробный параметр connect_mcps управляет описаниями для MCP по требованию.</string>
-    <string name="mcp_attachments_dynamic_description">Модель получает list_mcps и connect_mcps и подключает серверы MCP только тогда, когда они нужны. Режим по требованию применяется, как только достигнуты оба указанных ниже минимума; до этого MCP отправляются обычным способом. Включение описаний инструментов действует для обычных MCP; для MCP по требованию используется подробный параметр connect_mcps.</string>
+    <string name="mcp_attachments_dynamic_description">Модель получает list_mcps и connect_mcps и подключает серверы MCP только тогда, когда они нужны. Режим по требованию применяется, как только достигнуты оба указанных ниже минимума. до этого MCP отправляются обычным способом. Включение описаний инструментов действует для обычных MCP. для MCP по требованию используется подробный параметр connect_mcps.</string>
     <string name="mcp_attachments_min_mcps">Минимальное число серверов MCP</string>
     <string name="mcp_attachments_min_mcps_hint">По умолчанию %1$d. Значение 0 применяет режим по требованию к любому числу MCP.</string>
     <string name="mcp_attachments_min_tools">Минимальное число инструментов MCP</string>
     <string name="mcp_attachments_min_tools_hint">По умолчанию %1$d. Значение 0 игнорирует число инструментов.</string>
     <string name="mcp_attachments_dynamic_strategy_label">Стратегия по требованию</string>
-    <string name="mcp_attachments_strategy_overflow">Прикреплять первые серверы, остальные загружать по требованию</string>
+    <string name="mcp_attachments_strategy_overflow">Начальные + по запросу</string>
     <string name="mcp_attachments_strategy_all">Загружать все серверы по требованию</string>
     <string name="mcp_attachments_strategy_overflow_description">Режим переполнения оставляет обычными те MCP, которых меньше минимума, а остальные загружает по требованию.</string>
     <string name="mcp_attachments_strategy_all_description">Режим «Все» загружает каждый MCP по требованию.</string>
@@ -699,13 +700,14 @@
     <string name="settings_developer">Для разработчиков</string>
     <string name="settings_debug_logs">Включить журнал отладки</string>
     <string name="settings_debug_logs_description">Показывать расход токенов, сведения о запросах и сетевую активность на панели отладки.</string>
-    <string name="settings_debug_log_scope">Категории журнала</string>
+    <string name="settings_debug_log_scope">Источники журнала</string>
     <string name="settings_debug_log_scope_description">Выберите, какие типы записей сохраняет панель отладки.</string>
     <string name="debug_log_category_network">Сеть</string>
-    <string name="debug_log_category_payload">Полезная нагрузка</string>
-    <string name="debug_log_category_tokens">Токены</string>
-    <string name="debug_log_category_errors">Ошибки</string>
+    <string name="debug_log_category_system">Система</string>
+    <string name="settings_debug_log_level">Минимальный уровень журнала</string>
+
     <string name="debug_log_title">Журналы отладки</string>
+    <string name="debug_log_disable">Отключить журналы отладки</string>
     <string name="debug_log_toggle">Показать или скрыть журналы отладки</string>
     <string name="debug_log_copy_entry">Скопировать эту запись</string>
     <string name="debug_log_copy_all">Скопировать все записи</string>
@@ -756,7 +758,7 @@
     <string name="remote_machine_basic_section">Общие сведения</string>
     <string name="remote_machine_connection_section">Подключение</string>
     <string name="remote_machine_sftp_section_help">Действие «Искать файлы» в меню этой машины просматривает эту папку по SFTP. Сеанс запускается только по необходимости.</string>
-    <string name="remote_machine_sftp_directory_help">Корневая папка для файлов. По умолчанию $HOME; поддерживаются ~ и абсолютные пути.</string>
+    <string name="remote_machine_sftp_directory_help">Корневая папка для файлов. По умолчанию $HOME. поддерживаются ~ и абсолютные пути.</string>
     <string name="remote_machine_start_port_forward">Запустить перенаправление портов</string>
     <string name="remote_machine_port_forward_started">Перенаправление портов запущено. Открытые терминалы используют это подключение.</string>
     <string name="remote_machine_type_label">Тип машины</string>
@@ -772,7 +774,7 @@
     <string name="remote_machine_identity_file_help">Путь к закрытому ключу или имя ключа, загруженного в удалённых настройках. Сам ключ никогда не сохраняется на машине. Оставьте пустым, если ключ не нужен.</string>
     <string name="remote_machine_no_uploaded_keys">Загруженных ключей нет</string>
     <string name="remote_machine_ssh_keys">SSH-ключи</string>
-    <string name="remote_machine_ssh_keys_help">Загрузите закрытый ключ один раз и используйте его через IdentityFile для нескольких машин. Google Cloud Shell также требует соответствующий открытый ключ (.pub); загрузите его кнопкой у каждого ключа.</string>
+    <string name="remote_machine_ssh_keys_help">Загрузите закрытый ключ один раз и используйте его через IdentityFile для нескольких машин. Google Cloud Shell также требует соответствующий открытый ключ (.pub). загрузите его кнопкой у каждого ключа.</string>
     <string name="remote_machine_upload_ssh_key">Загрузить файл SSH-ключа</string>
     <string name="remote_machine_upload_public_key">Загрузить открытый ключ</string>
     <string name="remote_machine_public_key_uploaded">Открытый ключ загружен</string>
@@ -942,7 +944,7 @@
     <string name="media_chain_editing_step">Изменить шаг %1$d</string>
     <string name="media_chain_endpoint_help">Путь относительно провайдера или URL HTTP(S). Поддерживает {{model}} и значения предыдущих шагов.</string>
     <string name="media_chain_headers_json_invalid">Введите корректный объект JSON с текстовыми значениями заголовков.</string>
-    <string name="media_chain_headers_help">Объект JSON. Поддерживает переменные; настроенная аутентификация провайдера используется автоматически.</string>
+    <string name="media_chain_headers_help">Объект JSON. Поддерживает переменные. настроенная аутентификация провайдера используется автоматически.</string>
     <string name="media_chain_custom_content_type_help">Необязательное переопределение MIME-типа. Оставьте пустым для автоматического выбора.</string>
     <string name="media_chain_json">JSON</string>
     <string name="media_chain_file">Файл</string>
@@ -964,7 +966,7 @@
     <string name="speech_voice_instructions_help">Тон, акцент, эмоция%1$s.</string>
     <string name="speech_gemini_audio_description">Gemini возвращает аудио PCM, которое преобразуется в WAV для воспроизведения.</string>
     <string name="speech_json_invalid_hint">Введите корректный объект JSON.</string>
-    <string name="speech_provider_parameters_help">Параметры конкретного провайдера; модель, текст и голос используют поля выше.</string>
+    <string name="speech_provider_parameters_help">Параметры конкретного провайдера. модель, текст и голос используют поля выше.</string>
     <string name="speech_api_key_help">Оставьте пустым, чтобы использовать аутентификацию провайдера.</string>
     <string name="model_stream_settings_description">Оставьте пустым, чтобы использовать значения API по умолчанию. Эти параметры действуют только для этой модели у этого провайдера.</string>
     <string name="model_temperature_invalid">Введите число от 0 до %1$s или оставьте поле пустым.</string>
@@ -1106,4 +1108,20 @@
     <string name="customization_input_blur">Размытие фона</string>
     <string name="customization_input_blur_description">Размывает чат за областью ввода на Android 12 и новее. Текст и кнопки остаются чёткими.</string>
     <string name="settings_website">Веб-сайт</string>
+    <string name="app_menu_default_options">Конфигурация</string>
+    <string name="app_menu_builtin_tools">Встроенные инструменты</string>
+    <string name="app_menu_language_providers">Поставщики языковых моделей</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">Сервисы синтеза речи</string>
+    <string name="app_menu_remote_servers">Удалённые сервисы</string>
+    <string name="app_menu_media_management">Управление медиафайлами</string>
+    <string name="app_menu_icons_management">Управление значками</string>
+    <string name="app_menu_settings">Настройки</string>
+    <string name="app_menu_data">Данные</string>
+    <string name="app_menu_about">О приложении</string>
+    <string name="mcp_attachments_limits">Лимиты по запросу</string>
+    <string name="tool_settings_tab_media">Медиа</string>
+    <string name="tool_settings_tab_others">Другое</string>
+    <string name="media_profile_require_model">Требуется модель</string>
+    <string name="media_chain_test_no_model_note">Тестовые запросы могут быть платными. Входные файлы здесь недоступны.</string>
 </resources>

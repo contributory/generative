@@ -85,8 +85,7 @@ fun RemoteMachinesScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
-                title = stringResource(R.string.remote_machines_title),
-                subtitle = stringResource(R.string.remote_machines_description),
+                title = stringResource(R.string.app_menu_remote_servers),
                 onBack = onBack,
                 actions = {
                     ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
@@ -208,7 +207,7 @@ fun RemoteMachinesScreen(
                 }) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.common_cancel)) }
+                TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.common_close)) }
             }
         )
     }
@@ -262,17 +261,12 @@ private fun RemoteMachineCard(
                     SharedIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
                 }
             }
-            if (!isGrid) {
-                IconButton(onClick = onTerminal) {
-                    SharedIcon(Icons.Outlined.Terminal, stringResource(R.string.remote_machine_open_terminal))
-                }
-            }
             Box {
                 IconButton(onClick = { menu = true }) {
                     SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    if (isGrid) DropdownMenuItem(
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
                         leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
                         onClick = { menu = false; onTerminal() }

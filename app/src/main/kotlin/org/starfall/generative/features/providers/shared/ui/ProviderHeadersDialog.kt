@@ -69,11 +69,13 @@ internal fun ProviderHeadersDialog(
             }
         },
         buttons = {
+            TextButton(onClick = { rows.add("" to "") }, modifier = Modifier.semantics { contentDescription = addLabel }) {
+                SharedIcon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text(addLabel)
+            }
             TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
                 Text(closeLabel)
-            }
-            TextButton(onClick = { rows.add("" to "") }, modifier = Modifier.semantics { contentDescription = addLabel }) {
-                Text(addLabel)
             }
         }
     )

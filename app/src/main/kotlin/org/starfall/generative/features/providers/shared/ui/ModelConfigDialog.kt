@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
@@ -66,8 +68,12 @@ fun ModelConfigDialog(
             }
         },
         buttons = {
-            TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) { Text(stringResource(R.string.model_reset_sampling)) }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = { temperature = ""; topP = ""; topK = "" }) {
+                SharedIcon(Icons.Outlined.RestartAlt, null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.model_reset_sampling))
+            }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
             Button(enabled = tempValid && topPValid && topKValid, onClick = {
                 onSave(config.copy(temperature = temperature.toDoubleOrNull(), topP = topP.toDoubleOrNull(),
                     topK = if (supportsTopK) topK.toIntOrNull() else null))
@@ -123,7 +129,6 @@ fun ModelToolsDialog(
             ) {
                 Text(modelId, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(provider.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(R.string.model_tools_editor_hint), style = MaterialTheme.typography.bodySmall)
                 toolNames.forEachIndexed { index, tool ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -172,6 +177,7 @@ fun ModelToolsDialog(
                 }
             }
         },
+        confirmAtRight = true,
         confirmButton = {
             Button(onClick = {
                 val available = toolNames.map(String::trim).filter(String::isNotEmpty).distinct()
@@ -183,7 +189,7 @@ fun ModelToolsDialog(
             }) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }

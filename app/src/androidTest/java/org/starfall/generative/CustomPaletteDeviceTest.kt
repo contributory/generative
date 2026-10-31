@@ -14,6 +14,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import kotlin.math.abs
 import org.junit.Rule
+import org.starfall.generative.R
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.features.customization.ui.CustomizationScreen
@@ -37,6 +38,7 @@ class CustomPaletteDeviceTest {
             )
         } }
         compose.onNodeWithTag("customization-list").performScrollToKey("colors")
+        compose.onNodeWithTag("customization-colors-setting").performClick()
         compose.onNodeWithTag("palette-preset-ORANGE").assertExists().performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals("ORANGE", preferences.colorSchemeName) }
         compose.onNodeWithTag("customization-opacity-slider").performScrollTo()
@@ -53,7 +55,7 @@ class CustomPaletteDeviceTest {
         var commits = 0
         compose.setContent { MaterialTheme {
             CustomizationScreen(
-                profile = UserProfile(chatBackground = "stored-chat-image"),
+                profile = UserProfile(photo = "stored-photo-image", chatBackground = "stored-chat-image"),
                 onChange = { commits++ }, onBack = {},
                 customizationEnabled = enabled,
                 onCustomizationEnabledChange = { enabled = it }
@@ -62,8 +64,18 @@ class CustomPaletteDeviceTest {
         compose.onNodeWithTag("customization-enabled-switch").assertIsOn().performClick()
         compose.onNodeWithTag("customization-enabled-switch").assertIsOff()
         compose.onNodeWithTag("customization-disabled-overlay").assertExists()
+        compose.onNodeWithTag("background-setting-chat").performClick()
+        compose.onNodeWithTag("background-dialog-chat").assertDoesNotExist()
+        compose.onNodeWithTag("customization-list").performScrollToKey("photo")
+        compose.onNodeWithContentDescription(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+                .getString(R.string.user_profile_photo_options)
+        ).performClick()
+        val removeLabel = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getString(R.string.common_remove)
+        compose.onNodeWithText(removeLabel).assertExists().performClick()
         compose.runOnIdle {
-            assertEquals(0, commits)
+            assertEquals(1, commits)
             assertTrue(!enabled)
         }
         compose.onNodeWithTag("customization-enabled-switch").performClick()
@@ -88,6 +100,7 @@ class CustomPaletteDeviceTest {
             )
         } }
         compose.onNodeWithTag("customization-list").performScrollToKey("colors")
+        compose.onNodeWithTag("customization-colors-setting").performClick()
         val presets = listOf("ORANGE", "VIOLET", "SLATE", "CUSTOM").map {
             compose.onNodeWithTag("palette-preset-$it").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         }
@@ -120,7 +133,7 @@ class CustomPaletteDeviceTest {
         compose.onNodeWithTag("palette-preset-CUSTOM").performClick()
         compose.onNodeWithTag("palette-role-1").performClick()
         compose.onNodeWithTag("palette-color-plane").performTouchInput { click(center) }
-        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.common_cancel)).performClick()
+        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.common_close)).performClick()
         compose.runOnIdle { assertEquals(1, saves) }
     }
 }

@@ -2,6 +2,9 @@ package org.starfall.generative.shared.ui.model
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.REASONING_EFFORT_ACTIVE
@@ -117,6 +122,10 @@ internal fun reasoningEffortIndex(
     return options.indexOfFirst { it.effort == normalized }.takeIf { it >= 0 } ?: defaultIndex
 }
 
+/** Snap only on release; use a continuous slider while the finger is moving. */
+internal fun nearestReasoningEffortIndex(value: Float, optionCount: Int): Int =
+    value.roundToInt().coerceIn(0, (optionCount - 1).coerceAtLeast(0))
+
 /** Changes only the conversation override; model capabilities remain untouched. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,10 +136,13 @@ internal fun ReasoningEffortControl(
     options: List<ReasoningEffortOption> = reasoningEffortOptions(labels = localizedReasoningEffortLabels()),
     onColorBurst: (Offset, Int) -> Unit = { _, _ -> }
 ) {
-    var sliderValue by remember(effort, options) {
+    var sliderValue by remember(options) {
         mutableFloatStateOf(reasoningEffortIndex(effort, options).toFloat())
     }
+    var lastCommittedEffort by remember(options) { mutableStateOf(effort) }
     val maximumValue = options.lastIndex.toFloat()
+    val scope = rememberCoroutineScope()
+    var settleJob by remember { mutableStateOf<Job?>(null) }
     val layoutDirection = LocalLayoutDirection.current
     val interactionSource = remember { MutableInteractionSource() }
     val dragged by interactionSource.collectIsDraggedAsState()
@@ -147,37 +159,62 @@ internal fun ReasoningEffortControl(
     val accent = accentFor(band)
     val thumbColor by animateColorAsState(accent, tween(500), label = "thinking-thumb-color")
     val sliderColors = SliderDefaults.colors(thumbColor = thumbColor)
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val labelColor = LocalContentColor.current.copy(alpha = 0.85f)
     val sliderState = remember(options.size, maximumValue) {
-        SliderState(value = sliderValue, steps = options.size - 2, trackRange = 0f..maximumValue)
+        SliderState(value = sliderValue, steps = 0, trackRange = 0f..maximumValue)
     }
     sliderState.value = sliderValue
+    fun updatePreview(value: Float) {
+        val previousBand = colorBand(sliderValue)
+        sliderValue = value
+        onPreviewValueChange(value)
+        val nextBand = colorBand(value)
+        if (nextBand != previousBand && trackBounds.width > 0f) {
+            // A departing maximum tier retracts at the end of the track.
+            val fraction = (if (previousBand == 6) 1f else value / maximumValue).coerceIn(0f, 1f)
+            val physicalFraction = if (layoutDirection == LayoutDirection.Rtl) 1f - fraction else fraction
+            val origin = Offset(trackBounds.width * physicalFraction, trackBounds.height / 2f)
+            if (nextBand == 6) {
+                burst.start(origin, accentFor(6), reasoningEffortBurstDuration(6))
+                onColorBurst(trackBounds.topLeft + origin, nextBand)
+            } else if (previousBand == 6) {
+                burst.retract(origin)
+                onColorBurst(trackBounds.topLeft + origin, nextBand)
+            }
+        }
+    }
+    LaunchedEffect(effort, options) {
+        if (effort != lastCommittedEffort) {
+            settleJob?.cancel()
+            lastCommittedEffort = effort
+            updatePreview(reasoningEffortIndex(effort, options).toFloat())
+        }
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Slider(
                 state = sliderState,
                 onValueChange = {
-                    val previousBand = colorBand(sliderValue)
-                    sliderValue = it
-                    onPreviewValueChange(it)
-                    val nextBand = colorBand(it)
-                    if (nextBand != previousBand && trackBounds.width > 0f) {
-                        // On departure, gather the red colour back into the highest detent,
-                        // not into the new thumb position.
-                        val fraction = (if (previousBand == 6) 1f else it / maximumValue).coerceIn(0f, 1f)
-                        val physicalFraction = if (layoutDirection == LayoutDirection.Rtl) 1f - fraction else fraction
-                        val origin = Offset(trackBounds.width * physicalFraction, trackBounds.height / 2f)
-                        if (nextBand == 6) {
-                            burst.start(origin, accentFor(6), reasoningEffortBurstDuration(6))
-                            onColorBurst(trackBounds.topLeft + origin, nextBand)
-                        } else if (previousBand == 6) {
-                            burst.retract(origin)
-                            onColorBurst(trackBounds.topLeft + origin, nextBand)
-                        }
-                    }
+                    settleJob?.cancel()
+                    updatePreview(it)
                 },
                 onValueChangeFinished = {
-                    onEffortChange(options[sliderValue.roundToInt().coerceIn(options.indices)].effort)
+                    val targetIndex = nearestReasoningEffortIndex(sliderValue, options.size)
+                    val selectedEffort = options[targetIndex].effort
+                    lastCommittedEffort = selectedEffort
+                    onEffortChange(selectedEffort)
+                    settleJob?.cancel()
+                    settleJob = scope.launch {
+                        Animatable(sliderValue).animateTo(
+                            targetValue = targetIndex.toFloat(),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ) {
+                            updatePreview(value)
+                        }
+                    }
                 },
                 colors = sliderColors,
                 interactionSource = interactionSource,

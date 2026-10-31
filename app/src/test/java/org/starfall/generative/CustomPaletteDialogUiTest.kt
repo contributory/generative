@@ -64,6 +64,7 @@ class CustomPaletteDialogUiTest {
             )
         } }
         compose.onNodeWithTag("customization-list").performScrollToKey("colors")
+        compose.onNodeWithTag("customization-colors-setting").performClick()
         compose.onNodeWithTag("palette-preset-ORANGE").assertExists()
         compose.onNodeWithTag("palette-preset-VIOLET").assertExists()
         compose.onNodeWithTag("palette-preset-SLATE").assertExists()
@@ -72,7 +73,7 @@ class CustomPaletteDialogUiTest {
         compose.onNodeWithTag("palette-role-2").performClick()
         compose.onNodeWithTag("palette-hex").performTextClearance()
         compose.onNodeWithTag("palette-hex").performTextInput("#FF4499")
-        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Close").performClick()
         compose.runOnIdle {
             assertEquals(0, commits)
             assertEquals("SLATE", preferences.colorSchemeName)
@@ -100,6 +101,7 @@ class CustomPaletteDialogUiTest {
             )
         } }
         compose.onNodeWithTag("customization-list").performScrollToKey("colors")
+        compose.onNodeWithTag("customization-colors-setting").performClick()
         compose.onNodeWithTag("palette-preset-CUSTOM").performClick()
         compose.onNodeWithTag("palette-hex").performTextClearance()
         compose.onNodeWithTag("palette-hex").performTextInput("XYZ")

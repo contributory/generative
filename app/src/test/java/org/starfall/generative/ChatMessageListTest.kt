@@ -9,7 +9,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
@@ -54,11 +54,11 @@ class ChatMessageListTest {
         } }
         compose.onNodeWithText("Final readable line").assertIsDisplayed()
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        val gap = root.height * 0.30f
+        val gap = root.height * 0.21f
         val composer = with(compose.density) { 100.dp.toPx() }
         assertNotNull(firstEndBottom)
         assertTrue(firstEndBottom!! >= with(compose.density) { 80.dp.toPx() })
-        assertTrue("First placement already shows the latest line", firstEndBottom!! <= root.bottom - composer - gap + 2f)
+        assertTrue("First placement already shows the latest line", firstEndBottom <= root.bottom - composer - gap + 2f)
         assertFalse("History must use ordinary chronological list layout", state.listState.layoutInfo.reverseLayout)
         assertEquals("The first frame already contains the latest turn",
             messages.size / 2 - 1, state.listState.firstVisibleItemIndex)
@@ -351,7 +351,7 @@ class ChatMessageListTest {
             compose.waitForIdle()
             compose.onNodeWithText("Final readable line").assertIsDisplayed()
             assertFalse(mounted!!.listState.layoutInfo.reverseLayout)
-            assertEquals("A new history viewport never emits an opening scroll", 0L, mounted!!.requestCount)
+            assertEquals("A new history viewport never emits an opening scroll", 0L, mounted.requestCount)
         }
     }
 

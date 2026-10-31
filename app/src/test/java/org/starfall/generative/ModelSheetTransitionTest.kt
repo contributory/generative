@@ -43,7 +43,11 @@ class ModelSheetTransitionTest {
     )
 
     @Composable
-    private fun Host(sheets: BottomSheetsLinkState, onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null) {
+    private fun Host(
+        sheets: BottomSheetsLinkState,
+        providerList: List<ModelProvider> = listOf(provider),
+        onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null
+    ) {
         MaterialTheme {
             BottomSheetsLink(
                 sheets = sheets,
@@ -51,7 +55,7 @@ class ModelSheetTransitionTest {
                 onMediaKindChange = {},
                 onCancelEdit = {},
                 onShowSkillsMenu = {},
-                providers = listOf(provider),
+                providers = providerList,
                 providerGroups = emptyList(),
                 selectedProviderId = "p",
                 selectedModelName = "m1",
@@ -116,6 +120,24 @@ class ModelSheetTransitionTest {
         assertEquals(sheetNodeId, restored.id)
         assertTrue("The shared sheet must retain a measurable height", restored.boundsInRoot.height > 0f)
         compose.onNodeWithTag("open-model-picker-button").assertIsDisplayed()
+    }
+
+    @Test
+    fun longPickerExpandsExistingSelectedModelSheetWithoutReopeningIt() {
+        val models = listOf("m1") + (0 until 20).map { "other-$it" }
+        val manyModelsProvider = provider.copy(config = provider.config.copy(modelIds = models))
+        compose.setContent {
+            val sheets = remember { BottomSheetsLinkState().apply { openSelectedModelOverview() } }
+            Host(sheets, providerList = listOf(manyModelsProvider))
+        }
+        compose.waitForIdle()
+        val before = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
+        compose.onNodeWithTag("open-model-picker-button").performClick()
+        compose.waitForIdle()
+        val expanded = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
+        assertEquals("Picker expansion should retain the same modal sheet", before.id, expanded.id)
+        assertTrue("Long picker must expand upward from the overview", expanded.boundsInRoot.top < before.boundsInRoot.top)
+        compose.onNodeWithTag("model-picker-list").assertIsDisplayed()
     }
 
     @Test

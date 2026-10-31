@@ -34,6 +34,9 @@ private fun starCoordinate(index: Int, salt: Long): Float {
 internal class ThinkingColorBurst(private val scope: CoroutineScope) {
     val progress = Animatable(1f)
     val retractionProgress = Animatable(1f)
+    // Stars travel along the same path on entry and exit; the colour bloom keeps
+    // its own (longer) timeline, so a starburst does not disappear halfway through.
+    val starSpreadProgress = Animatable(1f)
     var isRetracting by mutableStateOf(false)
         private set
     var origin by mutableStateOf(Offset.Zero)
@@ -69,6 +72,10 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         this.keepAfterCompletion = keepAfterCompletion
         job = scope.launch {
             progress.snapTo(0f)
+            starSpreadProgress.snapTo(0f)
+            launch {
+                starSpreadProgress.animateTo(1f, tween(1500, easing = FastOutSlowInEasing))
+            }
             progress.animateTo(1f, tween(durationMillis.coerceIn(700, 7000), easing = FastOutSlowInEasing))
         }
     }
@@ -82,6 +89,10 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         job = scope.launch {
             progress.snapTo(1f)
             retractionProgress.snapTo(1f)
+            launch {
+                // Continue from the current position if entry was interrupted.
+                starSpreadProgress.animateTo(0f, tween(durationMillis, easing = FastOutSlowInEasing))
+            }
             retractionProgress.animateTo(0f, tween(durationMillis, easing = FastOutSlowInEasing))
             isRetracting = false
             starCount = 0
@@ -95,7 +106,10 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         isRetracting = false
         starCount = starCount.coerceAtLeast(32)
         keepAfterCompletion = true
-        scope.launch { progress.snapTo(1f) }
+        scope.launch {
+            progress.snapTo(1f)
+            starSpreadProgress.snapTo(1f)
+        }
     }
 
     /** Hide a settled screen effect immediately when its owning sheet is dismissed or leaves max. */
@@ -105,7 +119,10 @@ internal class ThinkingColorBurst(private val scope: CoroutineScope) {
         isRetracting = false
         keepAfterCompletion = false
         starCount = 0
-        scope.launch { progress.snapTo(1f) }
+        scope.launch {
+            progress.snapTo(1f)
+            starSpreadProgress.snapTo(1f)
+        }
     }
 }
 
@@ -216,12 +233,14 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                     else -> burst.bloomProgress
                 }
                 val fade = bloom
+                val spread = burst.starSpreadProgress.value
                 val isRed = burst.color.red > burst.color.blue
                 repeat(burst.starCount) { index ->
                     val sx = width * starCoordinate(index, 0x13579BDFL)
                     val sy = height * starCoordinate(index, 0x2468ACE1L) - bloom * 20f
-                    val starX = if (retracting) burst.origin.x + (sx - burst.origin.x) * bloom else sx
-                    val starY = if (retracting) burst.origin.y + (sy - burst.origin.y) * bloom else sy
+                    // Entry radiates from the thumb; exit travels the exact route back.
+                    val starX = burst.origin.x + (sx - burst.origin.x) * spread
+                    val starY = burst.origin.y + (sy - burst.origin.y) * spread
                     val twinkle = (sin(progress * PI * 6 + index * 2.41).toFloat() * 0.5f + 0.5f)
                     val secondaryTwinkle = (sin(progress * PI * 3 + index * 0.73).toFloat() * 0.5f + 0.5f)
                     val sparkle = if (isRed) {
@@ -235,8 +254,20 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
                         ((if (isRed) 240 else 175) * sparkle).toInt().coerceIn(0, 255),
                         233, 213, 255
                     )
-                    val ray = (2f + index % 3) * root.resources.displayMetrics.density
-                    paint.strokeWidth = root.resources.displayMetrics.density
+                    val density = root.resources.displayMetrics.density
+                    val ray = (2f + index % 3) * density
+                    paint.strokeWidth = density
+                    // Brief outward streaks make the launch legible while the stars move.
+                    if (!retracting && !settled && spread in 0.04f..0.94f) {
+                        val dx = sx - burst.origin.x
+                        val dy = sy - burst.origin.y
+                        val distance = hypot(dx, dy)
+                        if (distance > 0f) {
+                            val tail = 22f * density * (1f - spread)
+                            canvas.drawLine(starX - dx / distance * tail,
+                                starY - dy / distance * tail, starX, starY, paint)
+                        }
+                    }
                     canvas.drawLine(starX - ray, starY, starX + ray, starY, paint)
                     canvas.drawLine(starX, starY - ray, starX, starY + ray, paint)
                     canvas.drawCircle(starX, starY, root.resources.displayMetrics.density, paint)
@@ -254,7 +285,8 @@ internal fun ThinkingScreenBurstLayer(burst: ThinkingColorBurst) {
     }
     LaunchedEffect(root, overlay, burst) {
         snapshotFlow {
-            listOf(burst.progress.value, burst.keepAfterCompletion, burst.isRetracting, burst.retractionProgress.value)
+            listOf(burst.progress.value, burst.keepAfterCompletion, burst.isRetracting,
+                burst.retractionProgress.value, burst.starSpreadProgress.value)
         }.collect {
             overlay.setBounds(0, 0, root.width, root.height)
             overlay.invalidateSelf()

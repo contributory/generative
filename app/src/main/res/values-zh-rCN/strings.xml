@@ -89,6 +89,7 @@
     <string name="common_copy">复制</string>
     <string name="common_name">名称</string>
     <string name="common_type">类型</string>
+    <string name="provider_api_type">API 类型</string>
     <string name="common_key">键</string>
     <string name="common_value">值</string>
     <string name="common_auto">自动</string>
@@ -645,7 +646,7 @@
     <string name="settings_auto_summary_description">上下文逐渐占满时自动总结</string>
     <string name="settings_auto_summary_threshold">上下文达到 %1$d%% 时自动总结</string>
     <string name="settings_conversations">对话</string>
-    <string name="settings_continue_last_chat">继续上一次对话</string>
+    <string name="settings_continue_last_chat">恢复上次会话</string>
     <string name="settings_continue_last_chat_description">启动时打开最近的对话。</string>
     <string name="settings_persist_selected_model">按对话记住模型</string>
     <string name="settings_persist_selected_model_description">回到某个对话时使用该对话所选的模型</string>
@@ -675,7 +676,7 @@
     <string name="mcp_attachments_min_tools">MCP 工具数量下限</string>
     <string name="mcp_attachments_min_tools_hint">默认为 %1$d。设为 0 时忽略工具数量。</string>
     <string name="mcp_attachments_dynamic_strategy_label">按需策略</string>
-    <string name="mcp_attachments_strategy_overflow">附加前面的服务器，其余按需加载</string>
+    <string name="mcp_attachments_strategy_overflow">初始 + 按需</string>
     <string name="mcp_attachments_strategy_all">所有服务器都按需加载</string>
     <string name="mcp_attachments_strategy_overflow_description">溢出模式会将低于下限的 MCP 以常规方式附加，其余按需加载。</string>
     <string name="mcp_attachments_strategy_all_description">全部模式会按需加载每个 MCP。</string>
@@ -696,16 +697,17 @@
     <string name="settings_latex_description">自动渲染识别到的数学公式，金额仍保留为纯文本。</string>
     <string name="settings_latex_disabled">关闭</string>
     <string name="settings_latex_auto_detect">自动识别</string>
-    <string name="settings_developer">开发者</string>
+    <string name="settings_developer">开发者选项</string>
     <string name="settings_debug_logs">启用调试日志</string>
     <string name="settings_debug_logs_description">在调试面板中显示 Token 用量、请求详情和网络活动。</string>
-    <string name="settings_debug_log_scope">日志范围</string>
+    <string name="settings_debug_log_scope">日志来源</string>
     <string name="settings_debug_log_scope_description">选择调试面板要记录哪些类型的日志。</string>
     <string name="debug_log_category_network">网络</string>
-    <string name="debug_log_category_payload">有效载荷</string>
-    <string name="debug_log_category_tokens">Token</string>
-    <string name="debug_log_category_errors">错误</string>
+    <string name="debug_log_category_system">系统</string>
+    <string name="settings_debug_log_level">最低日志级别</string>
+
     <string name="debug_log_title">调试日志</string>
+    <string name="debug_log_disable">关闭调试日志</string>
     <string name="debug_log_toggle">显示/隐藏调试日志</string>
     <string name="debug_log_copy_entry">复制此日志</string>
     <string name="debug_log_copy_all">复制所有日志</string>
@@ -1103,4 +1105,20 @@
     <string name="customization_input_blur">背景模糊</string>
     <string name="customization_input_blur_description">在 Android 12 及更高版本上模糊输入区域后方的聊天内容。文字和按钮保持清晰。</string>
     <string name="settings_website">网站</string>
+    <string name="app_menu_default_options">配置</string>
+    <string name="app_menu_builtin_tools">内置工具</string>
+    <string name="app_menu_language_providers">语言模型提供商</string>
+    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
+    <string name="app_menu_speech_services">语音合成服务</string>
+    <string name="app_menu_remote_servers">远程服务</string>
+    <string name="app_menu_media_management">媒体管理</string>
+    <string name="app_menu_icons_management">图标管理</string>
+    <string name="app_menu_settings">设置</string>
+    <string name="app_menu_data">数据</string>
+    <string name="app_menu_about">关于</string>
+    <string name="mcp_attachments_limits">按需限制</string>
+    <string name="tool_settings_tab_media">媒体</string>
+    <string name="tool_settings_tab_others">其他</string>
+    <string name="media_profile_require_model">需要模型</string>
+    <string name="media_chain_test_no_model_note">测试请求可能产生费用。此处不支持文件输入。</string>
 </resources>

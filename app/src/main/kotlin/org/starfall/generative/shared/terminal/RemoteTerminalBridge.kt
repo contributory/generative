@@ -104,7 +104,7 @@ internal class RemoteTerminalBridge(
     fun setInputMode(mode: TerminalInputMode) {
         inputView?.finishImeComposition()
         val oldMode = inputMode
-        input.setInputMode(mode)
+        input.changeInputMode(mode)
         if (mode != oldMode) {
             if (!mode.usesLocalInput && imeEnabled) {
                 // Disable composition before the view can create an IME connection in Remote mode.

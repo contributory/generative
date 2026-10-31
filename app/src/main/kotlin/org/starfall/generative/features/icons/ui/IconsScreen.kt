@@ -48,6 +48,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
@@ -201,18 +202,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                 )
                             )
                         } else {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.icon_settings_title),
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(stringResource(R.string.icon_settings_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline, maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis)
-                            }
+                            FixedAppBarTitle(stringResource(R.string.app_menu_icons_management))
                         }
                     }
                 },

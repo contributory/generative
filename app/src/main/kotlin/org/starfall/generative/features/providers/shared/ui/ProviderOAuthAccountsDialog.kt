@@ -150,23 +150,29 @@ internal fun ProviderOAuthAccountsDialog(
             if (editing && !busy) TextButton(onClick = { editing = false },
                 modifier = Modifier.semantics { contentDescription = backLabel }) { Text(backLabel) }
             if (busy && editing) TextButton(onClick = onCancelAuthorization) { Text(stringResource(R.string.common_cancel)) }
+            if (!editing) TextButton(enabled = !busy && canAuthorize, onClick = { edit(null) },
+                modifier = Modifier.semantics { contentDescription = addLabel }) {
+                SharedIcon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text(addLabel)
+            }
+            if (editing && editingId != null) TextButton(enabled = !busy && canAuthorize, onClick = signIn) {
+                SharedIcon(Icons.Outlined.Refresh, null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.oauth_sign_in_again))
+            }
+            if (editing && editingId == null) {
+                Button(enabled = !busy && canAuthorize, onClick = signIn) {
+                    Text(stringResource(if (busy) R.string.oauth_signing_in else R.string.oauth_sign_in))
+                }
+            }
             TextButton(onClick = ::dismiss, modifier = Modifier.semantics { contentDescription = closeLabel }) {
                 Text(closeLabel)
             }
-            if (!editing) {
-                TextButton(enabled = !busy && canAuthorize, onClick = { edit(null) },
-                    modifier = Modifier.semantics { contentDescription = addLabel }) { Text(addLabel) }
-            } else {
-                if (editingId != null) TextButton(enabled = !busy && canAuthorize, onClick = signIn) {
-                    Text(stringResource(R.string.oauth_sign_in_again))
-                }
-                Button(enabled = !busy && (editingId != null || canAuthorize),
-                    modifier = if (editingId != null) Modifier.semantics { contentDescription = saveLabel } else Modifier,
-                    onClick = {
-                    if (editingId == null) signIn() else { onSaveLabel(editingId!!, label); editing = false }
-                }) {
-                    Text(stringResource(if (busy) R.string.oauth_signing_in else if (editingId == null)
-                        R.string.oauth_sign_in else R.string.common_save))
+            if (editing && editingId != null) {
+                Button(enabled = !busy, modifier = Modifier.semantics { contentDescription = saveLabel },
+                    onClick = { onSaveLabel(editingId!!, label); editing = false }) {
+                    Text(stringResource(R.string.common_save))
                 }
             }
         }

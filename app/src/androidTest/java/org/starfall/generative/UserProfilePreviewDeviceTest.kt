@@ -33,38 +33,32 @@ class UserProfilePreviewDeviceTest {
             )
         } }
 
-        compose.onNodeWithTag("customization-list").performScrollToKey("background-preview")
-        compose.onNodeWithTag("profile-preview-active").assertIsDisplayed()
-        compose.onNodeWithTag("profile-preview-active")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "25%"))
-        // Changing the selected surface updates the inline example without leaving this page.
-        compose.onNodeWithTag("profile-preview-select-drawer").performClick()
-        compose.onNodeWithTag("profile-preview-active")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "50%"))
-        compose.onNodeWithTag("profile-preview-select-chat").performClick()
-        compose.runOnIdle { profile = profile.copy(chatTransparency = 0.70f) }
-        compose.onNodeWithTag("profile-preview-active")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "70%"))
-
         compose.onNodeWithTag("customization-list").performScrollToKey("backgrounds")
-        // All five opacity controls are directly inside their background items, not a dialog/menu.
         for (slot in listOf("chat", "drawer", "menu", "sheet", "dialog")) {
-            compose.onNodeWithTag("profile-transparency-$slot").assertExists()
+            compose.onNodeWithTag("background-setting-$slot").assertExists()
+            compose.onNodeWithTag("profile-transparency-$slot").assertDoesNotExist()
         }
-        compose.onNodeWithTag("profile-transparency-chat").performScrollTo().assertIsDisplayed()
-            .performTouchInput {
-                swipe(Offset(width * 0.70f, center.y), Offset(width * 0.22f, center.y), 350)
-            }
+        compose.onNodeWithTag("background-setting-chat").performClick()
+        compose.onNodeWithTag("background-dialog-chat").assertIsDisplayed()
+        compose.onNodeWithTag("profile-preview-active").assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "25%"))
+        compose.onNodeWithTag("background-preview-options").assertIsDisplayed()
+        compose.onNodeWithTag("profile-transparency-chat").assertIsDisplayed().performTouchInput {
+            swipe(Offset(width * 0.70f, center.y), Offset(width * 0.22f, center.y), 350)
+        }
         compose.runOnIdle {
             assertTrue("Slider should persist a new opacity on release", profile.chatTransparency < 0.60f)
             assertEquals("Other background transparency remains independent", 0.5f, profile.drawerTransparency)
             assertEquals(1, saves)
         }
-        // The selected preview follows the inline slider without a separate transparency dialog.
-        compose.onNodeWithTag("customization-list").performScrollToKey("background-preview")
-        compose.onNodeWithTag("profile-preview-active").assertIsDisplayed()
         compose.onNodeWithTag("profile-preview-active")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription,
                 "${(profile.chatTransparency * 100).toInt()}%"))
+        compose.onNodeWithTag("background-preview-options").performClick()
+        compose.onNodeWithText(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+                .getString(R.string.common_remove)
+        ).assertExists()
+        compose.onNodeWithTag("background-dialog-chat").assertExists()
     }
 }

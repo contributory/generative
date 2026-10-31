@@ -106,7 +106,7 @@ internal fun InstructionsTab(
             },
             dismissButton = {
                 TextButton(onClick = { instructionPendingDelete = null }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )

@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -151,13 +152,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
                 TopAppBar(
                     colors = edgeToEdgeTopAppBarColors(),
                     title = {
-                        Column {
-                            Text(stringResource(R.string.settings_storage),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
-                            Text(stringResource(R.string.settings_storage_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline, maxLines = 1)
-                        }
+                        FixedAppBarTitle(stringResource(R.string.app_menu_media_management))
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
@@ -249,7 +244,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
                     }
                 }) { Text(stringResource(R.string.common_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) } }
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_close)) } }
         )
     }
 
