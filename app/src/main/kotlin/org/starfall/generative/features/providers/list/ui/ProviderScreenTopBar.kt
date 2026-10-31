@@ -3,7 +3,6 @@ package org.starfall.generative.features.providers.list.ui
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,7 +11,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.list.logic.ProviderSearchField
@@ -20,6 +18,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.text.AppBarSearchField
 
 /** App bar for the providers root screen only. Open folders draw their own full-screen header. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,12 +45,10 @@ internal fun ProviderScreenTopBar(
         title = {
             if (searching) {
                 LaunchedEffect(Unit) { searchFocus.requestFocus() }
-                TextField(
+                AppBarSearchField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    placeholder = { Text(stringResource(R.string.search_providers)) },
-                    singleLine = true,
+                    placeholder = stringResource(R.string.search_providers),
                     trailingIcon = {
                         Box {
                             IconButton(onClick = { onSearchFilterOpenChange(true) }) {
@@ -81,13 +78,7 @@ internal fun ProviderScreenTopBar(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().focusRequester(searchFocus).testTag("provider_search"),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                    )
+                    modifier = Modifier.fillMaxWidth().focusRequester(searchFocus).testTag("provider_search")
                 )
             } else Column {
                 Text(
@@ -118,7 +109,7 @@ internal fun ProviderScreenTopBar(
                 IconButton(onClick = onOpenSearch) {
                     SharedIcon(Icons.Default.Search, stringResource(R.string.search_providers))
                 }
-                ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
+                ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
                 IconButton(onClick = onCreateGroup, modifier = Modifier.testTag("add_provider_group")) {
                     SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
                 }
